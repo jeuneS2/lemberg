@@ -41,6 +41,7 @@ const char *Triple::getArchTypeName(ArchType Kind) {
   case x86_64:  return "x86_64";
   case xcore:   return "xcore";
   case mblaze:  return "mblaze";
+  case lemberg: return "lemberg";
   }
 
   return "<invalid>";
@@ -71,6 +72,8 @@ const char *Triple::getArchTypePrefix(ArchType Kind) {
   case x86:
   case x86_64:  return "x86";
   case xcore:   return "xcore";
+
+  case lemberg: return "lemberg";
   }
 }
 
@@ -149,6 +152,8 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     return x86_64;
   if (Name == "xcore")
     return xcore;
+  if (Name == "lemberg")
+    return lemberg;
 
   return UnknownArch;
 }
@@ -266,6 +271,8 @@ Triple::ArchType Triple::ParseArch(StringRef ArchName) {
     return tce;
   else if (ArchName == "xcore")
     return xcore;
+  else if (ArchName == "lemberg")
+    return lemberg;
   else
     return UnknownArch;
 }
