@@ -1,0 +1,281 @@
+# -------------------------------------------------------------------------- #
+#
+# Copyright (C) 1991-2009 Altera Corporation
+# Your use of Altera Corporation's design tools, logic functions
+# and other software and tools, and its AMPP partner logic
+# functions, and any output files from any of the foregoing
+# (including device programming or simulation files), and any
+# associated documentation or information are expressly subject
+# to the terms and conditions of the Altera Program License
+# Subscription Agreement, Altera MegaCore Function License
+# Agreement, or other applicable license agreement, including,
+# without limitation, that your use is for the sole purpose of
+# programming logic devices manufactured by Altera and sold by
+# Altera or its authorized distributors.  Please refer to the
+# applicable agreement for further details.
+#
+# -------------------------------------------------------------------------- #
+#
+# Quartus II
+# Version 9.0 Build 132 02/25/2009 SJ Full Version
+# Date created = 19:42:57  October 29, 2009
+#
+# -------------------------------------------------------------------------- #
+#
+# Notes:
+#
+# 1) The default values for assignments are stored in the file:
+#		regfile_assignment_defaults.qdf
+#    If this file doesn't exist, see file:
+#		assignment_defaults.qdf
+#
+# 2) Altera recommends that you do not modify this file. This
+#    file is updated automatically by the Quartus II software
+#    and any changes you make may be lost or overwritten.
+#
+# -------------------------------------------------------------------------- #
+
+
+set_global_assignment -name FAMILY "Cyclone II"
+set_global_assignment -name DEVICE EP2C70F896C6
+set_global_assignment -name TOP_LEVEL_ENTITY cpu
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION "10.1 SP1"
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "21:59:59  MARCH 30, 2011"
+set_global_assignment -name LAST_QUARTUS_VERSION "10.1 SP1"
+set_global_assignment -name USE_GENERATED_PHYSICAL_CONSTRAINTS OFF -section_id eda_blast_fpga
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
+set_global_assignment -name MUX_RESTRUCTURE OFF
+set_global_assignment -name ADV_NETLIST_OPT_SYNTH_WYSIWYG_REMAP ON
+set_global_assignment -name REMOVE_REDUNDANT_LOGIC_CELLS ON
+set_global_assignment -name ALLOW_ANY_ROM_SIZE_FOR_RECOGNITION ON
+set_global_assignment -name ALLOW_ANY_RAM_SIZE_FOR_RECOGNITION ON
+set_global_assignment -name ALLOW_ANY_SHIFT_REGISTER_SIZE_FOR_RECOGNITION ON
+set_global_assignment -name IGNORE_LCELL_BUFFERS ON
+set_global_assignment -name IGNORE_CASCADE_BUFFERS ON
+set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
+set_global_assignment -name SMART_RECOMPILE ON
+set_global_assignment -name ENABLE_DRC_SETTINGS ON
+set_global_assignment -name ENABLE_CLOCK_LATENCY ON
+set_global_assignment -name ENABLE_RECOVERY_REMOVAL_ANALYSIS ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_RETIMING ON
+set_global_assignment -name ROUTER_TIMING_OPTIMIZATION_LEVEL MAXIMUM
+set_global_assignment -name AUTO_PACKED_REGISTERS_STRATIXII NORMAL
+set_global_assignment -name AUTO_PACKED_REGISTERS_MAXII NORMAL
+set_global_assignment -name AUTO_PACKED_REGISTERS_CYCLONE NORMAL
+set_global_assignment -name AUTO_PACKED_REGISTERS NORMAL
+set_global_assignment -name AUTO_PACKED_REGISTERS_STRATIX NORMAL
+set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING ON
+set_global_assignment -name SEED 4
+set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT EXTRA
+set_global_assignment -name PLACEMENT_EFFORT_MULTIPLIER 3.0
+set_global_assignment -name REMOVE_DUPLICATE_LOGIC OFF
+set_global_assignment -name ROUTER_LCELL_INSERTION_AND_LOGIC_DUPLICATION ON
+
+# Pin & Location Assignments
+# ==========================
+
+
+
+# timing constraints
+# ==================
+
+
+
+set_global_assignment -name DEVICE_FILTER_SPEED_GRADE FASTEST
+set_global_assignment -name TIMEQUEST_DO_REPORT_TIMING ON
+set_global_assignment -name SAVE_DISK_SPACE OFF
+set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS ON
+set_global_assignment -name ROUTER_EFFORT_MULTIPLIER 4.0
+set_global_assignment -name AUTO_GLOBAL_MEMORY_CONTROLS ON
+
+set_global_assignment -name PARALLEL_SYNTHESIS ON
+set_global_assignment -name MISC_FILE /mnt/local/lemberg/hw/quartus/lemberg.dpf
+set_global_assignment -name OPTIMIZE_MULTI_CORNER_TIMING ON
+set_global_assignment -name OPTIMIZE_POWER_DURING_FITTING OFF
+
+set_global_assignment -name RTLV_GROUP_COMB_LOGIC_IN_CLOUD ON
+set_global_assignment -name AUTO_RAM_TO_LCELL_CONVERSION ON
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_global_assignment -name MISC_FILE /mnt/local/lemberggit/hw/quartus/lemberg.dpf
+
+
+
+set_location_assignment PIN_AD15 -to clk_pin
+set_location_assignment PIN_D21 -to rxd
+set_location_assignment PIN_E21 -to txd
+
+set_location_assignment PIN_AG8 -to ram_a[0]
+set_location_assignment PIN_AF8 -to ram_a[1]
+set_location_assignment PIN_AF14 -to ram_a[10]
+set_location_assignment PIN_AG14 -to ram_a[11]
+set_location_assignment PIN_AE15 -to ram_a[12]
+set_location_assignment PIN_AF15 -to ram_a[13]
+set_location_assignment PIN_AC16 -to ram_a[14]
+set_location_assignment PIN_AF20 -to ram_a[15]
+set_location_assignment PIN_AG20 -to ram_a[16]
+set_location_assignment PIN_AE11 -to ram_a[17]
+set_location_assignment PIN_AF11 -to ram_a[18]
+set_location_assignment PIN_AH7 -to ram_a[2]
+set_location_assignment PIN_AG7 -to ram_a[3]
+set_location_assignment PIN_AG6 -to ram_a[4]
+set_location_assignment PIN_AG5 -to ram_a[5]
+set_location_assignment PIN_AE12 -to ram_a[6]
+set_location_assignment PIN_AG12 -to ram_a[7]
+set_location_assignment PIN_AD13 -to ram_a[8]
+set_location_assignment PIN_AE13 -to ram_a[9]
+set_location_assignment PIN_AG17 -to ram_nsc
+set_location_assignment PIN_AG19 -to ram_cs
+set_location_assignment PIN_AD22 -to ram_ncs
+set_location_assignment PIN_AD7 -to ram_clk
+set_location_assignment PIN_AH10 -to ram_d[0]
+set_location_assignment PIN_AJ10 -to ram_d[1]
+set_location_assignment PIN_AH17 -to ram_d[10]
+set_location_assignment PIN_AJ18 -to ram_d[11]
+set_location_assignment PIN_AH18 -to ram_d[12]
+set_location_assignment PIN_AK19 -to ram_d[13]
+set_location_assignment PIN_AJ19 -to ram_d[14]
+set_location_assignment PIN_AK23 -to ram_d[15]
+set_location_assignment PIN_AJ20 -to ram_d[16]
+set_location_assignment PIN_AK21 -to ram_d[17]
+set_location_assignment PIN_AJ21 -to ram_d[18]
+set_location_assignment PIN_AK22 -to ram_d[19]
+set_location_assignment PIN_AK10 -to ram_d[2]
+set_location_assignment PIN_AJ22 -to ram_d[20]
+set_location_assignment PIN_AH15 -to ram_d[21]
+set_location_assignment PIN_AJ15 -to ram_d[22]
+set_location_assignment PIN_AJ16 -to ram_d[23]
+set_location_assignment PIN_AK14 -to ram_d[24]
+set_location_assignment PIN_AJ14 -to ram_d[25]
+set_location_assignment PIN_AJ13 -to ram_d[26]
+set_location_assignment PIN_AH13 -to ram_d[27]
+set_location_assignment PIN_AK12 -to ram_d[28]
+set_location_assignment PIN_AK7 -to ram_d[29]
+set_location_assignment PIN_AJ11 -to ram_d[3]
+set_location_assignment PIN_AJ8 -to ram_d[30]
+set_location_assignment PIN_AK8 -to ram_d[31]
+set_location_assignment PIN_AK11 -to ram_d[4]
+set_location_assignment PIN_AH12 -to ram_d[5]
+set_location_assignment PIN_AJ12 -to ram_d[6]
+set_location_assignment PIN_AH16 -to ram_d[7]
+set_location_assignment PIN_AK17 -to ram_d[8]
+set_location_assignment PIN_AJ17 -to ram_d[9]
+set_location_assignment PIN_AG18 -to high
+set_location_assignment PIN_AD18 -to ram_noe
+set_location_assignment PIN_AF18 -to ram_nwe
+set_location_assignment PIN_AC21 -to ram_nbw[0]
+set_location_assignment PIN_AC20 -to ram_nbw[1]
+set_location_assignment PIN_AD20 -to ram_nbw[2]
+set_location_assignment PIN_AH20 -to ram_nbw[3]
+
+set_global_assignment -name OPTIMIZATION_TECHNIQUE SPEED
+set_global_assignment -name STRATIXII_OPTIMIZATION_TECHNIQUE SPEED
+set_global_assignment -name CYCLONE_OPTIMIZATION_TECHNIQUE SPEED
+set_global_assignment -name STRATIX_OPTIMIZATION_TECHNIQUE SPEED
+set_global_assignment -name MAXII_OPTIMIZATION_TECHNIQUE SPEED
+
+set_global_assignment -name ECO_OPTIMIZE_TIMING ON
+set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL ON
+set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "NO HEAT SINK WITH STILL AIR"
+set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
+set_global_assignment -name SYNTH_PROTECT_SDC_CONSTRAINT ON
+set_global_assignment -name ENABLE_DA_RULE "C101, C102, C103, C104, C105, C106, R101, R102, R103, R104, R105, T101, T102, A101, A102, A103, A104, A105, A106, A107, A108, A109, A110, S101, S102, S103, S104, D101, D102, D103, M101, M102, M103, M104, M105"
+set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER ON
+set_global_assignment -name STATE_MACHINE_PROCESSING "USER-ENCODED"
+set_global_assignment -name PRE_MAPPING_RESYNTHESIS ON
+set_global_assignment -name POWER_USE_INPUT_FILES ON
+set_global_assignment -name POWER_DEFAULT_INPUT_IO_TOGGLE_RATE "12.5 %"
+set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim (VHDL)"
+set_global_assignment -name EDA_TIME_SCALE "1 ns" -section_id eda_simulation
+set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulation
+set_global_assignment -name EDA_MAP_ILLEGAL_CHARACTERS ON -section_id eda_simulation
+set_global_assignment -name EDA_NETLIST_WRITER_OUTPUT_DIR ../sim -section_id eda_simulation
+set_global_assignment -name EDA_ENABLE_GLITCH_FILTERING ON -section_id eda_simulation
+set_global_assignment -name EDA_WRITE_NODES_FOR_POWER_ESTIMATION ALL_NODES -section_id eda_simulation
+set_global_assignment -name EDA_TEST_BENCH_DESIGN_INSTANCE_NAME cpu -section_id eda_simulation
+set_global_assignment -name POWER_VCD_FILTER_GLITCHES OFF
+set_global_assignment -name POWER_REPORT_SIGNAL_ACTIVITY ON
+set_global_assignment -name POWER_REPORT_POWER_DISSIPATION ON
+set_global_assignment -name EDA_TEST_BENCH_ENABLE_STATUS TEST_BENCH_MODE -section_id eda_simulation
+set_global_assignment -name EDA_NATIVELINK_SIMULATION_TEST_BENCH cpu_tb -section_id eda_simulation
+set_global_assignment -name EDA_TEST_BENCH_NAME cpu_tb -section_id eda_simulation
+set_global_assignment -name EDA_DESIGN_INSTANCE_NAME cpu -section_id cpu_tb
+set_global_assignment -name EDA_TEST_BENCH_RUN_SIM_FOR "10 us" -section_id cpu_tb
+set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME cpu_tb -section_id cpu_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/gen_utils.vhd -section_id cpu_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/conversions.vhd -section_id cpu_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/sim_ssram_512x36.vhd -section_id cpu_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/cpu_tb.vhd -section_id cpu_tb
+set_global_assignment -name EDA_NATIVELINK_SIMULATION_SETUP_SCRIPT ../sim/DSE_dump_all_vcd_nodes.tcl -section_id eda_simulation
+set_global_assignment -name OPTIMIZE_HOLD_TIMING "ALL PATHS"
+set_global_assignment -name AUTO_RESOURCE_SHARING ON
+set_global_assignment -name POWER_INPUT_FILE_NAME ../sim/DSE.vcd -section_id dse.vcd
+set_global_assignment -name POWER_INPUT_FILE_TYPE VCD -section_id dse.vcd
+set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
+set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_a
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_d
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to ram_d
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_clk
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_nsc
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_ncs
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_cs
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_noe
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_nwe
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to rxd
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to txd
+set_instance_assignment -name POWER_READ_INPUT_FILE dse.vcd -to cpu
+set_instance_assignment -name GLOBAL_SIGNAL "GLOBAL CLOCK" -to "pll:pll|altpll:altpll_component|_clk0"
+set_global_assignment -name EDA_DESIGN_ENTRY_SYNTHESIS_TOOL "Synplify Pro"
+set_global_assignment -name EDA_LMF_FILE synplcty.lmf -section_id eda_design_synthesis
+set_global_assignment -name EDA_INPUT_DATA_FORMAT VQM -section_id eda_design_synthesis
+set_global_assignment -name SDC_FILE lemberg.sdc
+set_global_assignment -name VHDL_FILE ../src/core_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/reg_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/flag_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/op_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/mem_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/jmp_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/io_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/fpu/fpu_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/fetch.vhd
+set_global_assignment -name VHDL_FILE ../src/imem_block.vhd
+set_global_assignment -name VHDL_FILE ../src/imem.vhd
+set_global_assignment -name VHDL_FILE ../src/icache.vhd
+set_global_assignment -name VHDL_FILE ../src/inflate.vhd
+set_global_assignment -name VHDL_FILE ../src/regfile.vhd
+set_global_assignment -name VHDL_FILE ../src/decode.vhd
+set_global_assignment -name VHDL_FILE ../src/forward.vhd
+set_global_assignment -name VHDL_FILE ../src/flags.vhd
+set_global_assignment -name VHDL_FILE ../src/alu.vhd
+set_global_assignment -name VHDL_FILE ../src/memunit.vhd
+set_global_assignment -name VHDL_FILE ../src/jumpunit.vhd
+set_global_assignment -name VHDL_FILE ../src/cache/sdpram.vhd
+set_global_assignment -name VHDL_FILE ../src/cache/directmapped.vhd
+set_global_assignment -name VHDL_FILE ../src/cache/lru.vhd
+set_global_assignment -name VHDL_FILE ../src/cache/stack.vhd
+set_global_assignment -name VHDL_FILE ../src/cache/datacache.vhd
+set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/fixed_float_types_c.vhdl -library ieee_proposed
+set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/fixed_pkg_c.vhdl -library ieee_proposed
+set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/float_pkg_c.vhdl -library ieee_proposed
+set_global_assignment -name VHDL_FILE ../src/fpu/cmp.vhd
+set_global_assignment -name VHDL_FILE ../src/fpu/mac.vhd
+set_global_assignment -name VHDL_FILE ../src/fpu/fpu.vhd
+set_global_assignment -name VHDL_FILE ../src/core.vhd
+set_global_assignment -name VHDL_FILE ../src/iomux.vhd
+set_global_assignment -name VHDL_FILE ../src/io/sc_ssram32.vhd
+set_global_assignment -name VHDL_FILE ../src/io/fifo.vhd
+set_global_assignment -name VHDL_FILE ../src/io/sc_uart.vhd
+set_global_assignment -name VHDL_FILE ../src/pll.vhd
+set_global_assignment -name VHDL_FILE ../src/cpu.vhd
+set_instance_assignment -name DUPLICATE_ATOM fpu_flags -from "core:core|flags:flags|flags" -to "core:core|fpu:fpu|*"
+set_instance_assignment -name DUPLICATE_ATOM jmp_flags -from "core:core|flags:flags|flags" -to "core:core|jumpunit:jumpunit|*"
+set_instance_assignment -name DUPLICATE_ATOM mem_flags -from "core:core|flags:flags|flags" -to "core:core|memunit:memunit|*"
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC_FOR_AREA ON
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
