@@ -1,0 +1,548 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{bytefield}
+\usepackage{bera}
+\usepackage{color}
+\usepackage[DIV12]{typearea}
+
+\newcommand{\colorbitbox}[3]{%
+  \rlap{\bitbox{#2}{\color{#1}\rule{\width}{\height}}}%
+  \bitbox{#2}{#3}}
+
+\newcommand{\shl}{\textless$\,\!$\textless}
+\newcommand{\shr}{\textgreater$\,\!$\textgreater$\,\!$\textgreater}
+\newcommand{\ashr}{\textgreater$\,\!$\textgreater}
+
+\title{Lemberg}
+\author{Wolfgang Puffitsch}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{quote}
+\begin{center}
+  -- Why do you pronounce VLIW with an ``F'' at the end?\\
+  -- Because I also pronounce Lviv that way.  
+\end{center}
+\end{quote}  
+
+\section{Opcode Formats}
+
+\subsection{Bundle Formats}
+
+\setlength{\bitwidth}{.45em}
+\setlength{\byteheight}{3ex}
+
+\definecolor{gray0}{gray}{0.95}
+\definecolor{gray1}{gray}{0.75}
+\definecolor{gray2}{gray}{0.55}
+\definecolor{gray3}{gray}{0.35}
+
+\noindent
+\begin{bytefield}{8}
+\bitheader[l]{0,4,8}\\
+\bitbox{4}{\texttt{\scriptsize 0000}} & \bitbox{4}{} \\
+\end{bytefield}
+
+\noindent
+\begin{bytefield}{32}
+\bitheader[l]{0,4,8,12,16,20,24,28,32}\\
+\bitbox{4}{\texttt{\scriptsize 0001}} & \colorbitbox{gray0}{25}{insn0} & \bitbox{3}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32}\\
+\bitbox{4}{\texttt{\scriptsize 0010}} & \colorbitbox{gray1}{25}{insn1} & \bitbox{3}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32}\\
+\bitbox{4}{\texttt{\scriptsize 0100}} & \colorbitbox{gray2}{25}{insn2} & \bitbox{3}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32}\\
+\bitbox{4}{\texttt{\scriptsize 1000}} & \colorbitbox{gray3}{25}{insn3} & \bitbox{3}{} \\
+\end{bytefield}  
+
+\noindent
+\begin{bytefield}{56}
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
+\bitbox{4}{\texttt{\scriptsize 0011}} &
+\colorbitbox{gray0}{25}{insn0} &
+\colorbitbox{gray1}{25}{insn1} &
+\bitbox{2}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
+\bitbox{4}{\texttt{\scriptsize 0101}} &
+\colorbitbox{gray0}{25}{insn0} &
+\colorbitbox{gray2}{25}{insn2} &
+\bitbox{2}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
+\bitbox{4}{\texttt{\scriptsize 1001}} &
+\colorbitbox{gray0}{25}{insn0} &
+\colorbitbox{gray3}{25}{insn3} &
+\bitbox{2}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
+\bitbox{4}{\texttt{\scriptsize 0110}} &
+\colorbitbox{gray1}{25}{insn1} &
+\colorbitbox{gray2}{25}{insn2} &
+\bitbox{2}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
+\bitbox{4}{\texttt{\scriptsize 1010}} &
+\colorbitbox{gray1}{25}{insn1} &
+\colorbitbox{gray3}{25}{insn3} &
+\bitbox{2}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
+\bitbox{4}{\texttt{\scriptsize 1100}} &
+\colorbitbox{gray2}{25}{insn2} &
+\colorbitbox{gray3}{25}{insn3} &
+\bitbox{2}{} \\
+
+\end{bytefield}  
+
+\noindent
+\begin{bytefield}{88}
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80}\\
+\bitbox{4}{\texttt{\scriptsize 0111}} &
+\colorbitbox{gray0}{25}{insn0} &
+\colorbitbox{gray1}{25}{insn1} &
+\colorbitbox{gray2}{25}{insn2} &
+\bitbox{1}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80}\\
+\bitbox{4}{\texttt{\scriptsize 1011}} &
+\colorbitbox{gray0}{25}{insn0} &
+\colorbitbox{gray1}{25}{insn1} &
+\colorbitbox{gray3}{25}{insn3} &
+\bitbox{1}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80}\\
+\bitbox{4}{\texttt{\scriptsize 1101}} &
+\colorbitbox{gray0}{25}{insn0} &
+\colorbitbox{gray2}{25}{insn2} &
+\colorbitbox{gray3}{25}{insn3} &
+\bitbox{1}{} \\
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80}\\
+\bitbox{4}{\texttt{\scriptsize 1110}} &
+\colorbitbox{gray1}{25}{insn1} &
+\colorbitbox{gray2}{25}{insn2} &
+\colorbitbox{gray3}{25}{insn3} &
+\bitbox{1}{} \\
+\end{bytefield}  
+
+\noindent
+\begin{bytefield}{104}
+\bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,84,88,92,96,100,104}\\
+\bitbox{4}{\texttt{\scriptsize 1111}} &
+\colorbitbox{gray0}{25}{insn0} & 
+\colorbitbox{gray1}{25}{insn1} &
+\colorbitbox{gray2}{25}{insn2} &
+\colorbitbox{gray3}{25}{insn3} \\
+\end{bytefield}
+
+\subsection{Instruction Formats}
+
+\setlength{\bitwidth}{1em}
+
+\begin{itemize}
+\item Base format \textbf{B}:\\
+
+\begin{bytefield}{25}
+\bitheader[l]{0-25}\\
+\bitbox{6}{opCode} \bitbox{5}{srcReg1} & \bitbox{5}{srcReg2} & \bitbox{5}{destReg} &
+\bitbox{1}{\texttt{0}} & \bitbox{1}{c} & \bitbox{2}{F} \\
+\bitbox{6}{opCode} & \bitbox{5}{srcReg} & \bitbox{5}{imm} & \bitbox{5}{destReg} &
+\bitbox{1}{\texttt{1}} & \bitbox{1}{c} & \bitbox{2}{F}
+\end{bytefield}\\
+For comparison and test operations, destReg refers to a condition flag.
+
+\item Flag combination format \textbf{C}:\\
+
+\begin{bytefield}{25}
+\bitheader[l]{0-25}\\
+\bitbox{6}{opCode} & \bitbox{3}{--} & \bitbox{2}{d} &
+\bitbox{3}{--} & \bitbox{2}{op} & \bitbox{1}{!1} & \bitbox{2}{s1} & \bitbox{1}{!2} & \bitbox{2}{s2} &
+\bitbox{1}{c} & \bitbox{2}{F}
+\end{bytefield}
+
+\item Floating-point format \textbf{F}:\\
+
+\begin{bytefield}{25}
+\bitheader[l]{0-25}\\
+\bitbox{6}{opCode} & \bitbox{4}{dest} & \bitbox{4}{src1} & \bitbox{4}{src2} &  \bitbox{4}{op} &
+\bitbox{1}{c} & \bitbox{2}{F}
+\end{bytefield}
+
+\item Global address format \textbf{G}:\\
+
+\begin{bytefield}{25}
+\bitheader[l]{0-25}\\
+\bitbox{6}{opCode} & \bitbox{19}{address}
+\end{bytefield}
+
+\item Global address load format \textbf{H}:\\
+
+\begin{bytefield}{25}
+\bitheader[l]{0-25}\\
+\bitbox{3}{opC.} & \bitbox{3}{dest} & \bitbox{19}{address}
+\end{bytefield}\\
+dest values \texttt{000}-\texttt{011} address r0-r3, values \texttt{100}-\texttt{111} address r16-r18.
+
+\item Immediate load format \textbf{I}:\\
+
+\begin{bytefield}{25}
+\bitheader[l]{0-25}\\
+\bitbox{6}{opCode} & \bitbox{5}{destReg} \bitbox{11}{imm} &
+\bitbox{1}{c} & \bitbox{2}{F}
+\end{bytefield}
+
+\item Jump format \textbf{J}:\\
+
+\begin{bytefield}{25}
+\bitheader[l]{0-25}\\
+\bitbox{6}{opCode} & \bitbox{5}{target} & \bitbox{10}{} &
+\bitbox{1}{\texttt{0}} & \bitbox{1}{c} & \bitbox{2}{F} \\
+\bitbox{6}{opCode} & \bitbox{15}{offset} &
+\bitbox{1}{\texttt{1}} & \bitbox{1}{c} & \bitbox{2}{F}
+\end{bytefield}
+
+\item Load format \textbf{L}:\\
+
+\begin{bytefield}{25}
+\bitheader[l]{0-25}\\
+\bitbox{6}{opCode} & \bitbox{5}{addrReg} & \bitbox{11}{offset} &
+\bitbox{1}{c} & \bitbox{2}{F}
+\end{bytefield}
+
+\item Store format \textbf{S}:\\
+
+\begin{bytefield}{25}
+\bitheader[l]{0-25}\\
+\bitbox{6}{opCode} & \bitbox{5}{addrReg} & \bitbox{5}{valReg} & \bitbox{5}{offset} &
+\bitbox{1}{\texttt{0}} & \bitbox{1}{c} & \bitbox{2}{F} \\
+\bitbox{6}{opCode} & \bitbox{5}{addrReg} & \bitbox{5}{imm} & \bitbox{5}{offset} &
+\bitbox{1}{\texttt{1}} & \bitbox{1}{c} & \bitbox{2}{F}
+\end{bytefield}
+
+\end{itemize}
+
+\medskip
+
+\noindent
+\begin{tabular}{l@{ \ldots\ }l}
+  c & condition: \texttt{1} \ldots\ if \texttt{true}, \texttt{0} \ldots\ if \texttt{false} \\
+  F & condition flag to use \\
+\end{tabular}
+
+\section{Register File}
+
+\subsection{General-Purpose Registers}
+
+\begin{tabular}{rll}
+\toprule
+Index & Name & Purpose \\
+\midrule
+0 & r0 & global reg 0 \\
+1 & r1 & global reg 1 \\
+2 & r2 & global reg 2 \\
+3 & r3 & global reg 3 \\
+4 & r4 & global reg 4 \\
+5 & r5 & global reg 5 \\
+6 & r6 & global reg 6 \\
+7 & r7 & global reg 7 \\
+8 & r8 & global reg 8 \\
+9 & r9 & global reg 9 \\
+10 & r10 & global reg 10 \\
+11 & r11 & global reg 11 \\
+12 & r12 & global reg 12 \\
+13 & r13 & global reg 13 \\
+14 & r14 & global reg 14, frame pointer \\
+15 & r15 & global reg 15, stack pointer \\
+\cmidrule{1-3}
+16 & r16 & local reg 0 \\
+17 & r17 & local reg 1 \\
+18 & r18 & local reg 2 \\
+19 & r19 & local reg 3 \\
+20 & r20 & local reg 4 \\
+21 & r21 & local reg 5 \\
+22 & r22 & local reg 6 \\
+23 & r23 & local reg 7 \\
+24 & r24 & local reg 8 \\
+25 & r25 & local reg 9 \\
+26 & r26 & local reg 10 \\
+27 & r27 & local reg 11 \\
+28 & r28 & local reg 12 \\
+29 & r29 & local reg 13 \\
+30 & r30 & local reg 14 \\
+31 & r31 & local reg 15, reserved \\
+\bottomrule 
+\end{tabular}
+
+\subsection{Special Registers}
+
+\begin{tabular}{rll}
+  \toprule
+  Index & Name & Purpose \\
+  \midrule
+  0 & \$c0 & Condition flag 0, global, always true \\
+  1 & \$c1 & Condition flag 1, global \\
+  2 & \$c2 & Condition flag 2, global \\
+  3 & \$c3 & Condition flag 3, global \\
+  \cmidrule{1-3}
+  4 & \$mem & Memory load result as int32\_t, read only, global \\
+  5 & \$memhu & Memory load result as 2 $\times$ uint16\_t, read only, global \\
+  6 & \$memhs & Memory load result as 2 $\times$ int16\_t, read only, global \\
+  7 & \$membu & Memory load result as 4 $\times$ uint8\_t, read only, global \\
+  8 & \$membs & Memory load result as 4 $\times$ int8\_t, read only, global \\
+  \cmidrule{1-3}
+  9 & \$mul & Multiplication result, per-cluster \\
+  \cmidrule{1-3}
+  10 & \$rb & Return base, global \\
+  11 & \$ro & Return offset, global \\
+  12 & \$ba & Base address, read only, global \\
+  \cmidrule{1-3}
+  16 & \$f0, \$d0 & FPU register 0 \\
+  17 & \$f1 & FPU register 1 \\
+  18 & \$f2, \$d1 & FPU register 2 \\
+  19 & \$f3 & FPU register 3 \\
+  20 & \$f4, \$d2 & FPU register 4 \\
+  21 & \$f5 & FPU register 5 \\
+  22 & \$f6, \$d3 & FPU register 6 \\
+  23 & \$f7 & FPU register 7 \\
+  24 & \$f8, \$d4 & FPU register 8 \\
+  25 & \$f9 & FPU register 9 \\
+  26 & \$f10, \$d5 & FPU register 10 \\
+  27 & \$f11 & FPU register 11 \\
+  28 & \$f12, \$d6 & FPU register 12 \\
+  29 & \$f13 & FPU register 13 \\
+  30 & \$f14, \$d7 & FPU register 14 \\
+  31 & \$f15 & FPU register 15 \\
+  \bottomrule
+\end{tabular}
+
+\pagebreak
+
+\section{Operations}
+
+\begin{longtable}{llllp{.54\textwidth}}
+\toprule
+Opcode & Name & Format & Unit & Semantics \\
+\midrule
+\multicolumn{5}{c}{\textbf{Arithmetic}} \\
+\cmidrule{1-5}
+\texttt{00 0000} & \texttt{add} & B & A & \texttt{dest = src1 + src2} \\
+\texttt{00 0001} & \texttt{sub} & B & A & \texttt{dest = src1 - src2} \\
+\texttt{00 0010} & \texttt{s2add} & B & A & \texttt{dest = src1 + src2*4} \\
+\texttt{00 0011} & \texttt{and} & B & A & \texttt{dest = src1 \& src2} \\
+\texttt{00 0100} & \texttt{or} & B & A & \texttt{dest = src1 | src2} \\
+\texttt{00 0101} & \texttt{xor} & B & A & \texttt{dest = src1 \textasciicircum{} src2} \\
+\texttt{00 0110} & \texttt{sl} & B & A & \texttt{dest = src1 \shl{} src2} \\
+\texttt{00 0111} & \texttt{sr} & B & A & \texttt{dest = src1 \shr{} src2} \\
+\texttt{00 1000} & \texttt{sar} & B & A & \texttt{dest = src1 \ashr{} src2} \\
+\texttt{00 1001} & \texttt{rl} & B & A & \texttt{dest = (src1 \shl{} src2) | (src1 \shr{} (32-src2))} \\
+\texttt{00 1010} & \texttt{mul} & B & A & \texttt{\$mul = src1 * src2} \\
+\texttt{00 1011} & \texttt{carr} & B & A & \texttt{dest = ((int64\_t)src1+(int64\_t)src2) \shr{} 32} \\
+\texttt{00 1100} & \texttt{borr} & B & A & \texttt{dest = ((int64\_t)src1-(int64\_t)src2) \shr{} 32} \\
+\texttt{00 1101} & \texttt{mask} & B & A & masking operation (see Section~\ref{sec:mask}) \\
+\texttt{00 1110} & \texttt{?} & & & \\
+\texttt{00 1111} & \texttt{?} & & & \\
+\midrule
+\multicolumn{5}{c}{\textbf{Conditions}} \\
+\cmidrule{1-5}
+\texttt{010 000} & \texttt{cmpeq} & B & A & \texttt{dest = src1 == src2} \\
+\texttt{010 001} & \texttt{cmpne} & B & A & \texttt{dest = src1 != src2} \\
+\texttt{010 010} & \texttt{cmplt} & B & A & \texttt{dest = src1 \textless{} src2}, signed \\
+\texttt{010 011} & \texttt{cmpgt} & B & A & \texttt{dest = src1 \textgreater{} src2}, signed \\
+\texttt{010 100} & \texttt{cmpult} & B & A & \texttt{dest = src1 \textless{} src2}, unsigned \\
+\texttt{010 101} & \texttt{cmpugt} & B & A & \texttt{dest = src1 \textgreater{} src2}, unsigned \\
+\texttt{010 110} & \texttt{btest} & B & A & \texttt{dest = (src1 \& (1 \shl{} src)) != 0} \\
+\texttt{010 111} & \texttt{comb} & C & A & flag combination operation (see Section~\ref{sec:comb}) \\
+\midrule
+\multicolumn{5}{c}{\textbf{Constants}} \\
+\cmidrule{1-5}
+\texttt{0110 00} & \texttt{ldi} & I & A & \texttt{dest = imm}, signed \\
+\texttt{0110 01} & \texttt{ldiu} & I & A & \texttt{dest = imm}, unsigned \\
+\texttt{0110 10} & \texttt{ldim} & I & A & \texttt{dest |= imm \shl{} 11}, signed \\
+\texttt{0110 11} & \texttt{ldih} & I & A & \texttt{dest |= imm \shl{} 21} \\
+\midrule
+\multicolumn{5}{c}{\textbf{Flow Control}} \\
+\cmidrule{1-5}
+\texttt{0111 00} & \texttt{br} & J & J & \texttt{pc = imm ?\ pc+offset :\ target} \\
+\texttt{0111 01} & \texttt{call} & B & J,M & \texttt{\$rb = \$ba, \$ro = pc, \$ba = src2, pc = 0} \\
+\texttt{0111 10} & \texttt{callg} & G & J,M & \texttt{\$rb = \$ba, \$ro = pc, \$ba = addr*4, pc = 0} \\
+\texttt{0111 11} & \texttt{ret} & B & J,M & \texttt{\$ba = \$rb, pc = \$ro} \\
+\midrule
+\pagebreak
+\midrule
+\multicolumn{5}{c}{\textbf{Memory Accesses}} \\
+\cmidrule{1-5}
+\texttt{10 0000} & \texttt{stm.a} & S & M & \texttt{[addr+offset*4] = val}, all caches, int32\_t \\
+\texttt{10 0001} & \texttt{stmh.a} & S & M & \texttt{[addr+offset*2] = val}, all caches, int16\_t \\
+\texttt{10 0010} & \texttt{stmb.a} & S & M & \texttt{[addr+offset] = val}, all caches, int8\_t \\
+\texttt{10 0011} & \texttt{stm.s} & S & M & \texttt{[addr+offset*4] = val}, stack cache, int32\_t \\
+\texttt{10 0100} & \texttt{stmh.s} & S & M & \texttt{[addr+offset*2] = val}, stack cache, int16\_t \\
+\texttt{10 0101} & \texttt{stmb.s} & S & M & \texttt{[addr+offset] = val}, stack cache, int8\_t \\
+\texttt{10 0110} & \texttt{wb.s} & L & M & write back data from stack cache \\
+\texttt{10 0111} & \texttt{ldm.b} & L & M & issue \texttt{\$mem = [addr+offset]}, bypass caches \\
+\texttt{10 1000} & \texttt{ldm.d} & L & M & issue \texttt{\$mem = [addr+offset]}, direct mapped cache \\
+\texttt{10 1001} & \texttt{ldm.f} & L & M & issue \texttt{\$mem = [addr+offset]}, fully associative cache \\
+\texttt{10 1010} & \texttt{ldm.s} & L & M & issue \texttt{\$mem = [addr+offset]}, stack cache \\
+\texttt{10 1011} & \texttt{ldmg.d} & G & M & issue \texttt{\$mem = [addr*4]}, direct mapped cache\\
+\midrule
+\multicolumn{5}{c}{\textbf{Special Registers}} \\
+\cmidrule{1-5}
+\texttt{1011 00} & \texttt{ldx} & B & A & \texttt{dest = src1}, src1 refers to special register \\
+\texttt{1011 01} & \texttt{stx} & B & A & \texttt{dest = src1}, dest refers to special register \\
+\texttt{1011 10} & \texttt{fop} & F & F & floating-point operation (see Section~\ref{sec:fop}) \\
+\texttt{1011 11} & \texttt{?} & & & \\
+\midrule
+\multicolumn{5}{c}{\textbf{Global Address Constants}} \\
+\cmidrule{1-5}
+\texttt{110} & \texttt{ldga} & H & A & \texttt{dest = address*4}, unsigned \\
+\midrule
+\multicolumn{5}{c}{\textbf{---}} \\
+\cmidrule{1-5}
+\texttt{111 000} & \texttt{?} & & & \\
+\texttt{111 001} & \texttt{?} & & & \\
+\texttt{111 010} & \texttt{?} & & & \\
+\texttt{111 011} & \texttt{?} & & & \\
+\texttt{111 100} & \texttt{?} & & & \\
+\texttt{111 101} & \texttt{?} & & & \\
+\texttt{111 110} & \texttt{?} & & & \\
+\texttt{111 111} & \texttt{?} & & & \\
+\bottomrule
+\end{longtable}  
+
+\pagebreak
+\subsection{Masking Operation}
+\label{sec:mask}
+
+\begin{tabular}{cl}
+\toprule
+Src2 & Semantics \\
+\midrule
+\multicolumn{2}{c}{\textbf{Extract Unsigned Sub-Words}} \\
+\cmidrule{1-2}
+\texttt{000 00} & \texttt{dest = (uint8\_t)src1[ 7\ldots{}\ 0]} \\
+\texttt{000 01} & \texttt{dest = (uint8\_t)src1[15\ldots{}\ 8]} \\
+\texttt{000 10} & \texttt{dest = (uint8\_t)src1[23\ldots{}16]} \\
+\texttt{000 11} & \texttt{dest = (uint8\_t)src1[31\ldots{}24]} \\
+\cmidrule{1-2}
+\texttt{001 0-} & \texttt{dest = (uint16\_t)src1[15\ldots{}\ 0]} \\
+\texttt{001 1-} & \texttt{dest = (uint16\_t)src1[31\ldots{}16]} \\
+\midrule
+\multicolumn{2}{c}{\textbf{Extract Signed Sub-Words}} \\
+\cmidrule{1-2}
+\texttt{010 00} & \texttt{dest = (int8\_t)src1[ 7\ldots{}\ 0]} \\
+\texttt{010 01} & \texttt{dest = (int8\_t)src1[15\ldots{}\ 8]} \\
+\texttt{010 10} & \texttt{dest = (int8\_t)src1[23\ldots{}16]} \\
+\texttt{010 11} & \texttt{dest = (int8\_t)src1[31\ldots{}24]} \\
+\cmidrule{1-2}
+\texttt{011 0-} & \texttt{dest = (int16\_t)src1[15\ldots{}\ 0]} \\
+\texttt{011 1-} & \texttt{dest = (int16\_t)src1[31\ldots{}16]} \\
+\midrule
+\multicolumn{2}{c}{\textbf{Shift Sub-Words}} \\
+\cmidrule{1-2}
+\texttt{100 00} & \texttt{dest = 0; dest[ 7\ldots{}\ 0] = src1[7\ldots{}0]} \\
+\texttt{100 01} & \texttt{dest = 0; dest[15\ldots{}\ 8] = src1[7\ldots{}0]} \\
+\texttt{100 10} & \texttt{dest = 0; dest[23\ldots{}16] = src1[7\ldots{}0]} \\
+\texttt{100 11} & \texttt{dest = 0; dest[31\ldots{}24] = src1[7\ldots{}0]} \\
+\cmidrule{1-2}
+\texttt{101 0-} & \texttt{dest = 0; dest[15\ldots{}\ 0] = src1[15\ldots{}0]} \\
+\texttt{101 1-} & \texttt{dest = 0; dest[31\ldots{}16] = src1[15\ldots{}0]} \\
+\midrule
+\multicolumn{2}{c}{\textbf{Clear Sub-Words}} \\
+\cmidrule{1-2}
+\texttt{110 00} & \texttt{dest[ 7\ldots{}\ 0] = 0} \\
+\texttt{110 01} & \texttt{dest[15\ldots{}\ 8] = 0} \\
+\texttt{110 10} & \texttt{dest[23\ldots{}16] = 0} \\
+\texttt{110 11} & \texttt{dest[31\ldots{}24] = 0} \\
+\cmidrule{1-2}
+\texttt{111 0-} & \texttt{dest[15\ldots{}\ 0] = 0} \\
+\texttt{111 1-} & \texttt{dest[31\ldots{}16] = 0} \\
+\bottomrule  
+\end{tabular}
+
+\paragraph{TODO} Rework these. Only extraction of sub-words is used really.
+
+\subsection{Flag Combination Operation}
+\label{sec:comb}
+
+\begin{tabular}{cll}
+\toprule
+Op & Name & Semantics \\
+\midrule
+\texttt{00} & \texttt{and} & \texttt{d = (!1 \textasciicircum{} s1) \& (!2 \textasciicircum{} s2)} \\
+\texttt{01} & \texttt{or} & \texttt{d = (!1 \textasciicircum{} s1) | (!2 \textasciicircum{} s2)} \\
+\texttt{10} & \texttt{xor} & \texttt{d = (!1 \textasciicircum{} s1) \textasciicircum{} (!2 \textasciicircum{} s2)} \\
+\texttt{11} & \texttt{?} & \\
+\bottomrule  
+\end{tabular}
+
+
+\pagebreak
+
+\subsection{Floating-Point Operations}
+\label{sec:fop}
+
+\begin{tabular}{ccll}
+\toprule
+Op & Src2 & Name & Semantics \\
+\midrule
+\texttt{0000} & - & \texttt{fadd} & \texttt{dest = src1 + src2}, single \\
+\texttt{0001} & - & \texttt{fsub} & \texttt{dest = src1 - src2}, single \\
+\texttt{0010} & - & \texttt{fmul} & \texttt{dest = src1 * src2}, single \\
+\texttt{0011} & - & \texttt{fmac} & \texttt{dest += src1 * src2}, single \\
+\texttt{0100} & - & \texttt{dadd} & \texttt{dest = src1 + src2}, double \\
+\texttt{0101} & - & \texttt{dsub} & \texttt{dest = src1 - src2}, double \\
+\texttt{0110} & - & \texttt{dmul} & \texttt{dest = src1 * src2}, double \\
+\texttt{0111} & - & \texttt{dmac} & \texttt{dest += src1 * src2}, double \\
+\texttt{1000} & - & \texttt{fcmp} & comparison, single $\rightarrow$ int32\_t (see Section~\ref{sec:fcmp}) \\
+\texttt{1001} & - & \texttt{dcmp} & comparison, double $\rightarrow$ int32\_t (see Section~\ref{sec:fcmp}) \\
+\texttt{1010} & - & \texttt{?} & \\
+\texttt{1011} & - & \texttt{?} & \\
+\texttt{1100} & - & \texttt{?} & \\
+\texttt{1101} & - & \texttt{?} & \\
+\texttt{1110} & - & \texttt{?} & \\
+\texttt{1111} & \texttt{0000} & \texttt{fmov} & \texttt{dest = src1}, single \\
+\texttt{1111} & \texttt{0001} & \texttt{fneg} & \texttt{dest = -src1}, single \\
+\texttt{1111} & \texttt{0010} & \texttt{fabs} & \texttt{dest = abs(src1)}, single \\
+\texttt{1111} & \texttt{0011} & \texttt{fzero} & \texttt{dest = 0.0}, single \\
+\texttt{1111} & \texttt{0100} & \texttt{dmov} & \texttt{dest = src1}, double \\
+\texttt{1111} & \texttt{0101} & \texttt{dneg} & \texttt{dest = -src1}, double \\
+\texttt{1111} & \texttt{0110} & \texttt{dabs} & \texttt{dest = abs(src1)}, double \\
+\texttt{1111} & \texttt{0111} & \texttt{dzero} & \texttt{dest = 0.0}, double \\
+\texttt{1111} & \texttt{1000} & \texttt{rnd} & \texttt{dest = (float)src1}, double $\rightarrow$ single \\
+\texttt{1111} & \texttt{1001} & \texttt{ext} & \texttt{dest = (double)src1}, single $\rightarrow$ double \\
+\texttt{1111} & \texttt{1010} & \texttt{si2sf} & \texttt{dest = (float)src1}, int32\_t $\rightarrow$ single \\
+\texttt{1111} & \texttt{1011} & \texttt{si2df} & \texttt{dest = (double)src1}, int32\_t $\rightarrow$ double \\
+\texttt{1111} & \texttt{1100} & \texttt{sf2si} & \texttt{dest = (int)src1}, single $\rightarrow$ int32\_t \\
+\texttt{1111} & \texttt{1101} & \texttt{df2si} & \texttt{dest = (int)src1}, double $\rightarrow$ int32\_t \\
+\bottomrule
+\end{tabular}
+
+\subsubsection{Floating-Point Comparison}
+\label{sec:fcmp}
+
+\begin{tabular}{rl}
+\toprule
+Result Bit & Semantics \\
+\midrule
+0 & \texttt{src1 == src2 \&\& !unord(src1, src2)} \\
+1 & \texttt{src1 != src2 \&\& !unord(src1, src2)} \\
+2 & \texttt{src1 < src2 \&\& !unord(src1, src2)} \\
+3 & \texttt{src1 <= src2 \&\& !unord(src1, src2)} \\
+4 & \texttt{src1 > src2 \&\& !unord(src1, src2)} \\
+5 & \texttt{src1 >= src2 \&\& !unord(src1, src2)} \\
+6 & \texttt{!unord(src1, src2)} \\
+7 & \texttt{unord(src1, src2)} \\
+8 & \texttt{src1 == src2 || unord(src1, src2)} \\
+9 & \texttt{src1 != src2 || unord(src1, src2)} \\
+10 & \texttt{src1 < src2 || unord(src1, src2)} \\
+11 & \texttt{src1 <= src2 || unord(src1, src2)} \\
+12 & \texttt{src1 > src2 || unord(src1, src2)} \\
+13 & \texttt{src1 >= src2 || unord(src1, src2)} \\
+\bottomrule
+\end{tabular}
+
+\section{Notes}
+
+\begin{itemize}
+\item Stores to the stack are write-back, stores to other caches are
+  write-through. Stores do not pull data into the caches.
+\item Support for floating-point operations is optional.
+\end{itemize}
+
+\end{document}
