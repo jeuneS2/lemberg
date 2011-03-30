@@ -1,0 +1,8 @@
+#! /bin/sh
+
+export AR_FOR_TARGET="llvm-ar"
+export RANLIB_FOR_TARGET="llvm-ranlib"
+export AS_FOR_TARGET="llvm-as"
+export CC_FOR_TARGET="llvm-gcc -emit-llvm -U__i386__ -D__lemberg__"
+export LD_FOR_TARGET="llvm-ld"
+./configure --target=lemberg

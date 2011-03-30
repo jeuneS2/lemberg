@@ -39,6 +39,7 @@ if test -n "${machine_dir}"; then
 	i386) AC_CONFIG_SUBDIRS(i386) ;;
 	i960) AC_CONFIG_SUBDIRS(i960) ;;
 	iq2000) AC_CONFIG_SUBDIRS(iq2000) ;;
+	lemberg) AC_CONFIG_SUBDIRS(lemberg) ;;
 	lm32) AC_CONFIG_SUBDIRS(lm32) ;;
 	m32c) AC_CONFIG_SUBDIRS(m32c) ;;
 	m32r) AC_CONFIG_SUBDIRS(m32r) ;;

@@ -166,6 +166,9 @@ case "${host_cpu}" in
   iq2000)
 	machine_dir=iq2000
 	;;
+  lemberg)
+	machine_dir=lemberg
+	;;
   lm32)
 	machine_dir=lm32
 	;;
@@ -669,6 +672,10 @@ case "${host}" in
   iq2000*)
 	syscall_dir=syscalls
 	default_newlib_io_long_long="yes"
+	;;
+  lemberg-*-*)
+	syscall_dir=syscalls
+	# newlib_cflags="${newlib_cflags} -DNO_FLOATING_POINT"
 	;;
   lm32-*-*)
 	syscall_dir=syscalls
