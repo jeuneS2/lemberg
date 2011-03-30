@@ -1,5 +1,4 @@
 /Makefile.am/1.14/Fri Apr 17 20:54:19 2009/-ko/
-/Makefile.in/1.27/Thu Dec 16 21:59:16 2010/-ko/
 /acoshl.c/1.2/Fri Apr 17 22:15:42 2009//
 /acosl.c/1.2/Fri Apr 17 22:15:42 2009//
 /asinhl.c/1.2/Fri Apr 17 22:15:42 2009//
@@ -129,4 +128,5 @@
 /tanl.c/1.2/Fri Apr 17 22:15:43 2009//
 /tgammal.c/1.2/Fri Apr 17 22:15:43 2009//
 /truncl.c/1.2/Fri Apr 17 22:15:43 2009//
+/Makefile.in/1.27/Wed Mar 30 23:28:36 2011/-ko/
 D

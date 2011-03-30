@@ -1,6 +1,5 @@
 /LICENSE/1.1/Wed May 28 22:04:37 2003//
 /Makefile.am/1.5/Thu May 24 17:33:37 2007//
-/Makefile.in/1.15/Thu Dec 16 21:59:07 2010//
 /aclocal.m4/1.18/Thu Dec 16 21:59:07 2010//
 /attr.c/1.2/Wed Dec 19 22:27:00 2007//
 /barrier.c/1.1/Wed May 28 22:04:37 2003//
@@ -8,7 +7,6 @@
 /cancel.c/1.1/Wed May 28 22:04:37 2003//
 /condvar.c/1.1/Wed May 28 22:04:37 2003//
 /config.h/1.2/Fri Mar 17 22:27:37 2006//
-/configure/1.22/Thu Dec 16 21:59:07 2010//
 /configure.in/1.4/Wed Feb 24 20:59:58 2010//
 /defs.awk/1.1/Wed May 28 22:04:37 2003//
 /ecmutex.c/1.1/Wed May 28 22:04:37 2003//
@@ -103,4 +101,7 @@
 /unload.c/1.1/Wed May 28 22:04:38 2003//
 /weaks.c/1.1/Wed May 28 22:04:38 2003//
 /wrapsyscall.c/1.1/Wed May 28 22:04:38 2003//
-D
+D/bits////
+D/machine////
+/Makefile.in/1.15/Wed Mar 30 23:28:32 2011//
+/configure/1.22/Wed Mar 30 23:28:32 2011//

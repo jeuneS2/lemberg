@@ -1,5 +1,4 @@
 /Makefile.am/1.5/Wed Aug 19 20:04:45 2009/-ko/
-/Makefile.in/1.18/Thu Dec 16 21:59:12 2010/-ko/
 /_exit.S/1.1/Mon May  1 22:01:07 2006//
 /_longjmp.S/1.1/Mon May  1 22:01:07 2006//
 /_setjmp.S/1.1/Mon May  1 22:01:07 2006//
@@ -12,7 +11,6 @@
 /chmod.S/1.1/Mon May  1 22:01:07 2006//
 /close.S/1.1/Mon May  1 22:01:07 2006//
 /closedir.c/1.1.1.1/Thu Feb 17 19:39:50 2000/-ko/
-/configure/1.30/Thu Dec 16 21:59:12 2010/-ko/
 /configure.in/1.2/Thu Apr 13 19:56:31 2006/-ko/
 /crt0.c/1.2/Wed Aug 30 18:34:53 2000/-ko/
 /dup.c/1.1.1.1/Thu Feb 17 19:39:50 2000/-ko/
@@ -71,4 +69,6 @@
 /wait.S/1.1/Mon May  1 22:01:07 2006//
 /waitpid.S/1.1/Mon May  1 22:01:07 2006//
 /write.S/1.1/Mon May  1 22:01:07 2006//
-D
+D/sys////
+/Makefile.in/1.18/Wed Mar 30 23:28:35 2011/-ko/
+/configure/1.30/Wed Mar 30 23:28:35 2011/-ko/

@@ -1,7 +1,5 @@
 /Makefile.am/1.9/Thu May 24 17:33:34 2007/-ko/
-/Makefile.in/1.21/Thu Dec 16 21:58:47 2010/-ko/
 /aclocal.m4/1.28/Thu Dec 16 21:58:47 2010/-ko/
-/configure/1.33/Thu Dec 16 21:58:47 2010/-ko/
 /configure.in/1.5/Wed Feb 24 20:59:49 2010/-ko/
 /f_atan2.S/1.4/Fri Dec 20 21:31:19 2002/-ko/
 /f_atan2f.S/1.4/Fri Dec 20 21:31:19 2002/-ko/
@@ -29,4 +27,6 @@
 /setjmp.S/1.4/Tue Nov 16 17:52:21 2010/-ko/
 /strchr.S/1.4/Wed May 21 21:46:04 2008/-ko/
 /strlen.S/1.4/Mon May 26 22:56:14 2008/-ko/
-D
+D/machine////
+/Makefile.in/1.21/Wed Mar 30 23:28:25 2011/-ko/
+/configure/1.33/Wed Mar 30 23:28:25 2011/-ko/

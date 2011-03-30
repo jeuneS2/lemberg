@@ -1,6 +1,7 @@
 /Makefile.am/1.6/Thu May 24 17:33:41 2007//
-/Makefile.in/1.20/Thu Dec 16 21:59:16 2010//
 /aclocal.m4/1.25/Thu Dec 16 21:59:16 2010//
-/configure/1.31/Thu Dec 16 21:59:16 2010//
 /configure.in/1.7/Wed Feb 24 21:00:06 2010//
-D
+D/i386////
+D/spu////
+/Makefile.in/1.20/Wed Mar 30 23:28:36 2011//
+/configure/1.31/Wed Mar 30 23:28:36 2011//

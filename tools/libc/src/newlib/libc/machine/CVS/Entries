@@ -1,6 +1,52 @@
 /Makefile.am/1.3/Thu May 24 17:33:31 2007/-ko/
-/Makefile.in/1.16/Thu Dec 16 21:58:42 2010/-ko/
-/aclocal.m4/1.28/Thu Dec 16 21:58:42 2010/-ko/
-/configure/1.43/Thu Dec 16 21:58:42 2010/-ko/
 /configure.in/1.17/Thu Dec  2 19:30:47 2010/-ko/
-D
+D/a29k////
+D/arc////
+D/arm////
+D/bfin////
+D/cr16////
+D/cris////
+D/crx////
+D/d10v////
+D/d30v////
+D/fr30////
+D/frv////
+D/h8300////
+D/h8500////
+D/hppa////
+D/i386////
+D/i960////
+D/iq2000////
+D/lm32////
+D/m32c////
+D/m32r////
+D/m68hc11////
+D/m68k////
+D/m88k////
+D/mep////
+D/microblaze////
+D/mips////
+D/mn10200////
+D/mn10300////
+D/moxie////
+D/ms1////
+D/mt////
+D/necv70////
+D/powerpc////
+D/rx////
+D/sh////
+D/sparc////
+D/spu////
+D/tic4x////
+D/tic6x////
+D/tic80////
+D/v850////
+D/w65////
+D/x86_64////
+D/xc16x////
+D/xscale////
+D/xstormy16////
+D/z8k////
+/aclocal.m4/1.28/Wed Mar 30 23:13:30 2011/-ko/
+/Makefile.in/1.16/Wed Mar 30 23:28:24 2011/-ko/
+/configure/1.43/Wed Mar 30 23:28:24 2011/-ko/

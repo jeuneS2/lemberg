@@ -1,4 +1,3 @@
-/Makefile.in/1.8/Wed Jan  3 16:55:25 2007//
 /_exit.c/1.2/Wed Jan  3 16:55:25 2007//
 /_kill.c/1.1/Wed Jan  3 16:55:25 2007//
 /aclocal.m4/1.1/Wed Apr 19 19:44:03 2006//
@@ -8,7 +7,6 @@
 /coff-rdpmon.specs/1.1/Wed Jun  9 19:06:50 2004//
 /coff-redboot.ld/1.2/Thu Nov  7 00:25:57 2002//
 /coff-redboot.specs/1.1/Mon Jan  7 18:12:32 2002//
-/configure/1.8/Fri Apr  4 21:51:59 2008//
 /configure.in/1.7/Wed May 10 20:51:40 2006//
 /crt0.S/1.8/Mon Oct  6 20:55:19 2008//
 /elf-iq80310.specs/1.3/Thu Nov  7 00:25:57 2002//
@@ -29,4 +27,6 @@
 /syscall.h/1.1/Mon Apr 29 21:51:25 2002//
 /syscalls.c/1.17/Fri Aug 27 11:55:36 2010//
 /trap.S/1.2/Tue Feb  7 18:46:23 2006//
+/Makefile.in/1.8/Wed Mar 30 23:28:21 2011//
+/configure/1.8/Wed Mar 30 23:28:21 2011//
 D

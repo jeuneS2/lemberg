@@ -1,9 +1,29 @@
 /Makefile.am/1.19/Wed Jan  5 17:18:16 2011/-ko/
-/Makefile.in/1.31/Wed Jan  5 17:18:16 2011/-ko/
-/aclocal.m4/1.31/Thu Dec 16 21:58:39 2010/-ko/
-/configure/1.50/Wed Jan  5 17:13:24 2011/-ko/
 /configure.in/1.21/Wed Jan  5 17:13:24 2011/-ko/
 /libc.texinfo/1.21/Thu Dec 16 21:58:40 2010/-ko/
 /saber/1.1.1.1/Thu Feb 17 19:39:46 2000/-ko/
 /sys.tex/1.5/Fri Oct 28 21:36:05 2005/-ko/
-D
+D/argz////
+D/ctype////
+D/errno////
+D/iconv////
+D/include////
+D/locale////
+D/machine////
+D/misc////
+D/posix////
+D/reent////
+D/search////
+D/signal////
+D/stdio////
+D/stdio64////
+D/stdlib////
+D/string////
+D/sys////
+D/syscalls////
+D/time////
+D/unix////
+D/xdr////
+/aclocal.m4/1.31/Wed Mar 30 23:13:27 2011/-ko/
+/Makefile.in/1.31/Wed Mar 30 23:28:24 2011/-ko/
+/configure/1.50/Wed Mar 30 23:28:24 2011/-ko/

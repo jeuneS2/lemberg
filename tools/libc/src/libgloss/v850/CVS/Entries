@@ -1,11 +1,9 @@
-/Makefile.in/1.1/Fri Jul 23 17:52:37 2010//
 /_exit.c/1.1/Fri Jul 23 17:52:37 2010//
 /access.c/1.1/Fri Jul 23 17:52:37 2010//
 /aclocal.m4/1.1/Fri Jul 23 17:52:37 2010//
 /chmod.c/1.1/Fri Jul 23 17:52:37 2010//
 /chown.c/1.1/Fri Jul 23 17:52:37 2010//
 /close.c/1.1/Fri Jul 23 17:52:37 2010//
-/configure/1.1/Fri Jul 23 17:52:37 2010//
 /configure.in/1.1/Fri Jul 23 17:52:37 2010//
 /creat.c/1.1/Fri Jul 23 17:52:37 2010//
 /crt0.S/1.1/Fri Jul 23 17:52:37 2010//
@@ -33,4 +31,6 @@
 /utime.c/1.1/Fri Jul 23 17:52:37 2010//
 /wait.c/1.1/Fri Jul 23 17:52:37 2010//
 /write.c/1.1/Fri Jul 23 17:52:37 2010//
-D
+D/sys////
+/Makefile.in/1.1/Wed Mar 30 23:28:23 2011//
+/configure/1.1/Wed Mar 30 23:28:23 2011//

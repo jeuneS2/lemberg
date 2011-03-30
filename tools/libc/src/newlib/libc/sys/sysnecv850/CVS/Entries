@@ -1,12 +1,10 @@
 /Makefile.am/1.8/Mon Mar 21 22:11:13 2011/-ko/
-/Makefile.in/1.20/Mon Mar 21 22:11:14 2011/-ko/
 /_exit.c/1.1.1.1/Thu Feb 17 19:39:50 2000/-ko/
 /access.c/1.2/Thu Feb 22 22:12:43 2001/-ko/
 /aclocal.m4/1.25/Thu Dec 16 21:59:12 2010/-ko/
 /chmod.c/1.1.1.1/Thu Feb 17 19:39:50 2000/-ko/
 /chown.c/1.1.1.1/Thu Feb 17 19:39:50 2000/-ko/
 /close.c/1.1.1.1/Thu Feb 17 19:39:50 2000/-ko/
-/configure/1.30/Thu Dec 16 21:59:12 2010/-ko/
 /configure.in/1.2/Thu Apr 13 19:56:31 2006/-ko/
 /creat.c/1.1.1.1/Thu Feb 17 19:39:50 2000/-ko/
 /crt0.S/1.4/Wed May 21 07:44:32 2008/-ko/
@@ -34,4 +32,6 @@
 /utime.c/1.1.1.1/Thu Feb 17 19:39:50 2000/-ko/
 /wait.c/1.1.1.1/Thu Feb 17 19:39:50 2000/-ko/
 /write.c/1.1.1.1/Thu Feb 17 19:39:50 2000/-ko/
-D
+D/sys////
+/Makefile.in/1.20/Wed Mar 30 23:28:35 2011/-ko/
+/configure/1.30/Wed Mar 30 23:28:35 2011/-ko/

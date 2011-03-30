@@ -1,8 +1,6 @@
-/Makefile.in/1.7/Mon Nov 17 21:58:28 2008//
 /aclocal.m4/1.1/Wed Apr 19 19:44:04 2006//
 /chmod.c/1.1/Fri Mar 17 22:48:50 2000//
 /close.c/1.1/Fri Mar 17 22:48:50 2000//
-/configure/1.12/Fri Apr  4 21:52:00 2008//
 /configure.in/1.9/Wed May 10 20:51:40 2006//
 /crt0.S/1.2/Mon Jun 23 19:06:12 2003//
 /eit.h/1.1/Fri Mar 17 22:48:50 2000//
@@ -27,4 +25,6 @@
 /unlink.c/1.1/Fri Mar 17 22:48:50 2000//
 /utime.c/1.1/Fri Mar 17 22:48:50 2000//
 /write.c/1.1/Fri Mar 17 22:48:50 2000//
+/Makefile.in/1.7/Wed Mar 30 23:28:22 2011//
+/configure/1.12/Wed Mar 30 23:28:22 2011//
 D

@@ -1,6 +1,31 @@
 /Makefile.am/1.3/Thu May 24 17:33:36 2007/-ko/
-/Makefile.in/1.16/Thu Dec 16 21:59:03 2010/-ko/
 /aclocal.m4/1.28/Thu Dec 16 21:59:03 2010/-ko/
-/configure/1.35/Thu Dec 16 21:59:03 2010/-ko/
 /configure.in/1.9/Wed Feb 24 20:59:55 2010/-ko/
-D
+D/a29khif////
+D/arc////
+D/arm////
+D/cygwin////
+D/d10v////
+D/decstation////
+D/go32////
+D/h8300hms////
+D/h8500hms////
+D/linux////
+D/m88kbug////
+D/mmixware////
+D/netware////
+D/rdos////
+D/rtems////
+D/sh////
+D/sparc64////
+D/sun4////
+D/sysmec////
+D/sysnec810////
+D/sysnecv850////
+D/sysvi386////
+D/sysvnecv70////
+D/tic80////
+D/w65////
+D/z8ksim////
+/Makefile.in/1.16/Wed Mar 30 23:28:31 2011/-ko/
+/configure/1.35/Wed Mar 30 23:28:31 2011/-ko/

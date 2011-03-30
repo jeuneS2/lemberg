@@ -1,5 +1,4 @@
 /Makefile.am/1.32/Fri Jul  3 11:58:04 2009/-ko/
-/Makefile.in/1.51/Thu Dec 16 21:59:02 2010/-ko/
 /asiprintf.c/1.5/Wed Apr 30 02:47:14 2008//
 /asniprintf.c/1.4/Thu Dec 11 17:27:55 2008//
 /asnprintf.c/1.4/Mon Nov 24 22:08:02 2008//
@@ -129,4 +128,5 @@
 /wprintf.c/1.1/Fri Mar  6 09:55:52 2009//
 /wscanf.c/1.1/Wed Mar 11 11:53:22 2009//
 /wsetup.c/1.6/Thu Mar 15 18:40:48 2007/-ko/
+/Makefile.in/1.51/Wed Mar 30 23:28:31 2011/-ko/
 D

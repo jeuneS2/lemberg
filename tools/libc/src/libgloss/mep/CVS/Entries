@@ -1,6 +1,4 @@
-/Makefile.in/1.2/Tue Apr 21 18:13:32 2009//
 /aclocal.m4/1.1/Thu Feb  8 21:22:05 2007//
-/configure/1.2/Fri Apr  4 21:52:00 2008//
 /configure.in/1.1/Thu Feb  8 21:22:05 2007//
 /crt0.S/1.1/Thu Feb  8 21:22:05 2007//
 /crtn.S/1.1/Thu Feb  8 21:22:05 2007//
@@ -24,4 +22,6 @@
 /simsdram-crt0.S/1.1/Thu Feb  8 21:22:05 2007//
 /syscalls.S/1.2/Tue Jul 14 20:15:32 2009//
 /write.c/1.1/Thu Feb  8 21:22:05 2007//
-D
+D/autom4te.cache////
+/Makefile.in/1.2/Wed Mar 30 23:28:22 2011//
+/configure/1.2/Wed Mar 30 23:28:22 2011//

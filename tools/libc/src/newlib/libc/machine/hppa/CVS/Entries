@@ -1,8 +1,5 @@
 /DEFS.h/1.2/Tue Oct  8 13:01:02 2002/-ko/
 /Makefile.am/1.4/Thu May 24 17:33:34 2007/-ko/
-/Makefile.in/1.17/Thu Dec 16 21:58:46 2010/-ko/
-/aclocal.m4/1.25/Thu Dec 16 21:58:46 2010/-ko/
-/configure/1.30/Thu Dec 16 21:58:46 2010/-ko/
 /configure.in/1.2/Thu Apr 13 19:56:25 2006/-ko/
 /memchr.S/1.1.1.1/Thu Feb 17 19:39:46 2000/-ko/
 /memcmp.S/1.1.1.1/Thu Feb 17 19:39:46 2000/-ko/
@@ -17,4 +14,7 @@
 /strncat.S/1.1.1.1/Thu Feb 17 19:39:46 2000/-ko/
 /strncmp.S/1.1.1.1/Thu Feb 17 19:39:46 2000/-ko/
 /strncpy.S/1.1.1.1/Thu Feb 17 19:39:46 2000/-ko/
+/aclocal.m4/1.25/Wed Mar 30 23:14:02 2011/-ko/
+/Makefile.in/1.17/Wed Mar 30 23:28:25 2011/-ko/
+/configure/1.30/Wed Mar 30 23:28:25 2011/-ko/
 D

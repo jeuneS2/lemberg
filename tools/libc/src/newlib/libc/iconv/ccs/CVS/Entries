@@ -1,5 +1,4 @@
 /Makefile.am/1.5/Mon May  1 22:01:00 2006//
-/Makefile.in/1.18/Thu Dec 16 21:58:41 2010//
 /big5.c/1.3/Fri Jun 25 20:32:33 2004//
 /ccs.h/1.1/Fri Jun 25 20:32:33 2004//
 /ccsbi.c/1.1/Fri Jun 25 20:32:33 2004//
@@ -46,4 +45,5 @@
 /win_1256.c/1.1/Fri Jun 25 20:32:39 2004//
 /win_1257.c/1.1/Fri Jun 25 20:32:39 2004//
 /win_1258.c/1.1/Fri Jun 25 20:32:39 2004//
-D
+D/binary////
+/Makefile.in/1.18/Wed Mar 30 23:28:24 2011//
