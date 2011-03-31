@@ -950,7 +950,7 @@ reswitch:	switch (ch) {
 #endif /* !_NO_POS_ARGS */
 			width = n;
 			goto reswitch;
-#ifdef FLOATING_POINT
+#ifdef FLOATING_POINT && !_NO_LONGDBL
 		case 'L':
 			flags |= LONGDBL;
 			goto rflag;
@@ -1068,11 +1068,7 @@ reswitch:	switch (ch) {
 		case 'g':
 		case 'G':
 # ifdef _NO_LONGDBL
-			if (flags & LONGDBL) {
-				_fpvalue = (double) GET_ARG (N, ap, _LONG_DOUBLE);
-			} else {
-				_fpvalue = GET_ARG (N, ap, double);
-			}
+			_fpvalue = GET_ARG (N, ap, double);
 
 			/* do this before tricky precision changes
 
