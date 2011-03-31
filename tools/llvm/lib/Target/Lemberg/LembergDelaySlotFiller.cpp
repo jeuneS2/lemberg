@@ -26,7 +26,6 @@ using namespace llvm;
 
 STATISTIC(FilledSlots, "Number of no-op delay slot cycles");
 STATISTIC(HiddenSlots, "Number of hidden delay slot cycles");
-STATISTIC(NopSlots,    "Number of NOPs inserted");
 
 namespace {
 
@@ -36,10 +35,13 @@ namespace {
 
     TargetMachine &TM;
     const TargetInstrInfo *TII;
+    bool fullOpt;
 
     static char ID;
-    Filler(TargetMachine &tm) 
-      : MachineFunctionPass(ID), TM(tm), TII(tm.getInstrInfo()) { }
+	Filler(TargetMachine &tm, CodeGenOpt::Level OptLevel) 
+		: MachineFunctionPass(ID), TM(tm), TII(tm.getInstrInfo()) {
+		fullOpt = OptLevel > CodeGenOpt::None;
+	}
 
     virtual const char *getPassName() const {
       return "Lemberg Delay Slot Filler";
@@ -85,7 +87,8 @@ runOnMachineBasicBlock(MachineBasicBlock &MBB)
 			}
 
 			// we only need to consider the condition flag for moving
-			if (II != MBB.begin()
+			if (fullOpt
+				&& II != MBB.begin()
 				&& (Opcode == Lemberg::JUMP
 					|| Opcode == Lemberg::JUMPpred
 					|| Opcode == Lemberg::JUMPtrue
@@ -197,14 +200,12 @@ runOnMachineBasicBlock(MachineBasicBlock &MBB)
 					BuildMI(MBB, insertII, DL, TII->get(Lemberg::SEP));
 					BuildMI(MBB, insertII, DL, TII->get(Lemberg::NOP))
 						.addImm(maxSlots-movedSlots-1);
-					++NopSlots;
 					FilledSlots += maxSlots-movedSlots;
 				}
 			} else {
 				BuildMI(MBB, insertII, DL, TII->get(Lemberg::SEP));
 				BuildMI(MBB, insertII, DL, TII->get(Lemberg::NOP))
 					.addImm(maxSlots-1);
-				++NopSlots;
 				FilledSlots += maxSlots;
 			}
 			Changed = true;
@@ -217,6 +218,6 @@ runOnMachineBasicBlock(MachineBasicBlock &MBB)
 /// slots in Lemberg MachineFunctions
 FunctionPass *llvm::createLembergDelaySlotFillerPass(LembergTargetMachine &tm, 
 													 CodeGenOpt::Level OptLevel) {
-  return new Filler(tm);
+	return new Filler(tm, OptLevel);
 }
 

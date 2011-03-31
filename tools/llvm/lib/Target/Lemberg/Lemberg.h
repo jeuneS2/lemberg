@@ -32,6 +32,8 @@ namespace llvm {
 										   CodeGenOpt::Level OptLevel);
   FunctionPass *createLembergDelaySlotFillerPass(LembergTargetMachine &tm,
 												 CodeGenOpt::Level OptLevel);
+  FunctionPass *createLembergNopCompressorPass(LembergTargetMachine &TM,
+											   CodeGenOpt::Level OptLevel);
   FunctionPass *createLembergPostPinnerPass(LembergTargetMachine &TM,
 											CodeGenOpt::Level OptLevel);
 
