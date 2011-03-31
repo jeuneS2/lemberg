@@ -26,10 +26,13 @@ libc:
 llvm:
 	${MAKE} -C tools/llvm all
 
+etc:
+	${MAKE} -C tools/etc all
+
 # Installation
 install: install-tools
 
-install-tools: install-asm install-lllib install-libc install-llvm
+install-tools: install-asm install-lllib install-libc install-llvm install-etc
 
 install-asm:
 	${MAKE} -C tools/asm install
@@ -42,6 +45,9 @@ install-libc:
 
 install-llvm:
 	${MAKE} -C tools/llvm install
+
+install-etc:
+	${MAKE} -C tools/etc install
 
 # Hardware
 syn:

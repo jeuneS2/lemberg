@@ -13,4 +13,4 @@ LLVM_LD=llvm-ld -b $@ $^ -L /usr/local/lemberg/lib -lc -lm -llemberg -lnosys \
 	llc -march=lemberg $(LLCFLAGS) -o $@ $<
 
 %.dat : %.s
-	cat ${PREFIX}/lib/crt0.s $< ${PREFIX}/lib/crtend0.s | ${PREFIX}/bin/as > $@ 2> $@.log
+	${PREFIX}/bin/as -o $@ ${PREFIX}/lib/crt0.s $^ ${PREFIX}/lib/crtend0.s
