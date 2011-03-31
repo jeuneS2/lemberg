@@ -21,6 +21,7 @@
 %{
 #include <string.h>
 
+#include "files.h"
 #include "optab.h"
 #include "code.h"
 
@@ -293,6 +294,21 @@ $f[0-9]+ {
 (" "|"\r"|"\t")+ { /* ignore whitespace */ }
 
 ;[^;].* { /* ignore comments */ }
+
+<<EOF>>  { /* allow multiple input files */
+    if (*++infiles)
+		if (strcmp(*infiles, "-") != 0) {
+			yyin = fopen(*infiles, "r");
+			if (yyin == NULL) {
+				fprintf(stderr, "error: %s\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+		} else {
+			yyin = stdin;
+		}
+	else
+		yyterminate();
+  }
 
 . { fprintf(stderr, "error: Invalid input: `%c'", yytext[0]); }
 

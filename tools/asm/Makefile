@@ -27,7 +27,7 @@ symtab.o: symtab.c symtab.h
 install: as
 	install -d ${PREFIX}/bin/
 	install as ${PREFIX}/bin/
-	install -d ${PREFIX}/lib
+	install -d ${PREFIX}/lib/
 	install -m 0644 crt0.s crtend0.s ${PREFIX}/lib/
 
 clean:

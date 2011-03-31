@@ -21,12 +21,16 @@
 	#include <stdio.h>
 	#include <stdarg.h>
 	#include <string.h>
+	#include <errno.h>
+	#include <getopt.h>
 
+	#include "files.h"
 	#include "code.h"
 	#include "exprs.h"
 	#include "symtab.h"
 	#include "optab.h"
 
+	extern FILE* yyin;
 	int yylex(void);
 	void yyerror(const char *);	
 
@@ -34,6 +38,10 @@
 	long pos = 0;
 	long code_size = 0;
 	struct bundle *code;
+
+	char **infiles;
+	FILE *datfile;
+	FILE *symfile;
 
 	static void emit_bundle(struct bundle);
 	static void emit_string(const char *);
@@ -424,7 +432,9 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  case OP_AND: pattern = 0; break;
 		  case OP_OR:  pattern = 1; break;
 		  case OP_XOR: pattern = 2; break;
-		  default: fprintf(stderr, "error: Invalid combination operation.");
+		  default:
+			  fprintf(stderr, "error: Invalid combination operation.");
+			  exit(EXIT_FAILURE);
 		  }
 		  if ($4 < 0) {
 			  notA = 1;
@@ -555,7 +565,7 @@ NewLine: NewLine '\n'
 
 void yyerror(const char *msg)
 {
-	fprintf(stderr, "%d: %s\n", line_number, msg);
+	fprintf(stderr, "error: in line %d: %s\n", line_number, msg);
 	exit(EXIT_FAILURE);
 }
 
@@ -596,6 +606,7 @@ static void emit_string(const char *str)
 								}
 						default:
 							fprintf(stderr, "error: Invalid escaped character: `%c'", *p);
+							exit(EXIT_FAILURE);
 						}
 				} 
 			else
@@ -647,7 +658,7 @@ static void dump_words(unsigned long long val, int bytes)
 			buffer[buf_pos++] = (val >> 8*(bytes-i-1)) & 0xFF;
 			if (buf_pos == 4)
 				{
-					printf("%d, // %08x\n",
+					fprintf(datfile, "%d, // %08x\n",
 						   ((buffer[0] << 24) & 0xff000000)
 						   | ((buffer[1] << 16) & 0x00ff0000)
 						   | ((buffer[2] << 8) & 0x0000ff00)
@@ -670,7 +681,7 @@ static void dump_dwords(unsigned long long val, int bytes)
 			buffer[buf_pos++] = (val >> 8*i) & 0xFF;
 			if (buf_pos == 4)
 				{
-					printf("%d,\n",
+					fprintf(datfile, "%d,\n",
 						   ((buffer[3] << 24) & 0xff000000)
 						   | ((buffer[2] << 16) & 0x00ff0000)
 						   | ((buffer[1] << 8) & 0x0000ff00)
@@ -807,7 +818,8 @@ static void dump()
 					dump_words((conv_asmop(code[i].op[3].op) & 0xFF), 1);
 					break;
 				default:
-					fprintf(stderr, "error: unknown bundle type\n");
+					fprintf(stderr, "Error: unknown bundle type\n");
+					exit(EXIT_FAILURE);
 				}
 			if (code[i].type != -2)
 				type = code[i].type;
@@ -815,17 +827,98 @@ static void dump()
 	dump_padding(type);
 }
 
+static void usage(char *name) 
+{
+	fprintf(stderr, "Usage: %s [-h] [-o outfile] infile ...\n", name);
+	exit(EXIT_FAILURE);
+}
+
 int main(int argc, char **argv)
 {
+	int opt;
+	int found_outfile = 0;
+
 	code = malloc(sizeof(struct bundle));
 
 	init_symtab();
+
+	datfile = stdout;
+	symfile = stdout;
+
+	while ((opt = getopt(argc, argv, "ho:")) != -1)
+		{
+			switch (opt)
+				{
+				case 'h':
+					usage(argv[0]);
+					break;
+				case 'o':
+					if (!found_outfile) {
+						char *symname;
+
+						if (strcmp(optarg, "-") != 0)
+							{
+								datfile = fopen(optarg, "w");
+					
+								if (datfile == NULL)
+									{
+										fprintf(stderr, "error: %s\n", strerror(errno));
+										exit(EXIT_FAILURE);
+									}
+
+								symname = malloc(strlen(optarg)+5);
+								strcpy(symname, optarg);
+								strcat(symname, ".sym");
+								symfile = fopen(symname, "w");
+								free(symname);
+
+								if (symfile == NULL)
+									{
+										fprintf(stderr, "error: %s\n", strerror(errno));
+										exit(EXIT_FAILURE);
+									}
+							}
+				
+						found_outfile = 1;
+					} 
+					else
+						{
+							usage(argv[0]);
+						}
+					break;
+				default: /* '?' */
+					usage(argv[0]);
+				}
+		}
+	
+	if (optind >= argc)
+		{
+			usage(argv[0]);
+		}
+	
+	if (strcmp(argv[optind], "-") != 0)
+		{
+			yyin = fopen(argv[optind], "r");
+			if (yyin == NULL)
+				{
+					fprintf(stderr, "error: %s\n", strerror(errno));
+					exit(EXIT_FAILURE);
+				}
+		}
+	else
+		{
+			yyin = stdin;
+		}
+	infiles = &argv[optind];
 
 	yyparse();
 
 	dump();
 
-	print_symtab(stderr, 1);
+	print_symtab(symfile, 0);
+
+	fclose(datfile);
+	fclose(symfile);
 
 	return 0;
 }

@@ -93,7 +93,8 @@ MultExpr : UnaryExpr
          {
 			 if ($3 == 0)
 				 {
-					 fprintf(stderr, "division by zero");
+					 fprintf(stderr, "error: Division by zero");
+					 exit(EXIT_FAILURE);
 					 $$ = 0;
 				 }
 			 else
@@ -105,7 +106,8 @@ MultExpr : UnaryExpr
          {
 			 if ($3 == 0)
 				 {
-					 fprintf(stderr, "modulo zero");
+					 fprintf(stderr, "error: Modulo zero");
+					 exit(EXIT_FAILURE);
 					 $$ = 0;
 				 }
 			 else
@@ -214,5 +216,6 @@ Expr: MinMaxExpr
 
 void exprerror(long long *r, const char *msg)
 {
-  fprintf(stderr, "error in expression: %s\n", msg);
+	fprintf(stderr, "error: Error in expression: %s\n", msg);
+	exit(EXIT_FAILURE);
 }

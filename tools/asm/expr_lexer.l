@@ -101,7 +101,8 @@ SYM  (\.?[_\.a-zA-Z0-9@]+)
 		  if (get_sym(s) == NULL)
 			  {
 				  exprlval.intval = 0;
-				  fprintf(stderr, "symbol not found: `%s'\n", s);
+				  fprintf(stderr, "error: Symbol not found: `%s'\n", s);
+				  exit(EXIT_FAILURE);
 			  }
 		  else
 			  {
