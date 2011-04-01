@@ -80,10 +80,6 @@ package fpu_pack is
 	function returns_double (op : fp_type)
 		return boolean;
 
-	constant FPOP_WIDTH : integer := 16;	
-	function to_raw_fpop (syllable : syllable_type)
-		return std_logic_vector;	
-	
 end fpu_pack;
 
 package body fpu_pack is
@@ -145,10 +141,4 @@ package body fpu_pack is
 		end case;
 	end returns_double;
 
-	function to_raw_fpop (syllable : syllable_type)
-		return std_logic_vector is
-	begin  -- to_raw_fpop
-		return syllable.src1 & syllable.src2 & syllable.dest & syllable.imm;
-	end to_raw_fpop;
-	
 end fpu_pack;

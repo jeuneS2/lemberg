@@ -52,7 +52,6 @@ static int is_format_B(unsigned int opcode)
 static int is_format_I(unsigned int opcode)
 {
 	switch (opcode) {
-	case OP_COMB:
 	case OP_LDI: case OP_LDIU: case OP_LDIM: case OP_LDIH:
 		return 1;
 	default: return 0;
@@ -110,6 +109,15 @@ static int is_format_F(unsigned int opcode)
 {
 	switch (opcode) {
 	case OP_FOP:
+		return 1;
+	default: return 0;
+	}
+}
+
+static int is_format_C(unsigned int opcode)
+{
+	switch (opcode) {
+	case OP_COMB:
 		return 1;
 	default: return 0;
 	}
@@ -278,6 +286,30 @@ static unsigned long conv_format_F(struct asmop op)
 		| (op.fmt.F.cond.flag << 0);
 }
 
+static unsigned long conv_format_C(struct asmop op)
+{
+	check_bits(op.op, 6);
+	check_bits(op.fmt.C.dest, 2);
+	check_bits(op.fmt.C.src1, 2);
+	check_bits(op.fmt.C.src2, 2);
+	check_bits(op.fmt.C.not1, 1);
+	check_bits(op.fmt.C.not2, 1);
+	check_bits(op.fmt.C.op, 2);
+	check_bits(op.fmt.C.cond.cond, 1);
+	check_bits(op.fmt.C.cond.flag, 2);
+
+	return
+		(op.op << 19)
+		| (op.fmt.C.dest << 15)
+		| (op.fmt.C.src1 << 11)
+		| (op.fmt.C.src2 << 7)
+		| (op.fmt.C.not1 << 6)
+		| (op.fmt.C.not2 << 5)
+		| (op.fmt.C.op   << 3)
+		| (op.fmt.C.cond.cond << 2)
+		| (op.fmt.C.cond.flag << 0);
+}
+
 unsigned long conv_asmop(struct asmop op)
 {
 	if (is_format_B(op.op)) {
@@ -296,6 +328,8 @@ unsigned long conv_asmop(struct asmop op)
 		return conv_format_H(op);
 	} else if (is_format_F(op.op)) {
 		return conv_format_F(op);
+	} else if (is_format_C(op.op)) {
+		return conv_format_C(op);
 	} else {
 		fprintf(stderr, "error: Wrong instruction format.\n");
 		exit(EXIT_FAILURE);

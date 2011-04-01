@@ -152,8 +152,9 @@ For comparison and test operations, destReg refers to a condition flag.
 
 \begin{bytefield}{25}
 \bitheader[l]{0-25}\\
-\bitbox{6}{opCode} & \bitbox{3}{--} & \bitbox{2}{d} &
-\bitbox{3}{--} & \bitbox{2}{op} & \bitbox{1}{!1} & \bitbox{2}{s1} & \bitbox{1}{!2} & \bitbox{2}{s2} &
+\bitbox{6}{opCode} & \bitbox{2}{--} & \bitbox{2}{d} &
+ \bitbox{2}{--} & \bitbox{2}{s1} & \bitbox{2}{--} & \bitbox{2}{s2} &
+\bitbox{1}{!1} & \bitbox{1}{!2} & \bitbox{2}{op} &
 \bitbox{1}{c} & \bitbox{2}{F}
 \end{bytefield}
 
@@ -330,7 +331,7 @@ Opcode & Name & Format & Unit & Semantics \\
 \texttt{00 0101} & \texttt{xor} & B & A & \texttt{dest = src1 \textasciicircum{} src2} \\
 \texttt{00 0110} & \texttt{sl} & B & A & \texttt{dest = src1 \shl{} src2} \\
 \texttt{00 0111} & \texttt{sr} & B & A & \texttt{dest = src1 \shr{} src2} \\
-\texttt{00 1000} & \texttt{sar} & B & A & \texttt{dest = src1 \ashr{} src2} \\
+\texttt{00 1000} & \texttt{sra} & B & A & \texttt{dest = src1 \ashr{} src2} \\
 \texttt{00 1001} & \texttt{rl} & B & A & \texttt{dest = (src1 \shl{} src2) | (src1 \shr{} (32-src2))} \\
 \texttt{00 1010} & \texttt{mul} & B & A & \texttt{\$mul = src1 * src2} \\
 \texttt{00 1011} & \texttt{carr} & B & A & \texttt{dest = ((int64\_t)src1+(int64\_t)src2) \shr{} 32} \\

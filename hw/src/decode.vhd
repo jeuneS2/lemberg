@@ -90,10 +90,12 @@ begin  -- behavior
 		variable use_glob   : std_logic;
 		variable glob       : std_logic_vector(ADDR_WIDTH+1 downto 0);
 		variable target     : std_logic_vector(PC_WIDTH-1 downto 0);
-		variable raw_fpop   : std_logic_vector(FPOP_WIDTH-1 downto 0);
+		variable raw_op     : std_logic_vector(3*REG_BITS downto 0);
 		
 	begin  -- process async
 		for i in 0 to CLUSTERS-1 loop
+
+			raw_op := to_raw_op(bundle_reg(i));
 
 			op(i).wraddr <= bundle_reg(i).dest;
 			op(i).op <= ALU_OR;
@@ -123,14 +125,13 @@ begin  -- behavior
 			jmpop(i).rdaddr <= bundle_reg(i).src1;
 			jmpop(i).fwd <= not bundle_reg(i).imm;
 
-			raw_fpop := to_raw_fpop(bundle_reg(i));
 			fpop(i).op <= FPU_NOP;
-			fpop(i).wraddr <= raw_fpop(15 downto 12);
+			fpop(i).wraddr <= raw_op(15 downto 12);
 			fpop(i).cond <= COND_FALSE;
 			fpop(i).flag <= (others => '0');
-			fpop(i).rdaddrA <= raw_fpop(11 downto 8);
-			fpop(i).rdaddrB <= raw_fpop(7 downto 4);
-			fpop(i).rdaddrC <= raw_fpop(15 downto 12);
+			fpop(i).rdaddrA <= raw_op(11 downto 8);
+			fpop(i).rdaddrB <= raw_op(7 downto 4);
+			fpop(i).rdaddrC <= raw_op(15 downto 12);
 
 			always_imm := '0';
 			imm := std_logic_vector(resize(unsigned(bundle_reg(i).src2), DATA_WIDTH));
@@ -248,13 +249,20 @@ begin  -- behavior
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "010111" =>
-					op(i).op <= ALU_COMB;
+					case raw_op(1 downto 0) is
+						when "00" => op(i).op <= ALU_CCAND;
+						when "01" => op(i).op <= ALU_CCOR;
+						when "10" => op(i).op <= ALU_CCXOR;
+						when others =>
+							assert false report "Cannot decode COMB operation" severity error;
+					end case;
+					-- rest of decoding of done in ALU
+					imm := std_logic_vector(resize(unsigned(raw_op(11 downto 2)), DATA_WIDTH));
+					always_imm := '1';
+					
+					op(i).wraddr <= '0' & raw_op(15 downto 12);
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					always_imm := '1';
-					imm := std_logic_vector(resize(signed(imm_ldi), DATA_WIDTH));
-					-- destination is in the source position
-					op(i).wraddr <= bundle_reg(i).src1;
 				when "011000" =>
 					op(i).op <= ALU_LDI;
 					op(i).cond <= bundle_reg(i).cond;
@@ -535,14 +543,14 @@ begin  -- behavior
 					assert ENABLE_SINGLE or ENABLE_DOUBLE
 						report "FP operation not supported" severity error;
 					if ENABLE_SINGLE then
-						case raw_fpop(3 downto 0) is
+						case raw_op(3 downto 0) is
 							when "0000" => fpop(i).op <= FPU_FADD;
 							when "0001" => fpop(i).op <= FPU_FSUB;
 							when "0010" => fpop(i).op <= FPU_FMUL;
 							when "0011" => fpop(i).op <= FPU_FMAC;
 							when "1000" => fpop(i).op <= FPU_FCMP;
 							when "1111" =>
-								case raw_fpop(7 downto 4) is
+								case raw_op(7 downto 4) is
 									when "0000" => fpop(i).op <= FPU_FMOV;
 									when "0001" => fpop(i).op <= FPU_FNEG;
 									when "0010" => fpop(i).op <= FPU_FABS;
@@ -555,14 +563,14 @@ begin  -- behavior
 						end case;
 					end if;
 					if ENABLE_DOUBLE then
-						case raw_fpop(3 downto 0) is
+						case raw_op(3 downto 0) is
 							when "0100" => fpop(i).op <= FPU_DADD;
 							when "0101" => fpop(i).op <= FPU_DSUB;
 							when "0110" => fpop(i).op <= FPU_DMUL;
 							when "0111" => fpop(i).op <= FPU_DMAC;
 							when "1001" => fpop(i).op <= FPU_DCMP;
 							when "1111" =>
-								case raw_fpop(7 downto 4) is
+								case raw_op(7 downto 4) is
 									when "0100" => fpop(i).op <= FPU_DMOV;
 									when "0101" => fpop(i).op <= FPU_DNEG;
 									when "0110" => fpop(i).op <= FPU_DABS;
@@ -575,9 +583,9 @@ begin  -- behavior
 						end case;
 					end if;
 					if ENABLE_SINGLE and ENABLE_DOUBLE then
-						case raw_fpop(3 downto 0) is
+						case raw_op(3 downto 0) is
 							when "1111" =>
-								case raw_fpop(7 downto 4) is
+								case raw_op(7 downto 4) is
 									when "1000" => fpop(i).op <= FPU_RND;
 									when "1001" => fpop(i).op <= FPU_EXT;
 									when others => null;

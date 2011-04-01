@@ -425,31 +425,34 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
       }
       | Condition CCOP THREEOP NotOptFlag ',' NotOptFlag DEST FLAG
 	  {
-		  int pattern = 0;
-		  int notA = 0;
-		  int notB = 0;
+		  $$.op = $2;
+		  $$.fmt.C.dest = $8;
+
 		  switch ($3) {
-		  case OP_AND: pattern = 0; break;
-		  case OP_OR:  pattern = 1; break;
-		  case OP_XOR: pattern = 2; break;
+		  case OP_AND: $$.fmt.C.op = 0; break;
+		  case OP_OR:  $$.fmt.C.op = 1; break;
+		  case OP_XOR: $$.fmt.C.op = 2; break;
 		  default:
 			  fprintf(stderr, "error: Invalid combination operation.");
 			  exit(EXIT_FAILURE);
 		  }
+
 		  if ($4 < 0) {
-			  notA = 1;
-			  $4 = ~$4;
+			  $$.fmt.C.not1 = 1;
+			  $$.fmt.C.src1 = ~$4;
+		  } else {
+			  $$.fmt.C.not1 = 0;
+			  $$.fmt.C.src1 = $4;
 		  }
 		  if ($6 < 0) {
-			  notB = 1;
-			  $6 = ~$6;
+			  $$.fmt.C.not2 = 1;
+			  $$.fmt.C.src2 = ~$6;
+		  } else {
+			  $$.fmt.C.not2 = 0;
+			  $$.fmt.C.src2 = $6;
 		  }
-		  pattern = (pattern << 6) | (notA << 5) | (($4 & 0x03) << 3) | (notB << 2) | ($6 & 0x03);
-		  $$.op = $2;
-		  $$.fmt.I.dest = $8;
-		  $$.fmt.I.val.strval = NULL;
-		  $$.fmt.I.val.intval = pattern;
-		  $$.fmt.I.cond = $1;
+
+		  $$.fmt.C.cond = $1;
 	  }
       | Condition FOP FTHREEOP FREG ',' FREG DEST FREG
 	  {

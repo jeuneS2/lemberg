@@ -321,26 +321,27 @@ begin  -- behavior
 				fl_out <= (others => '0');
 				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
 					<= op.rddata0(to_integer(unsigned(op.rddata1(DATA_WIDTH_BITS-1 downto 0))));
-			when ALU_COMB =>
+			when ALU_CCAND =>
 				fl_wren <= (others => '0');
 				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
 				fl_out <= (others => '0');
-				case op.rddata1(7 downto 6) is
-					when "00" =>
-						fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <=
-							(op.rddata1(5) xor fl_in(to_integer(unsigned(op.rddata1(4 downto 3)))))
-							and (op.rddata1(2) xor fl_in(to_integer(unsigned(op.rddata1(1 downto 0)))));
-					when "01" =>
-						fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <=
-							(op.rddata1(5) xor fl_in(to_integer(unsigned(op.rddata1(4 downto 3)))))
-							or (op.rddata1(2) xor fl_in(to_integer(unsigned(op.rddata1(1 downto 0)))));
-					when "10" =>
-						fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <=
-							(op.rddata1(5) xor fl_in(to_integer(unsigned(op.rddata1(4 downto 3)))))
-							xor (op.rddata1(2) xor fl_in(to_integer(unsigned(op.rddata1(1 downto 0)))));
-					when others =>
-						assert false report "Invalid COMB operation" severity error;
-				end case;
+				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <=
+					(op.rddata1(1) xor fl_in(to_integer(unsigned(op.rddata1(FLAG_BITS+5 downto 6)))))
+					and (op.rddata1(0) xor fl_in(to_integer(unsigned(op.rddata1(FLAG_BITS+1 downto 2)))));
+			when ALU_CCOR =>
+				fl_wren <= (others => '0');
+				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
+				fl_out <= (others => '0');
+				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <=
+					(op.rddata1(1) xor fl_in(to_integer(unsigned(op.rddata1(FLAG_BITS+5 downto 6)))))
+					or (op.rddata1(0) xor fl_in(to_integer(unsigned(op.rddata1(FLAG_BITS+1 downto 2)))));
+			when ALU_CCXOR =>
+				fl_wren <= (others => '0');
+				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
+				fl_out <= (others => '0');
+				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <=
+					(op.rddata1(1) xor fl_in(to_integer(unsigned(op.rddata1(FLAG_BITS+5 downto 6)))))
+					xor (op.rddata1(0) xor fl_in(to_integer(unsigned(op.rddata1(FLAG_BITS+1 downto 2)))));
 			when ALU_LDCOND =>
 				wren <= valid;
 				wrdata <= (others => '0');

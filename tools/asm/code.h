@@ -27,6 +27,8 @@
 #define FOP_BITS 4
 #define FREG_BITS 4
 
+#define CCOP_BITS 2
+
 #define COND_TRUE  0x1
 #define COND_FALSE 0x0
 
@@ -92,6 +94,15 @@ struct asmop {
 			unsigned int op   : FOP_BITS;
 			struct cond cond;
 		} F;
+		struct {
+			unsigned int dest : FLAG_BITS;
+			unsigned int src1 : FLAG_BITS;
+			unsigned int src2 : FLAG_BITS;
+			unsigned int not1 : 1;
+			unsigned int not2 : 1;
+			unsigned int op   : CCOP_BITS;
+			struct cond cond;
+		} C;
 	} fmt;
 };
 

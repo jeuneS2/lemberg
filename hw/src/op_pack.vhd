@@ -45,6 +45,9 @@ package op_pack is
 		raw : in std_logic_vector(0 to SYLLABLE_WIDTH-1))
 		return syllable_type;
 	
+	function to_raw_op (syllable : syllable_type)
+		return std_logic_vector;	
+
 	type bundle_type is array (0 to CLUSTERS-1) of syllable_type;
 
 	-- TODO: define constants for ISA-level operation encoding
@@ -82,7 +85,9 @@ package op_pack is
 					  ALU_CMPULT,
 					  ALU_CMPUGT,
 					  ALU_BTEST,
-					  ALU_COMB,
+					  ALU_CCAND,
+					  ALU_CCOR,
+					  ALU_CCXOR,
 					  ALU_LDI,
 					  ALU_LDCOND,
 					  ALU_LDMEM,
@@ -227,5 +232,11 @@ package body op_pack is
 						   SYLLABLE_WIDTH-1);
 		return retval;
 	end to_syllable;
+
+	function to_raw_op (syllable : syllable_type)
+		return std_logic_vector is
+	begin  -- to_raw
+		return syllable.src1 & syllable.src2 & syllable.dest & syllable.imm;
+	end to_raw_op;
 
 end op_pack;
