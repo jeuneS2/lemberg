@@ -40,8 +40,8 @@ static int is_format_B(unsigned int opcode)
 	case OP_OR: case OP_XOR: case OP_SL: case OP_SR:
 	case OP_SRA: case OP_RL: case OP_MUL: case OP_MASK:
 	case OP_CARR: case OP_BORR:
-	case OP_CMPEQ: case OP_CMPNE: case OP_CMPLT: case OP_CMPGT:
-	case OP_CMPULT: case OP_CMPUGT:	case OP_BTEST:
+	case OP_CMPEQ: case OP_CMPNE: case OP_CMPLT: case OP_CMPLE:
+	case OP_CMPULT: case OP_CMPULE:	case OP_BTEST:
 	case OP_CALL: case OP_RET:
 	case OP_LDX: case OP_STX:
 		return 1;

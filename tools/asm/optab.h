@@ -39,9 +39,9 @@
 #define OP_CMPEQ     0x10
 #define OP_CMPNE     0x11
 #define OP_CMPLT     0x12
-#define OP_CMPGT     0x13
+#define OP_CMPLE     0x13
 #define OP_CMPULT    0x14
-#define OP_CMPUGT    0x15
+#define OP_CMPULE    0x15
 #define OP_BTEST     0x16
 #define OP_COMB      0x17
 

@@ -232,7 +232,7 @@ begin  -- behavior
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
 				when "010011" =>
-					op(i).op <= ALU_CMPGT;
+					op(i).op <= ALU_CMPLE;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
@@ -241,7 +241,7 @@ begin  -- behavior
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "010101" =>
-					op(i).op <= ALU_CMPUGT;
+					op(i).op <= ALU_CMPULE;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "010110" =>

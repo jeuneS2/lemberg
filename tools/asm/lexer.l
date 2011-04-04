@@ -86,9 +86,9 @@ SYM [\._a-zA-Z0-9]+
 "cmpeq"    ACCEPT(CMPEQ,  CMPOP);
 "cmpne"    ACCEPT(CMPNE,  CMPOP);
 "cmplt"    ACCEPT(CMPLT,  CMPOP);
-"cmpgt"    ACCEPT(CMPGT,  CMPOP);
+"cmple"    ACCEPT(CMPLE,  CMPOP);
 "cmpult"   ACCEPT(CMPULT, CMPOP);
-"cmpugt"   ACCEPT(CMPUGT, CMPOP);
+"cmpule"   ACCEPT(CMPULE, CMPOP);
 "btest"    ACCEPT(BTEST,  CMPOP);
 
 "comb"     ACCEPT(COMB, CCOP);

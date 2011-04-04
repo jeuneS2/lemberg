@@ -345,9 +345,9 @@ Opcode & Name & Format & Unit & Semantics \\
 \texttt{010 000} & \texttt{cmpeq} & B & A & \texttt{dest = src1 == src2} \\
 \texttt{010 001} & \texttt{cmpne} & B & A & \texttt{dest = src1 != src2} \\
 \texttt{010 010} & \texttt{cmplt} & B & A & \texttt{dest = src1 \textless{} src2}, signed \\
-\texttt{010 011} & \texttt{cmpgt} & B & A & \texttt{dest = src1 \textgreater{} src2}, signed \\
+\texttt{010 011} & \texttt{cmple} & B & A & \texttt{dest = src1 \textless{}= src2}, signed \\
 \texttt{010 100} & \texttt{cmpult} & B & A & \texttt{dest = src1 \textless{} src2}, unsigned \\
-\texttt{010 101} & \texttt{cmpugt} & B & A & \texttt{dest = src1 \textgreater{} src2}, unsigned \\
+\texttt{010 101} & \texttt{cmpule} & B & A & \texttt{dest = src1 \textless{}= src2}, unsigned \\
 \texttt{010 110} & \texttt{btest} & B & A & \texttt{dest = (src1 \& (1 \shl{} src)) != 0} \\
 \texttt{010 111} & \texttt{comb} & C & A & flag combination operation (see Section~\ref{sec:comb}) \\
 \midrule

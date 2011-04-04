@@ -269,7 +269,7 @@ multiclass OP3<SDNode opnode, string opstr, PatLeaf immtype> {
 		IIAlu>;
 }
 
-multiclass OPCMP<PatFrag opnode, PatFrag invnode, string opstr, PatLeaf immtype> {
+multiclass OPCMP<PatFrag opnode, PatFrag revnode, string opstr, PatLeaf immtype> {
 
 	def aac : F1<(outs C:$dst), (ins pred:$p, A:$src1, A:$src2),
 		!strconcat("$p ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
@@ -280,12 +280,12 @@ multiclass OPCMP<PatFrag opnode, PatFrag invnode, string opstr, PatLeaf immtype>
 		[(set C:$dst, (opnode A:$src1, (i32 immtype:$src2)))],
 		IIAlu>;
 	def aan : F1<(outs C:$dst), (ins pred:$p, A:$src1, A:$src2),
-		!strconcat("$p ", !strconcat(opstr, "\t$src2, $src1 -> $dst")),
-		[(set C:$dst, (invnode A:$src1, A:$src2))],
+		!strconcat("$p ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set C:$dst, (revnode A:$src2, A:$src1))],
 		IIAlu>;
 	def ain : F1<(outs C:$dst), (ins pred:$p, A:$src1, i32imm:$src2),
-		!strconcat("$p ", !strconcat(opstr, "\t$src2, $src1 -> $dst")),
-		[(set C:$dst, (invnode A:$src1, (i32 immtype:$src2)))],
+		!strconcat("$p ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set C:$dst, (revnode (i32 immtype:$src2), A:$src1))],
 		IIAlu>;
 }
 
@@ -554,10 +554,10 @@ defm RL:  OP3<rotl, "rl", uimm5>;
 // Compares
 defm CMPEQ:  OPCMP<seteq, seteq, "cmpeq", imm5>;
 defm CMPNE:  OPCMP<setne, setne, "cmpne", imm5>;
-defm CMPLT:  OPCMP<setlt, setge, "cmplt", imm5>;
-defm CMPGT:  OPCMP<setgt, setle, "cmpgt", imm5>;
-defm CMPULT: OPCMP<setult, setuge, "cmpult", uimm5>;
-defm CMPUGT: OPCMP<setugt, setule, "cmpugt", uimm5>;
+defm CMPLT:  OPCMP<setlt, setgt, "cmplt", imm5>;
+defm CMPLE:  OPCMP<setle, setge, "cmple", imm5>;
+defm CMPULT: OPCMP<setult, setugt, "cmpult", uimm5>;
+defm CMPULE: OPCMP<setule, setuge, "cmpule", uimm5>;
 
 // Bit test
 def BTEST: F1<(outs C:$dst), (ins pred:$p, A:$src1, uimm5mask:$src2),
