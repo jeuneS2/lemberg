@@ -1,3 +1,6 @@
+PROJECT_DIR=examples/md5
+PROJECT_NAME=md5
+
 all: doc tools
 
 # Configuration
@@ -54,8 +57,13 @@ syn:
 	echo "You're not slacking off. Your code's compiling."
 	${MAKE} -C hw/quartus syn
 
+# Build program
+proj:
+	${MAKE} -C ${PROJECT_DIR} ${PROJECT_NAME}.dat
+
 # Simulation
-sim:
+sim: proj
+	cp ${PROJECT_DIR}/${PROJECT_NAME}.dat hw/sim/mem_main.dat
 	${MAKE} -C hw/sim sim
 
 # Documentation
