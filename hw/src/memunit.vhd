@@ -327,6 +327,7 @@ begin  -- behavior
 			when MISS =>
 				mem_out.rd <= '1';
 				mem_out.address <= imem_addr_reg;
+				mem_out.cache <= BYPASS;
 				
 				imem_state_next <= SIZE_WAIT;
 				icache_update <= '1';
@@ -338,6 +339,7 @@ begin  -- behavior
 			when SIZE_SKIP =>
 				mem_out.rd <= '1';
 				mem_out.address <= imem_addr_reg;
+				mem_out.cache <= BYPASS;
 				imem_state_next <= SIZE_RD;
 			when SIZE_RD =>
 				imem_size_next <= mem_in.rd_data(PC_WIDTH-1 downto 2);
@@ -357,6 +359,7 @@ begin  -- behavior
 			when BODY_SKIP =>
 				mem_out.rd <= '1';
 				mem_out.address <= imem_addr_reg;
+				mem_out.cache <= BYPASS;
 				imem_state_next <= BODY_WR;
 			when BODY_WR =>				
 				imem_write.wren <= '1';
