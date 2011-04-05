@@ -93,14 +93,14 @@ set_global_assignment -name ROUTER_EFFORT_MULTIPLIER 4.0
 set_global_assignment -name AUTO_GLOBAL_MEMORY_CONTROLS ON
 
 set_global_assignment -name PARALLEL_SYNTHESIS ON
-set_global_assignment -name MISC_FILE /mnt/local/lemberg/hw/quartus/lemberg.dpf
+set_global_assignment -name MISC_FILE lemberg.dpf
 set_global_assignment -name OPTIMIZE_MULTI_CORNER_TIMING ON
 set_global_assignment -name OPTIMIZE_POWER_DURING_FITTING OFF
 
 set_global_assignment -name RTLV_GROUP_COMB_LOGIC_IN_CLOUD ON
 set_global_assignment -name AUTO_RAM_TO_LCELL_CONVERSION ON
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
-set_global_assignment -name MISC_FILE /mnt/local/lemberggit/hw/quartus/lemberg.dpf
+
 
 
 
