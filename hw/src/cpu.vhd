@@ -113,27 +113,14 @@ begin  -- behavior
 			ram_nwe     => ram_nwe,
 			ram_nbw     => ram_nbw);
 
-	sc_uart: entity work.sc_uart
-		generic map (
-			addr_bits => IO_ADDR_WIDTH,
-			clk_freq  => CLOCK_FREQ,
-			txf_depth => 32,
-			txf_thres => 16,
-			rxf_depth => 32,
-			rxf_thres => 16)
+	sc_io: entity work.sc_io
 		port map (
 			clk		=> clk,
 			reset	=> reset,
-			address => io_out.address(IO_ADDR_WIDTH-1 downto 0),
-			wr_data => io_out.wr_data,
-			rd		=> io_out.rd,
-			wr		=> io_out.wr,
-			rd_data => io_in.rd_data,
-			rdy_cnt => io_in.rdy_cnt,
-			txd		=> txd,
+			cpu_out => io_out,
+			cpu_in	=> io_in,
 			rxd		=> rxd,
-			ncts	=> '0',
-			nrts	=> open);
+			txd		=> txd);
 		
 	pll: entity work.pll
 		port map (

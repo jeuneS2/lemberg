@@ -189,20 +189,17 @@ add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/dram_in
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/dram_out
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/flash_in
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/flash_out
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/io_in
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/io_out
+add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/iomux/io_in
+add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/iomux/io_out
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/sram_in
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/sram_out
-add wave -noupdate -divider uart
-add wave -noupdate -format Literal /cpu_tb/cpu/sc_uart/uart_rx_state
-add wave -noupdate -format Literal /cpu_tb/cpu/sc_uart/uart_tx_state
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/sc_uart/address
-add wave -noupdate -format Logic /cpu_tb/cpu/sc_uart/wr
-add wave -noupdate -format Logic /cpu_tb/cpu/sc_uart/rd
-add wave -noupdate -format Literal -radix ascii /cpu_tb/cpu/sc_uart/wr_data
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/sc_uart/rd_data
+add wave -noupdate -divider I/O
+add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/sc_io/bootrom_in
+add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/sc_io/bootrom_out
+add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/sc_io/uart_in
+add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/sc_io/uart_out
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 3} {13714650 ns} 0}
+WaveRestoreCursors {{Cursor 3} {17150 ns} 0}
 configure wave -namecolwidth 382
 configure wave -valuecolwidth 325
 configure wave -justifyvalue left
@@ -217,4 +214,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ns} {16034130 ns}
+WaveRestoreZoom {0 ns} {210048 ns}

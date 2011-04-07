@@ -43,6 +43,8 @@ vcom $OPTIONS ../src/iomux.vhd
 vcom $OPTIONS ../src/io/sc_ssram32.vhd
 vcom $OPTIONS ../src/io/fifo.vhd
 vcom $OPTIONS ../src/io/sc_uart.vhd
+vcom $OPTIONS ../bootrom/sim_bootrom.vhd
+vcom $OPTIONS ../src/io/sc_io.vhd
 vcom $OPTIONS sim_pll.vhd
 vcom $OPTIONS ../src/cpu.vhd
 vcom $OPTIONS conversions.vhd

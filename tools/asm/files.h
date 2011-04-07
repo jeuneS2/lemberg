@@ -23,7 +23,7 @@
 
 extern char **infiles;
 
-extern FILE *datfile;
+extern FILE *datafile;
 extern FILE *symfile;
 
 #endif

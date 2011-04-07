@@ -16,9 +16,9 @@ expr.tab.c: expr_parser.y exprs.h
 expr_lexer.o: LFLAGS += -Pexpr
 expr_lexer.o: expr.tab.o expr_lexer.l exprs.h symtab.h
 
-parser.o: parser.y code.h symtab.h exprs.h
+parser.o: parser.y code.h symtab.h exprs.h files.h vhdstrings.h
 
-lexer.o: parser.o lexer.l optab.h code.h exprs.h
+lexer.o: parser.o lexer.l optab.h code.h exprs.h files.h
 
 code.o: code.c code.h exprs.h optab.h
 

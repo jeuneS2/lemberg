@@ -23,6 +23,7 @@ use work.core_pack.all;
 use work.op_pack.all;
 use work.reg_pack.all;
 use work.mem_pack.all;
+use work.io_pack.all;
 
 entity forward is
 	
@@ -73,10 +74,14 @@ begin  -- behavior
 			for i in 0 to CLUSTERS-1 loop
 				memop_reg(i) <= MEMOP_NOP;
 			end loop;  -- i
+			-- first thing to do is to call boot procedure
 			memop_reg(0).op <= MEM_CALL;
 			memop_reg(0).cond <= COND_TRUE;
 			memop_reg(0).flag <= (others => '0');
 			memop_reg(0).flag(0) <= '1';
+			-- boot ROM is at bottom of IO space
+			memop_reg(0).address <= (others => '0');
+			memop_reg(0).address(ADDR_WIDTH-1+2 downto ADDR_WIDTH-AREAMUX_BITS+2) <= IO_SELECT;
 
 			for i in 0 to CLUSTERS-1 loop
 				stallop_reg(i) <= STALLOP_NOP;				

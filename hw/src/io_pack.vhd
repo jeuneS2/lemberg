@@ -32,6 +32,6 @@ package io_pack is
 	constant SRAM_ADDR_WIDTH  : integer := 19;
 	constant DRAM_ADDR_WIDTH  : integer := 0;
 	constant FLASH_ADDR_WIDTH : integer := 0;
-	constant IO_ADDR_WIDTH    : integer := 8;
-
+	constant IO_ADDR_WIDTH    : integer := 9;
+	
 end io_pack;

@@ -252,7 +252,7 @@ end process;
 process(clk, reset)
 begin
 	if (reset='0') then
-		wait_state <= (others => '1');
+		wait_state <= (others => '0');
 		cnt <= "00";
 	elsif rising_edge(clk) then
 

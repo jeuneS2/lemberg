@@ -29,6 +29,7 @@
 	#include "exprs.h"
 	#include "symtab.h"
 	#include "optab.h"
+	#include "vhdstrings.h"
 
 	extern FILE* yyin;
 	int yylex(void);
@@ -40,7 +41,7 @@
 	struct bundle *code;
 
 	char **infiles;
-	FILE *datfile;
+	FILE *datafile;
 	FILE *symfile;
 
 	static void emit_bundle(struct bundle);
@@ -607,6 +608,7 @@ static void emit_string(const char *str)
 									p += 2;
 									break;
 								}
+							/* fall through for invalid format */
 						default:
 							fprintf(stderr, "error: Invalid escaped character: `%c'", *p);
 							exit(EXIT_FAILURE);
@@ -649,6 +651,13 @@ static void fix_offset(struct asmop *op)
 		}
 }
 
+#define FMT_DAT 0
+#define FMT_BIN 1
+#define FMT_VHD 2
+
+static int data_format = FMT_DAT;
+
+static int dump_pos = 0;
 static int buf_pos = 0;
 static char buffer [4];
 
@@ -661,15 +670,33 @@ static void dump_words(unsigned long long val, int bytes)
 			buffer[buf_pos++] = (val >> 8*(bytes-i-1)) & 0xFF;
 			if (buf_pos == 4)
 				{
-					fprintf(datfile, "%d, // %08x\n",
-						   ((buffer[0] << 24) & 0xff000000)
-						   | ((buffer[1] << 16) & 0x00ff0000)
-						   | ((buffer[2] << 8) & 0x0000ff00)
-						   | ((buffer[3] << 0) & 0x000000ff),
-						   ((buffer[0] << 24) & 0xff000000)
-						   | ((buffer[1] << 16) & 0x00ff0000)
-						   | ((buffer[2] << 8) & 0x0000ff00)
-						   | ((buffer[3] << 0) & 0x000000ff));
+					if (data_format == FMT_DAT)
+						{
+							fprintf(datafile, "%d, // %02x%02x%02x%02x\n",
+									((buffer[0] << 24) & 0xff000000)
+									| ((buffer[1] << 16) & 0x00ff0000)
+									| ((buffer[2] << 8) & 0x0000ff00)
+									| ((buffer[3] << 0) & 0x000000ff),
+									buffer[0] & 0xff, buffer[1] & 0xff,
+									buffer[2] & 0xff, buffer[3] & 0xff);
+						}
+					else if (data_format == FMT_BIN)
+						{
+							fprintf(datafile, "%c%c%c%c",
+									buffer[0], buffer[1], buffer[2], buffer[3]);
+						}
+					else if (data_format == FMT_VHD)
+						{
+							fprintf(datafile, vhd_format, dump_pos,
+									buffer[0] & 0xff, buffer[1] & 0xff,
+									buffer[2] & 0xff, buffer[3] & 0xff);
+						}
+					else
+						{
+							fprintf(stderr, "error: Unsupported output format\n");
+							exit(EXIT_FAILURE);
+						}
+					dump_pos++;
 					buf_pos = 0;
 				}
 		}
@@ -684,11 +711,31 @@ static void dump_dwords(unsigned long long val, int bytes)
 			buffer[buf_pos++] = (val >> 8*i) & 0xFF;
 			if (buf_pos == 4)
 				{
-					fprintf(datfile, "%d,\n",
-						   ((buffer[3] << 24) & 0xff000000)
-						   | ((buffer[2] << 16) & 0x00ff0000)
-						   | ((buffer[1] << 8) & 0x0000ff00)
-						   | ((buffer[0] << 0) & 0x000000ff));
+					if (data_format == FMT_DAT)
+						{
+							fprintf(datafile, "%d,\n",
+									((buffer[3] << 24) & 0xff000000)
+									| ((buffer[2] << 16) & 0x00ff0000)
+									| ((buffer[1] << 8) & 0x0000ff00)
+									| ((buffer[0] << 0) & 0x000000ff));
+						}
+					else if (data_format == FMT_BIN)
+						{
+							fprintf(datafile, "%c%c%c%c",
+									buffer[3], buffer[2], buffer[1], buffer[0]);
+						}
+					else if (data_format == FMT_VHD)
+						{
+							fprintf(datafile, vhd_format, dump_pos,
+									buffer[3] & 0xff, buffer[2] & 0xff,
+									buffer[1] & 0xff, buffer[0] & 0xff);
+						}
+					else
+						{
+							fprintf(stderr, "error: Unsupported output format\n");
+							exit(EXIT_FAILURE);
+						}
+					dump_pos++;
 					buf_pos = 0;
 				}
 		}
@@ -709,6 +756,11 @@ static void dump()
 {
 	int i;
 	int type = 0;
+
+	if (data_format == FMT_VHD)
+		{
+			fprintf(datafile, "%s", vhd_header);
+		}
 
 	for (i = 0; i < code_size; i++)
 		{
@@ -828,11 +880,16 @@ static void dump()
 				type = code[i].type;
 		}
 	dump_padding(type);
+
+	if (data_format == FMT_VHD)
+		{
+			fprintf(datafile, "%s", vhd_footer);
+		}
 }
 
 static void usage(char *name) 
 {
-	fprintf(stderr, "Usage: %s [-h] [-o outfile] infile ...\n", name);
+	fprintf(stderr, "Usage: %s [-h] [-b|-d|-v] [-o outfile] infile ...\n", name);
 	exit(EXIT_FAILURE);
 }
 
@@ -840,30 +897,50 @@ int main(int argc, char **argv)
 {
 	int opt;
 	int found_outfile = 0;
+	int seen_format = 0;
 
 	code = malloc(sizeof(struct bundle));
 
 	init_symtab();
 
-	datfile = stdout;
+	datafile = stdout;
 	symfile = stdout;
 
-	while ((opt = getopt(argc, argv, "ho:")) != -1)
+	while ((opt = getopt(argc, argv, "hbdvo:")) != -1)
 		{
 			switch (opt)
 				{
 				case 'h':
 					usage(argv[0]);
 					break;
+				case 'b':
+				case 'd':
+				case 'v':
+					if (!seen_format)
+						{
+							switch (opt)
+								{
+								case 'b': data_format = FMT_BIN; break;
+								case 'd': data_format = FMT_DAT; break;
+								case 'v': data_format = FMT_VHD; break;
+								}
+							seen_format = 1;
+						}
+					else
+						{
+							usage(argv[0]);
+						}
+				break;
 				case 'o':
-					if (!found_outfile) {
+					if (!found_outfile)
+						{
 						char *symname;
 
 						if (strcmp(optarg, "-") != 0)
 							{
-								datfile = fopen(optarg, "w");
+								datafile = fopen(optarg, "w");
 					
-								if (datfile == NULL)
+								if (datafile == NULL)
 									{
 										fprintf(stderr, "error: %s\n", strerror(errno));
 										exit(EXIT_FAILURE);
@@ -883,7 +960,7 @@ int main(int argc, char **argv)
 							}
 				
 						found_outfile = 1;
-					} 
+					}
 					else
 						{
 							usage(argv[0]);
@@ -920,7 +997,7 @@ int main(int argc, char **argv)
 
 	print_symtab(symfile, 0);
 
-	fclose(datfile);
+	fclose(datafile);
 	fclose(symfile);
 
 	return 0;
