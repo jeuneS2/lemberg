@@ -206,10 +206,10 @@ begin  -- behavior
 					
 					if returns_double(op_next.op) then
 						wrdbl := '1';
-						r0 := to_slv(double_result(0)(DOUBLE_EXPONENT_WIDTH
-															downto DOUBLE_EXPONENT_WIDTH-31));
-						r1 := to_slv(double_result(0)(DOUBLE_EXPONENT_WIDTH-32
-															downto DOUBLE_EXPONENT_WIDTH-63));
+						r1 := to_slv(double_result(0)(DOUBLE_EXPONENT_WIDTH
+													  downto DOUBLE_EXPONENT_WIDTH-31));
+						r0 := to_slv(double_result(0)(DOUBLE_EXPONENT_WIDTH-32
+													  downto DOUBLE_EXPONENT_WIDTH-63));
 					else
 						r0 := to_slv(single_result(0));
 					end if;
@@ -224,9 +224,9 @@ begin  -- behavior
 
 						if returns_double(op_pipe(i).op) then
 							wrdbl := '1';
-							r0 := to_slv(double_result(i)(DOUBLE_EXPONENT_WIDTH
+							r1 := to_slv(double_result(i)(DOUBLE_EXPONENT_WIDTH
 														  downto DOUBLE_EXPONENT_WIDTH-31));
-							r1 := to_slv(double_result(i)(DOUBLE_EXPONENT_WIDTH-32
+							r0 := to_slv(double_result(i)(DOUBLE_EXPONENT_WIDTH-32
 														  downto DOUBLE_EXPONENT_WIDTH-63));
 						else
 							r0 := r0 or to_slv(single_result(i));
