@@ -50,24 +50,20 @@ architecture behavior of fpu is
 	signal regfile_lo : regfile_type;
 	signal regfile_hi : regfile_type;
 
-	signal single_rddataA, single_rddataB, single_rddataC : float32;
-	signal single_rddataA_reg : float32;
-	
-	signal single_cmpvec, double_cmpvec : std_logic_vector(13 downto 0);
-	
-	signal single_result0 : float32;
-	signal single_result1, single_result1_0_reg : float32;
-	signal single_result3, single_result3_0_reg, single_result3_1_reg : float32;
-	signal single_macresult : float32;
-	
+	signal single_rddataA, single_rddataB, single_rddataC : float32;	
 	signal double_rddataA, double_rddataB, double_rddataC : float64;
-	signal double_rddataA_reg : float64;
 
-	signal double_result0 : float64;
-	signal double_result1, double_result1_0_reg : float64;
-	signal double_result3, double_result3_0_reg, double_result3_1_reg : float64;
-	signal double_macresult : float64;
+	type single_result_type is array (0 to STAGES) of float32;
+	signal single_result : single_result_type;
+	type double_result_type is array (0 to STAGES) of float64;
+	signal double_result : double_result_type;
 
+	signal single_cmpvec, double_cmpvec : std_logic_vector(13 downto 0);
+	signal rnd_result, si2sf_result, sf2si_result, df2si_result : float32;
+	signal ext_result, si2df_result : float64;	
+	signal single_mac_result : float32;
+	signal double_mac_result : float64;
+	
 	signal op_reg : fpop_arr_type;
 	signal op_next : fpop_type;
 	type op_pipe_type is array (STAGES downto 1) of fpop_type;
@@ -79,7 +75,7 @@ begin  -- behavior
 		generic map (
 			fraction_width => SINGLE_FRACTION_WIDTH,
 			exponent_width => SINGLE_EXPONENT_WIDTH,
-			stages => STAGES)
+			stages => 6)
 		port map (
 			clk		=> clk,
 			reset	=> reset,
@@ -87,13 +83,13 @@ begin  -- behavior
 			rddataA => single_rddataA,
 			rddataB => single_rddataB,
 			rddataC => single_rddataC,
-			result  => single_macresult);
+			result  => single_mac_result);
 
 	double_mac: entity work.mac
 		generic map (
 			fraction_width => DOUBLE_FRACTION_WIDTH,
 			exponent_width => DOUBLE_EXPONENT_WIDTH,
-			stages => STAGES)
+			stages => 7)
 		port map (
 			clk		=> clk,
 			reset	=> reset,
@@ -101,29 +97,78 @@ begin  -- behavior
 			rddataA => double_rddataA,
 			rddataB => double_rddataB,
 			rddataC => double_rddataC,
-			result  => double_macresult);
+			result  => double_mac_result);
 
 	single_cmp: entity work.cmp
 		generic map (
+			stages => 1,
 			fraction_width => SINGLE_FRACTION_WIDTH,
 			exponent_width => SINGLE_EXPONENT_WIDTH)
 		port map (
+			clk => clk,
+			ena => ena,
 			a	=> single_rddataA,
 			b	=> single_rddataB,
 			cmp => single_cmpvec);
 
 	double_cmp: entity work.cmp
 		generic map (
+			stages => 2,
 			fraction_width  => DOUBLE_FRACTION_WIDTH,
 			exponent_width => DOUBLE_EXPONENT_WIDTH)
 		port map (
+			clk => clk,
+			ena => ena,
 			a	=> double_rddataA,
 			b	=> double_rddataB,
 			cmp => double_cmpvec);
 
+	rnd: entity work.rnd
+		port map (
+			clk => clk,
+			ena => ena,
+			i => double_rddataA,
+			o => rnd_result);
+
+	ext: entity work.ext
+		port map (
+			clk => clk,
+			ena => ena,
+			i => single_rddataA,
+			o => ext_result);
+
+	si2sf: entity work.si2sf
+		port map (
+			clk => clk,
+			ena => ena,
+			i => single_rddataA,
+			o => si2sf_result);
+
+	si2df: entity work.si2df
+		port map (
+			clk => clk,
+			ena => ena,
+			i => single_rddataA,
+			o => si2df_result);
+
+	sf2si: entity work.sf2si
+		port map (
+			clk => clk,
+			ena => ena,
+			i => single_rddataA,
+			o => sf2si_result);
+
+	df2si: entity work.df2si
+		port map (
+			clk => clk,
+			ena => ena,
+			i => double_rddataA,
+			o => df2si_result);
+
 	sync: process (clk, reset)
 		variable wra : std_logic_vector(FPREG_BITS-2 downto 0);
 		variable wren, wrhi, wrdbl : std_logic;
+		variable r0, r1 : std_logic_vector(31 downto 0);
 	begin  -- process sync
 		if reset = '0' then
 			regfile_hi <= (others => (others => '0'));
@@ -132,34 +177,9 @@ begin  -- behavior
 			op_reg <= (others => FPOP_NOP);
 			op_pipe <= (others => FPOP_NOP);
 
-			single_rddataA_reg <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
-			double_rddataA_reg <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
-			
-			single_result1_0_reg <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
-			double_result1_0_reg <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
-
-			single_result3_0_reg <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
-			single_result3_1_reg <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
-			double_result3_0_reg <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
-			double_result3_1_reg <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
-
 		elsif clk'event and clk = '1' then  -- rising clock edge
 			if ena = '1' then
 
-				----------------------------------------------------------------
-				-- pipelining (allows register retiming)
-				----------------------------------------------------------------			
-				single_rddataA_reg <= single_rddataA;
-				double_rddataA_reg <= double_rddataA;
-				
-				single_result1_0_reg <= single_result1;
-				double_result1_0_reg <= double_result1;
-
-				single_result3_0_reg <= single_result3;
-				single_result3_1_reg <= single_result3_0_reg;
-				double_result3_0_reg <= double_result3;
-				double_result3_1_reg <= double_result3_0_reg;
-				
 				----------------------------------------------------------------
 				-- latch operation
 				----------------------------------------------------------------
@@ -170,98 +190,63 @@ begin  -- behavior
 				----------------------------------------------------------------
 				-- handle writes
 				----------------------------------------------------------------
+				wren  := '0';
+				wra   := (others => '0');
+				wrhi  := '0';
+				wrdbl := '0';
+				r0    := (others => '0');
+				r1    := (others => '0');
+				
 				if get_latency(op_next.op) = 0 then
 					-- fast operation
-					
-					wra := op_next.wraddr(FPREG_BITS-1 downto 1);
+
+					wren := '1';
+					wra  := op_next.wraddr(FPREG_BITS-1 downto 1);
 					wrhi := op_next.wraddr(0);
-
+					
 					if returns_double(op_next.op) then
-						regfile_hi(to_integer(unsigned(wra)))
-							<= to_slv(double_result0(DOUBLE_EXPONENT_WIDTH
-													 downto DOUBLE_EXPONENT_WIDTH-31));
-						regfile_lo(to_integer(unsigned(wra)))
-							<= to_slv(double_result0(DOUBLE_EXPONENT_WIDTH-32
-													 downto DOUBLE_EXPONENT_WIDTH-63));
+						wrdbl := '1';
+						r0 := to_slv(double_result(0)(DOUBLE_EXPONENT_WIDTH
+															downto DOUBLE_EXPONENT_WIDTH-31));
+						r1 := to_slv(double_result(0)(DOUBLE_EXPONENT_WIDTH-32
+															downto DOUBLE_EXPONENT_WIDTH-63));
 					else
-						if wrhi = '0' then
-							regfile_lo(to_integer(unsigned(wra)))
-								<= to_slv(single_result0);
-						else
-							regfile_hi(to_integer(unsigned(wra)))
-								<= to_slv(single_result0);	
-						end if;
+						r0 := to_slv(single_result(0));
 					end if;
-
-				elsif get_latency(op_pipe(1).op) = 1 then
-					-- one cycle latency
-					
-					wra := op_pipe(1).wraddr(FPREG_BITS-1 downto 1);			
-					wrhi := op_pipe(1).wraddr(0);
-
-					if returns_double(op_pipe(1).op) then
-						regfile_hi(to_integer(unsigned(wra)))
-							<= to_slv(double_result1_0_reg(DOUBLE_EXPONENT_WIDTH
-														   downto DOUBLE_EXPONENT_WIDTH-31));
-						regfile_lo(to_integer(unsigned(wra)))
-							<= to_slv(double_result1_0_reg(DOUBLE_EXPONENT_WIDTH-32
-														   downto DOUBLE_EXPONENT_WIDTH-63));
-					else
-						if wrhi = '0' then
-							regfile_lo(to_integer(unsigned(wra)))
-								<= to_slv(single_result1_0_reg);
-						else
-							regfile_hi(to_integer(unsigned(wra)))
-								<= to_slv(single_result1_0_reg);
-						end if;
-					end if;
-
-				elsif get_latency(op_pipe(3).op) = 3 then
-					-- two cycles latency
-					
-					wra := op_pipe(3).wraddr(FPREG_BITS-1 downto 1);
-					wrhi := op_pipe(3).wraddr(0);
-
-					if returns_double(op_pipe(3).op) then
-						regfile_hi(to_integer(unsigned(wra)))
-							<= to_slv(double_result3_1_reg(DOUBLE_EXPONENT_WIDTH
-														   downto DOUBLE_EXPONENT_WIDTH-31));
-						regfile_lo(to_integer(unsigned(wra)))
-							<= to_slv(double_result3_1_reg(DOUBLE_EXPONENT_WIDTH-32
-														   downto DOUBLE_EXPONENT_WIDTH-63));
-					else
-						if wrhi = '0' then
-							regfile_lo(to_integer(unsigned(wra)))
-								<= to_slv(single_result3_1_reg);
-						else
-							regfile_hi(to_integer(unsigned(wra)))
-								<= to_slv(single_result3_1_reg);
-						end if;
-					end if;
-
-				elsif get_latency(op_pipe(STAGES).op) = STAGES then
-					-- fully pipelined operation
-
-					wra := op_pipe(STAGES).wraddr(FPREG_BITS-1 downto 1);			
-					wrhi := op_pipe(STAGES).wraddr(0);
-
-					if returns_double(op_pipe(STAGES).op) then
-						regfile_hi(to_integer(unsigned(wra)))
-							<= to_slv(double_macresult(DOUBLE_EXPONENT_WIDTH
-													   downto DOUBLE_EXPONENT_WIDTH-31));
-						regfile_lo(to_integer(unsigned(wra)))
-							<= to_slv(double_macresult(DOUBLE_EXPONENT_WIDTH-32
-													   downto DOUBLE_EXPONENT_WIDTH-63));
-					else
-						if wrhi = '0' then
-							regfile_lo(to_integer(unsigned(wra)))
-								<= to_slv(single_macresult);	
-						else
-							regfile_hi(to_integer(unsigned(wra)))
-								<= to_slv(single_macresult);	
-						end if;
-					end if;				
 				end if;
+				
+				for i in 1 to STAGES loop
+					if get_latency(op_pipe(i).op) = i then
+
+						wren := '1';
+						wra  := wra  or op_pipe(i).wraddr(FPREG_BITS-1 downto 1);			
+						wrhi := wrhi or op_pipe(i).wraddr(0);
+
+						if returns_double(op_pipe(i).op) then
+							wrdbl := '1';
+							r0 := to_slv(double_result(i)(DOUBLE_EXPONENT_WIDTH
+														  downto DOUBLE_EXPONENT_WIDTH-31));
+							r1 := to_slv(double_result(i)(DOUBLE_EXPONENT_WIDTH-32
+														  downto DOUBLE_EXPONENT_WIDTH-63));
+						else
+							r0 := r0 or to_slv(single_result(i));
+						end if;
+					end if;
+				end loop;  -- i
+
+				if wren = '1' then
+					if wrdbl = '1' then
+						regfile_lo(to_integer(unsigned(wra))) <= r0;
+						regfile_hi(to_integer(unsigned(wra))) <= r1;
+					else
+						if wrhi = '0' then							
+							regfile_lo(to_integer(unsigned(wra))) <= r0;
+						else
+							regfile_hi(to_integer(unsigned(wra))) <= r0;
+						end if;
+					end if;
+				end if;
+				
 			end if;
 		end if;
 	end process sync;
@@ -269,7 +254,9 @@ begin  -- behavior
 	read: process (op_reg, op_pipe, fl_in, wrdata,
 				   regfile_lo, regfile_hi,
 				   single_cmpvec, double_cmpvec,
-				   single_rddataA_reg, double_rddataA_reg)
+				   rnd_result, ext_result,
+				   si2sf_result, si2df_result, sf2si_result, df2si_result,
+				   single_mac_result, double_mac_result)
 
 		variable idx : integer;
 		variable valid : std_logic;
@@ -352,13 +339,19 @@ begin  -- behavior
 		double_rddataA <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
 		double_rddataB <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
 		double_rddataC <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
-		
-		single_result0 <= singleA;
-		double_result0 <= doubleA;
-		single_result1 <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
-		double_result1 <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
-		single_result3 <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
-		double_result3 <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
+
+		single_result <= (others => zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH));
+		double_result <= (others => zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH));
+		-- a few default results to minimize multiplexing
+		single_result(0) <= singleA;
+		double_result(0) <= doubleA;
+		single_result(1) <= float32(resize(unsigned(single_cmpvec), 32));
+		single_result(2) <= float32(resize(unsigned(double_cmpvec), 32));
+		double_result(2) <= si2df_result;
+		double_result(3) <= ext_result;
+		single_result(4) <= rnd_result;
+		single_result(6) <= single_mac_result;
+		double_result(7) <= double_mac_result;
 
 		rddata <= (others => '0');
 		
@@ -368,7 +361,7 @@ begin  -- behavior
 			-- Transfer operations
 			----------------------------------------------------------------
 			when FPU_STX =>
-				single_result0 <= float32(wrdata(idx));
+				single_result(0) <= float32(wrdata(idx));
 			when FPU_LDX =>
 				rddata <= to_slv(singleA);
 
@@ -376,19 +369,18 @@ begin  -- behavior
 			-- Single operations
 			----------------------------------------------------------------
 			when FPU_FMOV =>
-				single_result0 <= singleA;
+				single_result(0) <= singleA;
 			when FPU_FNEG =>
-				single_result0 <= -singleA;
+				single_result(0) <= -singleA;
 			when FPU_FABS =>
-				single_result0 <= abs(singleA);
+				single_result(0) <= abs(singleA);
 
 			when FPU_FZERO =>
-				single_result0 <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
+				single_result(0) <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
 				
 			when FPU_FCMP =>
 				single_rddataA <= singleA;
 				single_rddataB <= singleB;
-				single_result1 <= float32(resize(unsigned(single_cmpvec), 32));
 
 			-- FADD == A * 1.0 + B
 			when FPU_FADD =>
@@ -415,19 +407,18 @@ begin  -- behavior
 			-- Double operations
 			----------------------------------------------------------------
 			when FPU_DMOV =>
-				double_result0 <= doubleA;
+				double_result(0) <= doubleA;
 			when FPU_DNEG =>
-				double_result0 <= -doubleA;
+				double_result(0) <= -doubleA;
 			when FPU_DABS =>
-				double_result0 <= abs(doubleA);
+				double_result(0) <= abs(doubleA);
 
 			when FPU_DZERO =>
-				double_result0 <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
+				double_result(0) <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
 
 			when FPU_DCMP =>
 				double_rddataA <= doubleA;
 				double_rddataB <= doubleB;				
-				single_result1 <= float32(resize(unsigned(double_cmpvec), 32));
 				
 			-- DADD == A * 1.0 + B
 			when FPU_DADD => 
@@ -451,7 +442,7 @@ begin  -- behavior
 				double_rddataC <= doubleC;
 
 			----------------------------------------------------------------
-			-- Conversions, just register inputs
+			-- Conversions
 			----------------------------------------------------------------
 			when FPU_RND | FPU_DF2SI =>
 				double_rddataA <= doubleA;
@@ -463,28 +454,69 @@ begin  -- behavior
 
 		case op_pipe(1).op is
 			----------------------------------------------------------------
-			-- Conversions, compute outputs
+			-- Single precision comparison, fetch results
 			----------------------------------------------------------------
-			when FPU_RND =>
-				single_result3 <= to_float32(double_rddataA_reg, round_nearest);
-			when FPU_EXT =>
-				double_result3 <= to_float64(single_rddataA_reg, round_nearest);
-				
+			when FPU_FCMP =>
+				single_result(1) <= float32(resize(unsigned(single_cmpvec), 32));
+			when others => null;
+		end case;
+
+		case op_pipe(2).op is
+			----------------------------------------------------------------
+			-- Double precision comparison, fetch results
+			----------------------------------------------------------------
+			when FPU_DCMP =>
+				single_result(2) <= float32(resize(unsigned(double_cmpvec), 32));
+			----------------------------------------------------------------
+			-- Cheap conversions, fetch results
+			----------------------------------------------------------------
 			when FPU_SI2SF =>
-				single_result3 <= to_float(signed(to_slv(single_rddataA_reg)),
-										   SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH, round_nearest);
+				single_result(2) <= si2sf_result;
 			when FPU_SI2DF =>
-				double_result3 <= to_float(signed(to_slv(single_rddataA_reg)),
-										   DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH, round_nearest);
-
+				double_result(2) <= si2df_result;
 			when FPU_SF2SI =>
-				single_result3 <= float32(to_signed(single_rddataA_reg, 32, round_zero));
+				single_result(2) <= sf2si_result;
 			when FPU_DF2SI =>
-				single_result3 <= float32(to_signed(double_rddataA_reg, 32, round_zero));
+				single_result(2) <= df2si_result;
+			when others => null;
+		end case;
 
+		case op_pipe(3).op is
+			----------------------------------------------------------------
+			-- Expensive conversion, fetch results
+			----------------------------------------------------------------
+			when FPU_EXT =>
+				double_result(3) <= ext_result;
 			when others => null;						   
 		end case;
-		
+
+		case op_pipe(4).op is
+			----------------------------------------------------------------
+			-- Expensive conversion, fetch results
+			----------------------------------------------------------------
+			when FPU_RND =>
+				single_result(4) <= rnd_result;
+			when others => null;						   
+		end case;
+
+		case op_pipe(6).op is
+			----------------------------------------------------------------
+			-- Fetch results from single precision MAC unit
+			----------------------------------------------------------------
+			when FPU_FADD | FPU_FSUB | FPU_FMUL | FPU_FMAC =>
+				single_result(6) <= single_mac_result;
+			when others => null;						   
+		end case;
+
+		case op_pipe(7).op is
+			----------------------------------------------------------------
+			-- Fetch results from double precision MAC unit
+			----------------------------------------------------------------
+			when FPU_DADD | FPU_DSUB | FPU_DMUL | FPU_DMAC =>
+				double_result(7) <= double_mac_result;
+			when others => null;						   
+		end case;
+
 	end process read;
 
 end behavior;

@@ -94,15 +94,20 @@ package body fpu_pack is
 				FPU_DMOV | FPU_DNEG | FPU_DABS |
 				FPU_FZERO | FPU_DZERO =>
 				return 0;
-			when FPU_FCMP | FPU_DCMP =>
+			when FPU_FCMP =>
 				return 1;
-			when FPU_RND | FPU_EXT |
+			when FPU_DCMP |
 				FPU_SI2SF | FPU_SI2DF |
 				FPU_SF2SI | FPU_DF2SI =>
+				return 2;
+			when FPU_EXT =>
 				return 3;
-			when FPU_FADD | FPU_FSUB | FPU_FMUL | FPU_FMAC |
-				FPU_DADD | FPU_DSUB | FPU_DMUL | FPU_DMAC =>
-				return STAGES;
+			when FPU_RND =>
+				return 4;
+			when FPU_FADD | FPU_FSUB | FPU_FMUL | FPU_FMAC =>
+				return 6;
+			when FPU_DADD | FPU_DSUB | FPU_DMUL | FPU_DMAC =>
+				return 7;
 			when FPU_NOP | FPU_LDX =>
 				return -1;
 			when others =>

@@ -40,10 +40,13 @@ def FPU_WB  : FuncUnit;
 def IIAlu              : InstrItinClass;
 def IIMem              : InstrItinClass;
 def IIBranch           : InstrItinClass;
-def IIFpuZero          : InstrItinClass;
-def IIFpuOne           : InstrItinClass;
-def IIFpuThree         : InstrItinClass;
-def IIFpuFull          : InstrItinClass;
+def IIFpu0             : InstrItinClass;
+def IIFpu1             : InstrItinClass;
+def IIFpu2             : InstrItinClass;
+def IIFpu3             : InstrItinClass;
+def IIFpu4             : InstrItinClass;
+def IIFpu6             : InstrItinClass;
+def IIFpu7             : InstrItinClass;
 
 // Pseudo itinerary
 def IINone             : InstrItinClass;
@@ -61,22 +64,34 @@ def IIBranch0          : InstrItinClass;
 def IIBranch1          : InstrItinClass;
 def IIBranch2          : InstrItinClass;
 def IIBranch3          : InstrItinClass;
-def IIFpuZero0         : InstrItinClass;
-def IIFpuZero1         : InstrItinClass;
-def IIFpuZero2         : InstrItinClass;
-def IIFpuZero3         : InstrItinClass;
-def IIFpuOne0          : InstrItinClass;
-def IIFpuOne1          : InstrItinClass;
-def IIFpuOne2          : InstrItinClass;
-def IIFpuOne3          : InstrItinClass;
-def IIFpuThree0        : InstrItinClass;
-def IIFpuThree1        : InstrItinClass;
-def IIFpuThree2        : InstrItinClass;
-def IIFpuThree3        : InstrItinClass;
-def IIFpuFull0         : InstrItinClass;
-def IIFpuFull1         : InstrItinClass;
-def IIFpuFull2         : InstrItinClass;
-def IIFpuFull3         : InstrItinClass;
+def IIFpu0_0           : InstrItinClass;
+def IIFpu0_1           : InstrItinClass;
+def IIFpu0_2           : InstrItinClass;
+def IIFpu0_3           : InstrItinClass;
+def IIFpu1_0           : InstrItinClass;
+def IIFpu1_1           : InstrItinClass;
+def IIFpu1_2           : InstrItinClass;
+def IIFpu1_3           : InstrItinClass;
+def IIFpu2_0           : InstrItinClass;
+def IIFpu2_1           : InstrItinClass;
+def IIFpu2_2           : InstrItinClass;
+def IIFpu2_3           : InstrItinClass;
+def IIFpu3_0           : InstrItinClass;
+def IIFpu3_1           : InstrItinClass;
+def IIFpu3_2           : InstrItinClass;
+def IIFpu3_3           : InstrItinClass;
+def IIFpu4_0           : InstrItinClass;
+def IIFpu4_1           : InstrItinClass;
+def IIFpu4_2           : InstrItinClass;
+def IIFpu4_3           : InstrItinClass;
+def IIFpu6_0           : InstrItinClass;
+def IIFpu6_1           : InstrItinClass;
+def IIFpu6_2           : InstrItinClass;
+def IIFpu6_3           : InstrItinClass;
+def IIFpu7_0           : InstrItinClass;
+def IIFpu7_1           : InstrItinClass;
+def IIFpu7_2           : InstrItinClass;
+def IIFpu7_3           : InstrItinClass;
 
 //===----------------------------------------------------------------------===//
 // Lemberg Generic instruction itineraries
@@ -93,21 +108,33 @@ def LembergItineraries : ProcessorItineraries<
 	 InstrItinData<IIBranch, [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
 							  InstrStage<1, [JMPU]>]>,
 
-	 InstrItinData<IIFpuZero,  [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
-							    InstrStage<1, [FPU_DEC], 0>, InstrStage<1, [FPU_WB]>]>,
-	 InstrItinData<IIFpuOne,   [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
-							    InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], 0>,
-								InstrStage<1, [FPU_WB]>]>,
-	 InstrItinData<IIFpuThree, [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
-							    InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
-							    InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], 0>,
-								InstrStage<1, [FPU_WB]>]>,
-	 InstrItinData<IIFpuFull,  [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
-							    InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
-							    InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
-							    InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
-							    InstrStage<1, [FPU_EX6], -1>, InstrStage<1, [FPU_EX7], 0>,
-								InstrStage<1, [FPU_WB]>]>,
+	 InstrItinData<IIFpu0,  [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
+							 InstrStage<1, [FPU_DEC], 0>, InstrStage<1, [FPU_WB]>]>,
+	 InstrItinData<IIFpu1,   [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], 0>,
+							  InstrStage<1, [FPU_WB]>]>,
+	 InstrItinData<IIFpu2,   [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], 0>, InstrStage<1, [FPU_WB]>]>,
+	 InstrItinData<IIFpu3, [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
+							InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], 0>,
+							InstrStage<1, [FPU_WB]>]>,
+	 InstrItinData<IIFpu4, [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
+							InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							InstrStage<1, [FPU_EX4], 0>, InstrStage<1, [FPU_WB]>]>,
+	 InstrItinData<IIFpu6, [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
+							InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
+							InstrStage<1, [FPU_EX6], 0>, InstrStage<1, [FPU_WB]>]>,
+	 InstrItinData<IIFpu7,  [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
+							 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							 InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							 InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
+							 InstrStage<1, [FPU_EX6], -1>, InstrStage<1, [FPU_EX7], 0>,
+							 InstrStage<1, [FPU_WB]>]>,
 
 	 // Pseudo itinerary
 	 InstrItinData<IINone, [InstrStage<0, [SLOT0, SLOT1, SLOT2, SLOT3]>]>,
@@ -128,67 +155,118 @@ def LembergItineraries : ProcessorItineraries<
 	 InstrItinData<IIBranch2, [InstrStage<1, [SLOT2], 0>, InstrStage<1, [JMPU]>]>,
 	 InstrItinData<IIBranch3, [InstrStage<1, [SLOT3], 0>, InstrStage<1, [JMPU]>]>,
 
-     InstrItinData<IIFpuZero0,  [InstrStage<1, [SLOT0], 0>,
-								 InstrStage<1, [FPU_DEC], 0>, InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuZero1,  [InstrStage<1, [SLOT1], 0>,
-								 InstrStage<1, [FPU_DEC], 0>, InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuZero2,  [InstrStage<1, [SLOT2], 0>,
-								 InstrStage<1, [FPU_DEC], 0>, InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuZero3,  [InstrStage<1, [SLOT3], 0>,
-								 InstrStage<1, [FPU_DEC], 0>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu0_0,  [InstrStage<1, [SLOT0], 0>,
+							   InstrStage<1, [FPU_DEC], 0>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu0_1,  [InstrStage<1, [SLOT1], 0>,
+							   InstrStage<1, [FPU_DEC], 0>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu0_2,  [InstrStage<1, [SLOT2], 0>,
+							   InstrStage<1, [FPU_DEC], 0>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu0_3,  [InstrStage<1, [SLOT3], 0>,
+							   InstrStage<1, [FPU_DEC], 0>, InstrStage<1, [FPU_WB]>]>,
 
-     InstrItinData<IIFpuOne0,   [InstrStage<1, [SLOT0], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuOne1,   [InstrStage<1, [SLOT1], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuOne2,   [InstrStage<1, [SLOT2], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuOne3,   [InstrStage<1, [SLOT3], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu1_0,   [InstrStage<1, [SLOT0], 0>,
+								InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], 0>,
+								InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu1_1,   [InstrStage<1, [SLOT1], 0>,
+								InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], 0>,
+								InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu1_2,   [InstrStage<1, [SLOT2], 0>,
+								InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], 0>,
+								InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu1_3,   [InstrStage<1, [SLOT3], 0>,
+								InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], 0>,
+								InstrStage<1, [FPU_WB]>]>,
 
-     InstrItinData<IIFpuThree0, [InstrStage<1, [SLOT0], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
-								 InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuThree1, [InstrStage<1, [SLOT1], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
-								 InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuThree2, [InstrStage<1, [SLOT2], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
-								 InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuThree3, [InstrStage<1, [SLOT3], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
-								 InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu2_0, [InstrStage<1, [SLOT0], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], 0>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu2_1, [InstrStage<1, [SLOT1], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], 0>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu2_2, [InstrStage<1, [SLOT2], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], 0>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu2_3, [InstrStage<1, [SLOT3], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], 0>, InstrStage<1, [FPU_WB]>]>,
 
-     InstrItinData<IIFpuFull0,  [InstrStage<1, [SLOT0], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
-								 InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
-								 InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
-								 InstrStage<1, [FPU_EX6], -1>, InstrStage<1, [FPU_EX7], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuFull1,  [InstrStage<1, [SLOT1], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
-								 InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
-								 InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
-								 InstrStage<1, [FPU_EX6], -1>, InstrStage<1, [FPU_EX7], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuFull2,  [InstrStage<1, [SLOT2], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
-								 InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
-								 InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
-								 InstrStage<1, [FPU_EX6], -1>, InstrStage<1, [FPU_EX7], 0>,
-								 InstrStage<1, [FPU_WB]>]>,
-     InstrItinData<IIFpuFull3,  [InstrStage<1, [SLOT3], 0>,
-								 InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
-								 InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
-								 InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
-								 InstrStage<1, [FPU_EX6], -1>, InstrStage<1, [FPU_EX7], 0>,
-								 InstrStage<1, [FPU_WB]>]>
+     InstrItinData<IIFpu3_0, [InstrStage<1, [SLOT0], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], 0>,
+							  InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu3_1, [InstrStage<1, [SLOT1], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], 0>,
+							  InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu3_2, [InstrStage<1, [SLOT2], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], 0>,
+							  InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu3_3, [InstrStage<1, [SLOT3], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], 0>,
+							  InstrStage<1, [FPU_WB]>]>,
+
+     InstrItinData<IIFpu4_0, [InstrStage<1, [SLOT0], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							  InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu4_1, [InstrStage<1, [SLOT1], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							  InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu4_2, [InstrStage<1, [SLOT2], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							  InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu4_3, [InstrStage<1, [SLOT3], 0>,
+							  InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							  InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							  InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_WB]>]>,
+
+     InstrItinData<IIFpu6_0,  [InstrStage<1, [SLOT0], 0>,
+							   InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							   InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							   InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
+							   InstrStage<1, [FPU_EX6], 0>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu6_1,  [InstrStage<1, [SLOT1], 0>,
+							   InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							   InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							   InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
+							   InstrStage<1, [FPU_EX6], 0>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu6_2,  [InstrStage<1, [SLOT2], 0>,
+							   InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							   InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							   InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
+							   InstrStage<1, [FPU_EX6], 0>, InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu6_3,  [InstrStage<1, [SLOT3], 0>,
+							   InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							   InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							   InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
+							   InstrStage<1, [FPU_EX6], 0>, InstrStage<1, [FPU_WB]>]>,
+
+     InstrItinData<IIFpu7_0,  [InstrStage<1, [SLOT0], 0>,
+							   InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							   InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							   InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
+							   InstrStage<1, [FPU_EX6], -1>, InstrStage<1, [FPU_EX7], 0>,
+							   InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu7_1,  [InstrStage<1, [SLOT1], 0>,
+							   InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							   InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							   InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
+							   InstrStage<1, [FPU_EX6], -1>, InstrStage<1, [FPU_EX7], 0>,
+							   InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu7_2,  [InstrStage<1, [SLOT2], 0>,
+							   InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							   InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							   InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
+							   InstrStage<1, [FPU_EX6], -1>, InstrStage<1, [FPU_EX7], 0>,
+							   InstrStage<1, [FPU_WB]>]>,
+     InstrItinData<IIFpu7_3,  [InstrStage<1, [SLOT3], 0>,
+							   InstrStage<1, [FPU_DEC], -1>, InstrStage<1, [FPU_EX1], -1>,
+							   InstrStage<1, [FPU_EX2], -1>, InstrStage<1, [FPU_EX3], -1>,
+							   InstrStage<1, [FPU_EX4], -1>, InstrStage<1, [FPU_EX5], -1>,
+							   InstrStage<1, [FPU_EX6], -1>, InstrStage<1, [FPU_EX7], 0>,
+							   InstrStage<1, [FPU_WB]>]>
 ]>;

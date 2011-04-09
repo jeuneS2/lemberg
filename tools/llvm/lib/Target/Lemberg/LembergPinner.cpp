@@ -52,14 +52,14 @@ namespace {
 		{LembergFU::SLOT3, LembergFU::JMPU}
 	};
 
-	static LembergFU::FuncUnit FpuZeroItins [ClusterCount][3] = {
+	static LembergFU::FuncUnit Fpu0Itins [ClusterCount][3] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_WB},
 		{LembergFU::SLOT1, LembergFU::FPU_DEC, LembergFU::FPU_WB},
 		{LembergFU::SLOT2, LembergFU::FPU_DEC, LembergFU::FPU_WB},
 		{LembergFU::SLOT3, LembergFU::FPU_DEC, LembergFU::FPU_WB}
 	};
 
-	static LembergFU::FuncUnit FpuOneItins [ClusterCount][4] = {
+	static LembergFU::FuncUnit Fpu1Itins [ClusterCount][4] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
 		 LembergFU::FPU_WB},
 		{LembergFU::SLOT1, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
@@ -70,7 +70,18 @@ namespace {
 		 LembergFU::FPU_WB}
 	};
 
-	static LembergFU::FuncUnit FpuThreeItins [ClusterCount][6] = {
+	static LembergFU::FuncUnit Fpu2Itins [ClusterCount][5] = {
+		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_WB},
+		{LembergFU::SLOT1, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_WB},
+		{LembergFU::SLOT2, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_WB},
+		{LembergFU::SLOT3, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_WB}
+	};
+
+	static LembergFU::FuncUnit Fpu3Itins [ClusterCount][6] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
 		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_WB},
 		{LembergFU::SLOT1, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
@@ -81,7 +92,37 @@ namespace {
 		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_WB}
 	};
 
-	static LembergFU::FuncUnit FpuFullItins [ClusterCount][10] = {
+	static LembergFU::FuncUnit Fpu4Itins [ClusterCount][7] = {
+		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4, 
+		 LembergFU::FPU_WB},
+		{LembergFU::SLOT1, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4, 
+		 LembergFU::FPU_WB},
+		{LembergFU::SLOT2, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4, 
+		 LembergFU::FPU_WB},
+		{LembergFU::SLOT3, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4, 
+		 LembergFU::FPU_WB}
+	};
+
+	static LembergFU::FuncUnit Fpu6Itins [ClusterCount][9] = {
+		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4,
+		 LembergFU::FPU_EX5, LembergFU::FPU_EX6, LembergFU::FPU_WB},
+		{LembergFU::SLOT1, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4,
+		 LembergFU::FPU_EX5, LembergFU::FPU_EX6, LembergFU::FPU_WB},
+		{LembergFU::SLOT2, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4,
+		 LembergFU::FPU_EX5, LembergFU::FPU_EX6, LembergFU::FPU_WB},
+		{LembergFU::SLOT3, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
+		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4,
+		 LembergFU::FPU_EX5, LembergFU::FPU_EX6, LembergFU::FPU_WB}
+	};
+
+	static LembergFU::FuncUnit Fpu7Itins [ClusterCount][10] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
 		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4,
 		 LembergFU::FPU_EX5, LembergFU::FPU_EX6, LembergFU::FPU_EX7, 
@@ -112,10 +153,13 @@ namespace {
 		unsigned AluSchedClasses [ClusterCount];
 		unsigned MemSchedClasses [ClusterCount];
 		unsigned JmpSchedClasses [ClusterCount];
-		unsigned FpuZeroSchedClasses  [ClusterCount];
-		unsigned FpuOneSchedClasses   [ClusterCount];
-		unsigned FpuThreeSchedClasses [ClusterCount];
-		unsigned FpuFullSchedClasses  [ClusterCount];
+		unsigned Fpu0SchedClasses [ClusterCount];
+		unsigned Fpu1SchedClasses [ClusterCount];
+		unsigned Fpu2SchedClasses [ClusterCount];
+		unsigned Fpu3SchedClasses [ClusterCount];
+		unsigned Fpu4SchedClasses [ClusterCount];
+		unsigned Fpu6SchedClasses [ClusterCount];
+		unsigned Fpu7SchedClasses [ClusterCount];
 
 	public:
 		TargetMachine &TM;
@@ -129,10 +173,13 @@ namespace {
 				AluSchedClasses[i] = getClassForPattern(AluItins[i], 2);
 				MemSchedClasses[i] = getClassForPattern(MemItins[i], 2);
 				JmpSchedClasses[i] = getClassForPattern(JmpItins[i], 2);
-				FpuZeroSchedClasses[i]  = getClassForPattern(FpuZeroItins[i],  3);
-				FpuOneSchedClasses[i]   = getClassForPattern(FpuOneItins[i],   4);
-				FpuThreeSchedClasses[i] = getClassForPattern(FpuThreeItins[i], 6);
-				FpuFullSchedClasses[i]  = getClassForPattern(FpuFullItins[i],  10);
+				Fpu0SchedClasses[i] = getClassForPattern(Fpu0Itins[i], 3);
+				Fpu1SchedClasses[i] = getClassForPattern(Fpu1Itins[i], 4);
+				Fpu2SchedClasses[i] = getClassForPattern(Fpu2Itins[i], 5);
+				Fpu3SchedClasses[i] = getClassForPattern(Fpu3Itins[i], 6);
+				Fpu4SchedClasses[i] = getClassForPattern(Fpu4Itins[i], 7);
+				Fpu6SchedClasses[i] = getClassForPattern(Fpu6Itins[i], 9);
+				Fpu7SchedClasses[i] = getClassForPattern(Fpu7Itins[i], 10);
 			}
 		}
 
@@ -283,14 +330,20 @@ void Pinner::pinToCluster(MachineInstr &MI, int cluster) {
 		NTID->SchedClass = MemSchedClasses[cluster];
 	} else if (compatibleSchedClass(SchedClass, JmpSchedClasses[cluster])) {
 		NTID->SchedClass = JmpSchedClasses[cluster];
-	} else if (compatibleSchedClass(SchedClass, FpuZeroSchedClasses[cluster])) {
-		NTID->SchedClass = FpuZeroSchedClasses[cluster];
-	} else if (compatibleSchedClass(SchedClass, FpuOneSchedClasses[cluster])) {
-		NTID->SchedClass = FpuOneSchedClasses[cluster];
-	} else if (compatibleSchedClass(SchedClass, FpuThreeSchedClasses[cluster])) {
-		NTID->SchedClass = FpuThreeSchedClasses[cluster];
-	} else if (compatibleSchedClass(SchedClass, FpuFullSchedClasses[cluster])) {
-		NTID->SchedClass = FpuFullSchedClasses[cluster];
+	} else if (compatibleSchedClass(SchedClass, Fpu0SchedClasses[cluster])) {
+		NTID->SchedClass = Fpu0SchedClasses[cluster];
+	} else if (compatibleSchedClass(SchedClass, Fpu1SchedClasses[cluster])) {
+		NTID->SchedClass = Fpu1SchedClasses[cluster];
+	} else if (compatibleSchedClass(SchedClass, Fpu2SchedClasses[cluster])) {
+		NTID->SchedClass = Fpu2SchedClasses[cluster];
+	} else if (compatibleSchedClass(SchedClass, Fpu3SchedClasses[cluster])) {
+		NTID->SchedClass = Fpu3SchedClasses[cluster];
+	} else if (compatibleSchedClass(SchedClass, Fpu4SchedClasses[cluster])) {
+		NTID->SchedClass = Fpu4SchedClasses[cluster];
+	} else if (compatibleSchedClass(SchedClass, Fpu6SchedClasses[cluster])) {
+		NTID->SchedClass = Fpu6SchedClasses[cluster];
+	} else if (compatibleSchedClass(SchedClass, Fpu7SchedClasses[cluster])) {
+		NTID->SchedClass = Fpu7SchedClasses[cluster];
 	} else {
 		llvm_unreachable("Cannot find compatible schedule class for pinning");
 	}

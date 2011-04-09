@@ -76,7 +76,8 @@ architecture behavior of mac is
 
 begin  -- behavior
 
-	assert stages = 7 report "Only 7-stage pipeline supported" severity failure;
+	assert stages = 7 or stages = 6
+		report "Only 6 or 7-stage pipeline supported" severity failure;
 
 	-- Multiply accumulate  result = l*r + c
 	sync: process (clk, reset)
@@ -332,21 +333,32 @@ begin  -- behavior
 				----------------------------------------------------------------
 				-- PIPE 5
 				----------------------------------------------------------------
-				ufract_reg <= ufract;
-				rexpon2_reg1 <= rexpon2_reg;
-				fp_sign_reg3 <= fp_sign;
-				sticky_reg1 <= sticky_reg;
+				if stages = 7 then
+
+					ufract_reg <= ufract;
+					rexpon2_reg1 <= rexpon2_reg;
+					fp_sign_reg3 <= fp_sign;
+					sticky_reg1 <= sticky_reg;
+					
+					----------------------------------------------------------------
+					-- PIPE 6, necessary only for doubles
+					----------------------------------------------------------------
+					ufract_reg1 <= ufract_reg;
+					rexpon2_reg2 <= rexpon2_reg1;
+					fp_sign_reg4 <= fp_sign_reg3;
+					sticky_reg2 <= sticky_reg1;
+
+				else
+					
+					ufract_reg1 <= ufract;
+					rexpon2_reg2 <= rexpon2_reg;
+					fp_sign_reg4 <= fp_sign;
+					sticky_reg2 <= sticky_reg;
+
+				end if;
 
 				----------------------------------------------------------------
-				-- PIPE 6, necessary only for doubles
-				----------------------------------------------------------------
-				ufract_reg1 <= ufract_reg;
-				rexpon2_reg2 <= rexpon2_reg1;
-				fp_sign_reg4 <= fp_sign_reg3;
-				sticky_reg2 <= sticky_reg1;
-
-				----------------------------------------------------------------
-				-- PIPE 7
+				-- PIPE 6/7
 				----------------------------------------------------------------
 				-- normalize
 				result <= normalize (fract          => ufract_reg1,
