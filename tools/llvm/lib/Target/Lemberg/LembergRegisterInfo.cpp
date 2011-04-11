@@ -371,7 +371,7 @@ LembergRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 	  bool isLoad = Opcode == Lemberg::LOAD32s_match;
 	  unsigned storeIdxShift = 0;
 
-	  unsigned StOp;
+	  unsigned StOp = Lemberg::STORE32spi;
 	  switch (Opcode) {
 	  case Lemberg::STORE32s_match:
 		  StOp = Lemberg::STORE32spi;

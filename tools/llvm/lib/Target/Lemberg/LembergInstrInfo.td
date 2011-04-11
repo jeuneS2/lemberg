@@ -797,6 +797,9 @@ def EXTCC: F1<(outs A:$dst), (ins pred:$p, C:$src),
 			  [(set A:$dst, (i32 (zext C:$src)))],
 			  IIAlu>;
 
+def : Pat<(i32 (anyext C:$src)),
+		  (EXTCC C:$src)>;
+
 // Conversion from a register to a flag
 def TRNCC: F1<(outs C:$dst), (ins pred:$p, A:$src),
 			  "$p cmpne\t$src, 0 -> $dst",
@@ -806,7 +809,7 @@ def TRNCC: F1<(outs C:$dst), (ins pred:$p, A:$src),
 // Sign-extension of flags
 def : Pat<(sext_inreg A:$src, i1),
 		  (SRAaia (SLaia A:$src, (i32 31)), (i32 31))>;
-def : Pat<(sext C:$src),
+def : Pat<(i32 (sext C:$src)),
 		  (SRAaia (SLaia (EXTCC C:$src), (i32 31)), (i32 31))>;
 
 // Special case where we do not need to extract flag explicitly

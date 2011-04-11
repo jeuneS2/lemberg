@@ -133,6 +133,8 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 
 	setOperationAction(ISD::FDIV, MVT::f32, Expand);
 	setOperationAction(ISD::FDIV, MVT::f64, Expand);
+	setOperationAction(ISD::FPOW, MVT::f32, Expand);
+	setOperationAction(ISD::FPOW, MVT::f64, Expand);
 	setOperationAction(ISD::UINT_TO_FP, MVT::i32, Expand);
 	setOperationAction(ISD::FP_TO_UINT, MVT::i32, Expand);
 
