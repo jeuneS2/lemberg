@@ -17,6 +17,7 @@ vcom $OPTIONS ../src/mem_pack.vhd
 vcom $OPTIONS ../src/op_pack.vhd
 vcom $OPTIONS ../src/jmp_pack.vhd
 vcom $OPTIONS ../src/io_pack.vhd
+vcom $OPTIONS ../src/io/pin_pack.vhd
 vcom $OPTIONS ../src/fpu/fpu_pack.vhd
 vcom $OPTIONS ../src/fetch.vhd
 vcom $OPTIONS ../src/imem_block.vhd
@@ -36,6 +37,7 @@ vcom $OPTIONS ../src/cache/lru.vhd
 vcom $OPTIONS ../src/cache/stack.vhd
 vcom $OPTIONS ../src/cache/datacache.vhd
 vcom $OPTIONS ../src/fpu/cmp.vhd
+vcom $OPTIONS ../src/fpu/cvt.vhd
 vcom $OPTIONS ../src/fpu/mac.vhd
 vcom $OPTIONS ../src/fpu/fpu.vhd
 vcom $OPTIONS ../src/core.vhd

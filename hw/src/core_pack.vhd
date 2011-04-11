@@ -21,8 +21,6 @@ use ieee.std_logic_1164.all;
 
 package core_pack is
 
-	constant CLOCK_FREQ : integer := 75000000;
-	
 	-- width of a word
 	constant DATA_WIDTH_BITS  : integer := 5;
 	constant DATA_WIDTH       : integer := 2**DATA_WIDTH_BITS;
@@ -49,7 +47,7 @@ package core_pack is
 	
 	-- bits to address memory
 	constant ADDR_WIDTH       : integer := 21;
-	
+
 	-- width of pc, determines size of method cache
 	constant PC_WIDTH         : integer := 15;
 

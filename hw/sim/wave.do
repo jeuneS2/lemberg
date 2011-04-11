@@ -2,8 +2,8 @@ onerror {resume}
 quietly WaveActivateNextPane {} 0
 add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/clk
 add wave -noupdate -format Logic /cpu_tb/cpu/core/reset
-add wave -noupdate -format Logic /cpu_tb/cpu/rxd
-add wave -noupdate -format Logic /cpu_tb/cpu/txd
+add wave -noupdate -format Logic /cpu_tb/io_in.rxd
+add wave -noupdate -format Logic /cpu_tb/io_out.txd
 add wave -noupdate -divider decoder
 add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/core/dec_op
 add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/core/decode/jmpop
@@ -166,18 +166,8 @@ add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/sc_mem_if/sc_m
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/sc_mem_if/state
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/sc_mem_if/wait_state
 add wave -noupdate -divider ram
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/ram_a
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/ram_d
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/ram_din
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/ram_dout
-add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/ram_dout_en
-add wave -noupdate -format Logic /cpu_tb/ram_clk
-add wave -noupdate -format Logic /cpu_tb/ram_cs
-add wave -noupdate -format Logic /cpu_tb/ram_ncs
-add wave -noupdate -format Logic /cpu_tb/ram_nsc
-add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/ram_noe
-add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/ram_nwe
-add wave -noupdate -format Literal /cpu_tb/cpu/ram_nbw
+add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/ram_inout
+add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/ram_out
 add wave -noupdate -divider iomux
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/cntmux_next
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/cntmux_reg

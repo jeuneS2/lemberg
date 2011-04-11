@@ -42,6 +42,7 @@ use IEEE.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 use work.mem_pack.all;
+use work.pin_pack.all;
 
 entity sc_mem_if is
 generic (ram_ws : integer; addr_bits : integer);
@@ -58,16 +59,8 @@ port (
 
 -- memory interface
 
-	ram_addr	: out std_logic_vector(addr_bits-1 downto 0);
-	ram_dout	: out std_logic_vector(31 downto 0);
-	ram_din		: in std_logic_vector(31 downto 0);
-	ram_dout_en	: out std_logic;
-	ram_clk		: out std_logic;
-	ram_nsc		: out std_logic;
-	ram_ncs		: out std_logic;
-	ram_noe		: out std_logic;
-	ram_nwe		: out std_logic;
-	ram_nbw     : out std_logic_vector(3 downto 0)
+	ram_out     : out   sram_pin_out_type;
+	ram_inout   : inout sram_pin_inout_type
 );
 end sc_mem_if;
 
@@ -86,19 +79,20 @@ architecture rtl of sc_mem_if is
 	signal wait_state	: unsigned(3 downto 0);
 	signal cnt			: unsigned(1 downto 0);
 
+	signal cs           : std_logic;
 	signal dout_ena		: std_logic;
 	signal rd_data_ena	: std_logic;
 	
 	signal ram_ws_wr	: integer;
 
-	signal ram_din_reg : std_logic_vector(31 downto 0);
+	signal ram_dout     : std_logic_vector(31 downto 0);
+	signal ram_din      : std_logic_vector(31 downto 0);
+	signal ram_din_reg  : std_logic_vector(31 downto 0);
 	
 begin
 	
 	ram_ws_wr <= ram_ws; -- no additional wait state for SSRAM
 
-	ram_dout_en <= dout_ena;
-	
 	sc_mem_in.rdy_cnt <= cnt;
 
 --
@@ -108,14 +102,14 @@ process(clk, reset)
 begin
 	if reset='0' then
 
-		ram_addr <= (others => '0');
+		ram_out.addr <= (others => '0');
 		ram_dout <= (others => '0');
 		sc_mem_in.rd_data <= (others => '0');
 
 	elsif rising_edge(clk) then
 
 		if sc_mem_out.rd='1' or sc_mem_out.wr='1' then
-			ram_addr <= sc_mem_out.address(addr_bits-1 downto 0);
+			ram_out.addr <= sc_mem_out.address(addr_bits-1 downto 0);
 		end if;
 		if sc_mem_out.wr='1' then
 			ram_dout <= sc_mem_out.wr_data;
@@ -128,7 +122,7 @@ begin
 end process;
 
 -- inverted clock to have some setup time
-ram_clk <= not clk;
+ram_out.clk <= not clk;
 
 process(clk, reset)
 begin
@@ -194,23 +188,23 @@ begin
 	if (reset='0') then
 		state <= idl;
 		dout_ena <= '0';
-		ram_nsc <= '1';
-		ram_ncs <= '1';
-		ram_noe <= '1';
+		cs <= '0';
+		ram_out.nsc <= '1';
+		ram_out.noe <= '1';
+		ram_out.nwe <= '1';
+		ram_out.nbw <= (others => '1');
 		rd_data_ena <= '0';
-		ram_nwe <= '1';
-		ram_nbw <= (others => '1');
 
 	elsif rising_edge(clk) then
 
 		state <= next_state;
 		dout_ena <= '0';
-		ram_nsc <= '1';
-		ram_ncs <= '1';
-		ram_noe <= '1';
+		cs <= '0';
+		ram_out.nsc <= '1';
+		ram_out.noe <= '1';
+		ram_out.nwe <= '1';
+		ram_out.nbw <= (others => '1');
 		rd_data_ena <= '0';
-		ram_nwe <= '1';
-		ram_nbw <= (others => '1');
 
 		case next_state is
 
@@ -218,23 +212,23 @@ begin
 
 			-- the wait state
 			when rd1 =>
-				ram_nsc <= '0';
-				ram_ncs <= '0';
-				ram_noe <= '0';
+				cs <= '1';
+				ram_out.nsc <= '0';
+				ram_out.noe <= '0';
 
 			-- last read state
 			when rd2 =>
-				ram_noe <= '0';
+				ram_out.noe <= '0';
 				if wait_state=2 then
 					rd_data_ena <= '1';					
 				end if;
 				
 			-- write address/data state
 			when wr1 =>
-				ram_nsc <= '0';
-				ram_ncs <= '0';
-				ram_nwe <= '0';
-				ram_nbw <= not sc_mem_out.byte_ena;
+				cs <= '1';
+				ram_out.nsc <= '0';
+				ram_out.nwe <= '0';
+				ram_out.nbw <= not sc_mem_out.byte_ena;
 				dout_ena <= '1';
 			
 			-- write enable state	
@@ -289,5 +283,23 @@ begin
 
 	end if;
 end process;
+
+-- handle ram connection
+process(dout_ena, ram_dout)
+begin
+	if dout_ena='1' then
+		ram_inout.d <= ram_dout;
+	else
+		ram_inout.d <= (others => 'Z');
+	end if;
+end process;
+ram_din <= ram_inout.d;
+
+ram_out.ngw   <= '1';
+ram_out.nce1  <= not cs;
+ram_out.ce2   <= cs;
+ram_out.nce3  <= not cs;
+ram_out.nadsp <= '1';
+ram_out.nadv  <= '1';
 
 end rtl;

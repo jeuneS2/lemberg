@@ -23,28 +23,18 @@ use ieee.numeric_std.all;
 use work.core_pack.all;
 use work.mem_pack.all;
 use work.io_pack.all;
+use work.pin_pack.all;
 
 entity cpu is
 	
 	port (
-		clk_pin : in  std_logic;
+		clk_pin        : in    std_logic;
 
-		ram_a	: out std_logic_vector(SRAM_ADDR_WIDTH-1 downto 0);
-		ram_d	: inout std_logic_vector(31 downto 0);
-		ram_clk : out std_logic;
-		ram_nsc : out std_logic;
-		ram_ncs	: out std_logic;
-		ram_cs	: out std_logic;
-		ram_noe	: out std_logic;
-		ram_nwe	: out std_logic;
-		ram_nbw	: out std_logic_vector(3 downto 0);
-		
-		txd     : out std_logic;
-		rxd     : in  std_logic;
+		sram_pin_out   : out   sram_pin_out_type;
+		sram_pin_inout : inout sram_pin_inout_type;
 
-		-- helper signals for fixed values
-		high    : out std_logic;
-		low     : out std_logic);
+		io_pin_out     : out   io_pin_out_type;
+		io_pin_in      : in    io_pin_in_type);
 	
 end cpu;
 
@@ -63,11 +53,6 @@ architecture behavior of cpu is
 	signal sram_in     : sc_in_type;
 	signal io_out      : sc_out_type;
 	signal io_in       : sc_in_type;
-
-	signal ram_dout	   : std_logic_vector(31 downto 0);
-	signal ram_din	   : std_logic_vector(31 downto 0);
-	signal ram_dout_en : std_logic;	
-	signal ram_ncs_int : std_logic;
 	
 begin  -- behavior
 
@@ -102,25 +87,17 @@ begin  -- behavior
 			reset       => reset,
 			sc_mem_out  => sram_out,
 			sc_mem_in   => sram_in,
-			ram_addr    => ram_a,
-			ram_dout    => ram_dout,
-			ram_din     => ram_din,
-			ram_dout_en => ram_dout_en,
-			ram_clk     => ram_clk,
-			ram_nsc     => ram_nsc,
-			ram_ncs     => ram_ncs_int,
-			ram_noe     => ram_noe,
-			ram_nwe     => ram_nwe,
-			ram_nbw     => ram_nbw);
+			ram_out     => sram_pin_out,
+			ram_inout   => sram_pin_inout);
 
 	sc_io: entity work.sc_io
 		port map (
-			clk		=> clk,
-			reset	=> reset,
-			cpu_out => io_out,
-			cpu_in	=> io_in,
-			rxd		=> rxd,
-			txd		=> txd);
+			clk		 => clk,
+			reset	 => reset,
+			cpu_out  => io_out,
+			cpu_in 	 => io_in,
+			io_out   => io_pin_out,
+			io_in    => io_pin_in);
 		
 	pll: entity work.pll
 		port map (
@@ -142,23 +119,5 @@ begin  -- behavior
 			end if;
 		end if;
 	end process sync;
-
-	-- helper levels
-	high <= '1';
-	low <= '0';
-	
-	-- handle ram connection
-	process(ram_dout_en, ram_dout)
-	begin
-		if ram_dout_en='1' then
-			ram_d <= ram_dout;
-		else
-			ram_d <= (others => 'Z');
-		end if;
-	end process;
-	ram_din <= ram_d;
-	
-	ram_ncs <= ram_ncs_int;
-	ram_cs <= not ram_ncs_int;
 
 end behavior;
