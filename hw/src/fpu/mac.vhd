@@ -42,7 +42,7 @@ architecture behavior of mac is
 	signal r, l, c : float(exponent_width downto -fraction_width);
 
 	constant round_style : round_type := float_round_style;  -- rounding option
-	constant guard       : NATURAL    := float_guard_bits;  -- number of guard bits
+	constant guard       : NATURAL    := float_guard_bits;   -- number of guard bits
 	constant check_error : BOOLEAN    := float_check_error;  -- check for errors
 	constant denormalize : BOOLEAN    := float_denormalize;  -- Use IEEE extended FP
 
@@ -91,13 +91,13 @@ begin  -- behavior
 		variable sfract, ufract            : UNSIGNED (fraction_width+1+guard downto 0);  -- result fraction
 		variable exponl, exponr, exponc    : SIGNED (exponent_width-1 downto 0);  -- exponents
 		variable rexpon, rexpon2           : SIGNED (exponent_width+1 downto 0);  -- result exponent
-		variable shifty                    : INTEGER;      -- denormal shift
+		variable shifty                    : INTEGER; -- denormal shift
 		variable shiftx                    : SIGNED (rexpon'range);  -- shift fractions
 		variable fp_sign                   : STD_ULOGIC;  -- sign of result
 		variable signl, signr, signc       : STD_ULOGIC;
 		variable lresize, rresize          : UNRESOLVED_float (exponent_width downto -fraction_width);
 		variable cresize                   : UNRESOLVED_float (exponent_width downto -fraction_width - guard);
-		variable leftright                 : BOOLEAN;     -- left or right used
+		variable leftright                 : BOOLEAN; -- left or right used
 		variable sticky                    : STD_ULOGIC;  -- Holds precision for rounding
 
 	begin  -- process compute
@@ -259,7 +259,7 @@ begin  -- behavior
 					--                             - fracts'length downto 0));
 					sticky := '0';
 					for i in rfract_reg'high downto 0 loop
-						if i <= to_integer(-shiftx_reg)+rfract_reg'high-fracts'length then
+						if i <= to_integer(shiftx_reg)+rfract_reg'high-fracts'length then
 							sticky := sticky or rfract_reg(i);				
 						end if;
 					end loop;  -- i

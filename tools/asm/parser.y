@@ -459,8 +459,8 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 	  {
 		  $$.op = $2;
 		  $$.fmt.F.dest = $8;
-		  $$.fmt.F.src1 = $6;
-		  $$.fmt.F.src2 = $4;
+		  $$.fmt.F.src1 = $4;
+		  $$.fmt.F.src2 = $6;
 		  $$.fmt.F.op   = $3;
 		  $$.fmt.F.cond = $1;
 	  }
@@ -468,8 +468,8 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 	  {
 		  $$.op = $2;
 		  $$.fmt.F.dest = $8;
-		  $$.fmt.F.src1 = $6;
-		  $$.fmt.F.src2 = $4;
+		  $$.fmt.F.src1 = $4;
+		  $$.fmt.F.src2 = $6;
 		  $$.fmt.F.op   = $3;
 		  $$.fmt.F.cond = $1;
 	  }
@@ -504,8 +504,8 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 	  {
 		  $$.op = $2;
 		  $$.fmt.F.dest = $8;
-		  $$.fmt.F.src1 = $6;
-		  $$.fmt.F.src2 = $4;
+		  $$.fmt.F.src1 = $4;
+		  $$.fmt.F.src2 = $6;
 		  $$.fmt.F.op   = $3;
 		  $$.fmt.F.cond = $1;
 	  }
@@ -513,8 +513,8 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 	  {
 		  $$.op = $2;
 		  $$.fmt.F.dest = $8;
-		  $$.fmt.F.src1 = $6;
-		  $$.fmt.F.src2 = $4;
+		  $$.fmt.F.src1 = $4;
+		  $$.fmt.F.src2 = $6;
 		  $$.fmt.F.op   = $3;
 		  $$.fmt.F.cond = $1;
 	  }

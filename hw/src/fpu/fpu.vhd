@@ -390,8 +390,8 @@ begin  -- behavior
 			-- FSUB == A * -1.0 + B
 			when FPU_FSUB => 
 				single_rddataA <= singleA;
-				single_rddataB <= float32(to_std_logic_vector(X"BF800000"));
-				single_rddataC <= singleB;
+				single_rddataB <= float32(to_std_logic_vector(X"3F800000"));
+				single_rddataC <= -singleB;
 			-- FMUL == A * B + 0.0
 			when FPU_FMUL => 
 				single_rddataA <= singleA;
@@ -428,8 +428,8 @@ begin  -- behavior
 			-- DSUB == A * -1.0 + B
 			when FPU_DSUB => 
 				double_rddataA <= doubleA;
-				double_rddataB <= float64(to_std_logic_vector(X"BFF0000000000000"));
-				double_rddataC <= doubleB;
+				double_rddataB <= float64(to_std_logic_vector(X"3FF0000000000000"));
+				double_rddataC <= -doubleB;
 			-- DMUL == A * B + 0.0
 			when FPU_DMUL => 
 				double_rddataA <= doubleA;

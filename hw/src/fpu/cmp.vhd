@@ -50,16 +50,16 @@ begin  -- behavior
 		if clk'event and clk = '1' then  -- rising clock edge
 			if ena = '1' then
 				if stages = 1 then
-					if Unordered(b, a) then cmpunord := '1'; else cmpunord := '0'; end if;
-					cmpeq := \?=\ (b, a);
-					cmplt := \?<\ (b, a);
+					if Unordered(a, b) then cmpunord := '1'; else cmpunord := '0'; end if;
+					cmpeq := \?=\ (a, b);
+					cmplt := \?<\ (a, b);
 					cmpgt := not (cmpeq or cmplt);
 				else
 					a_reg <= a;
 					b_reg <= b;
-					if Unordered(b_reg, a_reg) then cmpunord := '1'; else cmpunord := '0'; end if;
-					cmpeq := \?=\ (b_reg, a_reg);
-					cmplt := \?<\ (b_reg, a_reg);
+					if Unordered(a_reg, b_reg) then cmpunord := '1'; else cmpunord := '0'; end if;
+					cmpeq := \?=\ (a_reg, b_reg);
+					cmplt := \?<\ (a_reg, b_reg);
 					cmpgt := not (cmpeq or cmplt);					
 				end if;
 
