@@ -46,7 +46,7 @@ set_global_assignment -name USE_GENERATED_PHYSICAL_CONSTRAINTS OFF -section_id e
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
-set_global_assignment -name MUX_RESTRUCTURE OFF
+set_global_assignment -name MUX_RESTRUCTURE ON
 set_global_assignment -name ADV_NETLIST_OPT_SYNTH_WYSIWYG_REMAP ON
 set_global_assignment -name REMOVE_REDUNDANT_LOGIC_CELLS ON
 set_global_assignment -name ALLOW_ANY_ROM_SIZE_FOR_RECOGNITION ON
@@ -89,7 +89,7 @@ set_global_assignment -name DEVICE_FILTER_SPEED_GRADE FASTEST
 set_global_assignment -name TIMEQUEST_DO_REPORT_TIMING ON
 set_global_assignment -name SAVE_DISK_SPACE OFF
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS ON
-set_global_assignment -name ROUTER_EFFORT_MULTIPLIER 4.0
+set_global_assignment -name ROUTER_EFFORT_MULTIPLIER 1.0
 set_global_assignment -name AUTO_GLOBAL_MEMORY_CONTROLS ON
 
 set_global_assignment -name PARALLEL_SYNTHESIS ON
@@ -105,71 +105,7 @@ set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
 
 
 set_location_assignment PIN_AD15 -to clk_pin
-set_location_assignment PIN_D21 -to rxd
-set_location_assignment PIN_E21 -to txd
 
-set_location_assignment PIN_AG8 -to ram_a[0]
-set_location_assignment PIN_AF8 -to ram_a[1]
-set_location_assignment PIN_AF14 -to ram_a[10]
-set_location_assignment PIN_AG14 -to ram_a[11]
-set_location_assignment PIN_AE15 -to ram_a[12]
-set_location_assignment PIN_AF15 -to ram_a[13]
-set_location_assignment PIN_AC16 -to ram_a[14]
-set_location_assignment PIN_AF20 -to ram_a[15]
-set_location_assignment PIN_AG20 -to ram_a[16]
-set_location_assignment PIN_AE11 -to ram_a[17]
-set_location_assignment PIN_AF11 -to ram_a[18]
-set_location_assignment PIN_AH7 -to ram_a[2]
-set_location_assignment PIN_AG7 -to ram_a[3]
-set_location_assignment PIN_AG6 -to ram_a[4]
-set_location_assignment PIN_AG5 -to ram_a[5]
-set_location_assignment PIN_AE12 -to ram_a[6]
-set_location_assignment PIN_AG12 -to ram_a[7]
-set_location_assignment PIN_AD13 -to ram_a[8]
-set_location_assignment PIN_AE13 -to ram_a[9]
-set_location_assignment PIN_AG17 -to ram_nsc
-set_location_assignment PIN_AG19 -to ram_cs
-set_location_assignment PIN_AD22 -to ram_ncs
-set_location_assignment PIN_AD7 -to ram_clk
-set_location_assignment PIN_AH10 -to ram_d[0]
-set_location_assignment PIN_AJ10 -to ram_d[1]
-set_location_assignment PIN_AH17 -to ram_d[10]
-set_location_assignment PIN_AJ18 -to ram_d[11]
-set_location_assignment PIN_AH18 -to ram_d[12]
-set_location_assignment PIN_AK19 -to ram_d[13]
-set_location_assignment PIN_AJ19 -to ram_d[14]
-set_location_assignment PIN_AK23 -to ram_d[15]
-set_location_assignment PIN_AJ20 -to ram_d[16]
-set_location_assignment PIN_AK21 -to ram_d[17]
-set_location_assignment PIN_AJ21 -to ram_d[18]
-set_location_assignment PIN_AK22 -to ram_d[19]
-set_location_assignment PIN_AK10 -to ram_d[2]
-set_location_assignment PIN_AJ22 -to ram_d[20]
-set_location_assignment PIN_AH15 -to ram_d[21]
-set_location_assignment PIN_AJ15 -to ram_d[22]
-set_location_assignment PIN_AJ16 -to ram_d[23]
-set_location_assignment PIN_AK14 -to ram_d[24]
-set_location_assignment PIN_AJ14 -to ram_d[25]
-set_location_assignment PIN_AJ13 -to ram_d[26]
-set_location_assignment PIN_AH13 -to ram_d[27]
-set_location_assignment PIN_AK12 -to ram_d[28]
-set_location_assignment PIN_AK7 -to ram_d[29]
-set_location_assignment PIN_AJ11 -to ram_d[3]
-set_location_assignment PIN_AJ8 -to ram_d[30]
-set_location_assignment PIN_AK8 -to ram_d[31]
-set_location_assignment PIN_AK11 -to ram_d[4]
-set_location_assignment PIN_AH12 -to ram_d[5]
-set_location_assignment PIN_AJ12 -to ram_d[6]
-set_location_assignment PIN_AH16 -to ram_d[7]
-set_location_assignment PIN_AK17 -to ram_d[8]
-set_location_assignment PIN_AJ17 -to ram_d[9]
-set_location_assignment PIN_AG18 -to high
-set_location_assignment PIN_AD18 -to ram_noe
-set_location_assignment PIN_AF18 -to ram_nwe
-set_location_assignment PIN_AC21 -to ram_nbw[0]
-set_location_assignment PIN_AC20 -to ram_nbw[1]
-set_location_assignment PIN_AD20 -to ram_nbw[2]
-set_location_assignment PIN_AH20 -to ram_nbw[3]
 
 set_global_assignment -name OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name STRATIXII_OPTIMIZATION_TECHNIQUE SPEED
@@ -194,7 +130,7 @@ set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulati
 set_global_assignment -name EDA_MAP_ILLEGAL_CHARACTERS ON -section_id eda_simulation
 set_global_assignment -name EDA_NETLIST_WRITER_OUTPUT_DIR ../sim -section_id eda_simulation
 set_global_assignment -name EDA_ENABLE_GLITCH_FILTERING ON -section_id eda_simulation
-set_global_assignment -name EDA_WRITE_NODES_FOR_POWER_ESTIMATION ALL_NODES -section_id eda_simulation
+set_global_assignment -name EDA_WRITE_NODES_FOR_POWER_ESTIMATION OFF -section_id eda_simulation
 set_global_assignment -name EDA_TEST_BENCH_DESIGN_INSTANCE_NAME cpu -section_id eda_simulation
 set_global_assignment -name POWER_VCD_FILTER_GLITCHES OFF
 set_global_assignment -name POWER_REPORT_SIGNAL_ACTIVITY ON
@@ -209,7 +145,6 @@ set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/gen_utils.vhd -section_id
 set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/conversions.vhd -section_id cpu_tb
 set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/sim_ssram_512x36.vhd -section_id cpu_tb
 set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/cpu_tb.vhd -section_id cpu_tb
-set_global_assignment -name EDA_NATIVELINK_SIMULATION_SETUP_SCRIPT ../sim/DSE_dump_all_vcd_nodes.tcl -section_id eda_simulation
 set_global_assignment -name OPTIMIZE_HOLD_TIMING "ALL PATHS"
 set_global_assignment -name AUTO_RESOURCE_SHARING ON
 set_global_assignment -name POWER_INPUT_FILE_NAME ../sim/DSE.vcd -section_id dse.vcd
@@ -222,19 +157,12 @@ set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_a
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_d
 set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to ram_d
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_clk
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_nsc
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_ncs
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_cs
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_noe
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to ram_nwe
-set_instance_assignment -name FAST_INPUT_REGISTER ON -to rxd
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to txd
 set_instance_assignment -name POWER_READ_INPUT_FILE dse.vcd -to cpu
 set_instance_assignment -name GLOBAL_SIGNAL "GLOBAL CLOCK" -to "pll:pll|altpll:altpll_component|_clk0"
 set_global_assignment -name EDA_DESIGN_ENTRY_SYNTHESIS_TOOL "Synplify Pro"
 set_global_assignment -name EDA_LMF_FILE synplcty.lmf -section_id eda_design_synthesis
 set_global_assignment -name EDA_INPUT_DATA_FORMAT VQM -section_id eda_design_synthesis
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC_FOR_AREA ON
 set_global_assignment -name SDC_FILE lemberg.sdc
 set_global_assignment -name VHDL_FILE ../src/core_pack.vhd
 set_global_assignment -name VHDL_FILE ../src/reg_pack.vhd
@@ -243,6 +171,7 @@ set_global_assignment -name VHDL_FILE ../src/op_pack.vhd
 set_global_assignment -name VHDL_FILE ../src/mem_pack.vhd
 set_global_assignment -name VHDL_FILE ../src/jmp_pack.vhd
 set_global_assignment -name VHDL_FILE ../src/io_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/io/pin_pack.vhd
 set_global_assignment -name VHDL_FILE ../src/fpu/fpu_pack.vhd
 set_global_assignment -name VHDL_FILE ../src/fetch.vhd
 set_global_assignment -name VHDL_FILE ../src/imem_block.vhd
@@ -265,6 +194,7 @@ set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/fixed_float_types_c.v
 set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/fixed_pkg_c.vhdl -library ieee_proposed
 set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/float_pkg_c.vhdl -library ieee_proposed
 set_global_assignment -name VHDL_FILE ../src/fpu/cmp.vhd
+set_global_assignment -name VHDL_FILE ../src/fpu/cvt.vhd
 set_global_assignment -name VHDL_FILE ../src/fpu/mac.vhd
 set_global_assignment -name VHDL_FILE ../src/fpu/fpu.vhd
 set_global_assignment -name VHDL_FILE ../src/core.vhd
@@ -272,10 +202,76 @@ set_global_assignment -name VHDL_FILE ../src/iomux.vhd
 set_global_assignment -name VHDL_FILE ../src/io/sc_ssram32.vhd
 set_global_assignment -name VHDL_FILE ../src/io/fifo.vhd
 set_global_assignment -name VHDL_FILE ../src/io/sc_uart.vhd
+set_global_assignment -name VHDL_FILE ../bootrom/bootrom.vhd
+set_global_assignment -name VHDL_FILE ../src/io/sc_io.vhd
 set_global_assignment -name VHDL_FILE ../src/pll.vhd
 set_global_assignment -name VHDL_FILE ../src/cpu.vhd
-set_instance_assignment -name DUPLICATE_ATOM fpu_flags -from "core:core|flags:flags|flags" -to "core:core|fpu:fpu|*"
-set_instance_assignment -name DUPLICATE_ATOM jmp_flags -from "core:core|flags:flags|flags" -to "core:core|jumpunit:jumpunit|*"
-set_instance_assignment -name DUPLICATE_ATOM mem_flags -from "core:core|flags:flags|flags" -to "core:core|memunit:memunit|*"
-set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC_FOR_AREA ON
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name MISC_FILE /mnt/local/lemberg/lemberg/hw/quartus/lemberg.dpf
+set_location_assignment PIN_D21 -to io_pin_in.rxd
+set_location_assignment PIN_E21 -to io_pin_out.txd
+set_location_assignment PIN_AK8 -to sram_pin_inout.d[31]
+set_location_assignment PIN_AJ8 -to sram_pin_inout.d[30]
+set_location_assignment PIN_AK7 -to sram_pin_inout.d[29]
+set_location_assignment PIN_AK12 -to sram_pin_inout.d[28]
+set_location_assignment PIN_AH13 -to sram_pin_inout.d[27]
+set_location_assignment PIN_AJ13 -to sram_pin_inout.d[26]
+set_location_assignment PIN_AJ14 -to sram_pin_inout.d[25]
+set_location_assignment PIN_AK14 -to sram_pin_inout.d[24]
+set_location_assignment PIN_AJ16 -to sram_pin_inout.d[23]
+set_location_assignment PIN_AJ15 -to sram_pin_inout.d[22]
+set_location_assignment PIN_AH15 -to sram_pin_inout.d[21]
+set_location_assignment PIN_AJ22 -to sram_pin_inout.d[20]
+set_location_assignment PIN_AK22 -to sram_pin_inout.d[19]
+set_location_assignment PIN_AJ21 -to sram_pin_inout.d[18]
+set_location_assignment PIN_AK21 -to sram_pin_inout.d[17]
+set_location_assignment PIN_AJ20 -to sram_pin_inout.d[16]
+set_location_assignment PIN_AK23 -to sram_pin_inout.d[15]
+set_location_assignment PIN_AJ19 -to sram_pin_inout.d[14]
+set_location_assignment PIN_AK19 -to sram_pin_inout.d[13]
+set_location_assignment PIN_AH18 -to sram_pin_inout.d[12]
+set_location_assignment PIN_AJ18 -to sram_pin_inout.d[11]
+set_location_assignment PIN_AH17 -to sram_pin_inout.d[10]
+set_location_assignment PIN_AJ17 -to sram_pin_inout.d[9]
+set_location_assignment PIN_AK17 -to sram_pin_inout.d[8]
+set_location_assignment PIN_AH16 -to sram_pin_inout.d[7]
+set_location_assignment PIN_AJ12 -to sram_pin_inout.d[6]
+set_location_assignment PIN_AH12 -to sram_pin_inout.d[5]
+set_location_assignment PIN_AK11 -to sram_pin_inout.d[4]
+set_location_assignment PIN_AJ11 -to sram_pin_inout.d[3]
+set_location_assignment PIN_AK10 -to sram_pin_inout.d[2]
+set_location_assignment PIN_AJ10 -to sram_pin_inout.d[1]
+set_location_assignment PIN_AH10 -to sram_pin_inout.d[0]
+set_location_assignment PIN_AF11 -to sram_pin_out.addr[18]
+set_location_assignment PIN_AE11 -to sram_pin_out.addr[17]
+set_location_assignment PIN_AG20 -to sram_pin_out.addr[16]
+set_location_assignment PIN_AF20 -to sram_pin_out.addr[15]
+set_location_assignment PIN_AC16 -to sram_pin_out.addr[14]
+set_location_assignment PIN_AF15 -to sram_pin_out.addr[13]
+set_location_assignment PIN_AE15 -to sram_pin_out.addr[12]
+set_location_assignment PIN_AG14 -to sram_pin_out.addr[11]
+set_location_assignment PIN_AF14 -to sram_pin_out.addr[10]
+set_location_assignment PIN_AE13 -to sram_pin_out.addr[9]
+set_location_assignment PIN_AD13 -to sram_pin_out.addr[8]
+set_location_assignment PIN_AG12 -to sram_pin_out.addr[7]
+set_location_assignment PIN_AE12 -to sram_pin_out.addr[6]
+set_location_assignment PIN_AG5 -to sram_pin_out.addr[5]
+set_location_assignment PIN_AG6 -to sram_pin_out.addr[4]
+set_location_assignment PIN_AG7 -to sram_pin_out.addr[3]
+set_location_assignment PIN_AH7 -to sram_pin_out.addr[2]
+set_location_assignment PIN_AF8 -to sram_pin_out.addr[1]
+set_location_assignment PIN_AG8 -to sram_pin_out.addr[0]
+set_location_assignment PIN_AG19 -to sram_pin_out.ce2
+set_location_assignment PIN_AD7 -to sram_pin_out.clk
+set_location_assignment PIN_AC18 -to sram_pin_out.nadsp
+set_location_assignment PIN_AD16 -to sram_pin_out.nadv
+set_location_assignment PIN_AH20 -to sram_pin_out.nbw[3]
+set_location_assignment PIN_AD20 -to sram_pin_out.nbw[2]
+set_location_assignment PIN_AC20 -to sram_pin_out.nbw[1]
+set_location_assignment PIN_AC21 -to sram_pin_out.nbw[0]
+set_location_assignment PIN_AH19 -to sram_pin_out.nce1
+set_location_assignment PIN_AD22 -to sram_pin_out.nce3
+set_location_assignment PIN_AG18 -to sram_pin_out.ngw
+set_location_assignment PIN_AD18 -to sram_pin_out.noe
+set_location_assignment PIN_AG17 -to sram_pin_out.nsc
+set_location_assignment PIN_AF18 -to sram_pin_out.nwe

@@ -60,7 +60,7 @@ begin  -- rtl
 	generic map (
 			addr_bits => UART_ADDR_WIDTH,
 			clk_freq  => CLOCK_FREQ,
-			baud_rate => CLOCK_FREQ/10, -- 115200,
+			baud_rate => 115200,
 			txf_depth => 32,
 			txf_thres => 16,
 			rxf_depth => 32,
