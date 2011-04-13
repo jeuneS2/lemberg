@@ -220,6 +220,9 @@ begin  -- rtl
 					next_in_mux <= BP;
 					next_bp_fetch <= '1';
 				end if;
+				if mem_in.rdy_cnt = 0 then
+					cpu_in.rd_data <= mem_in.rd_data;
+				end if;
 		end case;
 		
 	end process async;
