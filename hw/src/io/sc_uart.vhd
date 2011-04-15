@@ -171,6 +171,7 @@ begin
 
 			ua_rd <= '0';
 			rd_data(7 downto 0) <= (others => '0');
+			parity_mode <= PARITY_NONE;
 
 		elsif rising_edge(clk) then
 
@@ -282,7 +283,6 @@ begin
 			tsr <= "11111111111";
 			tf_rd <= '0';
 			ncts_buf <= "111";
-			i := 0;
 
 		elsif rising_edge(clk) then
 
@@ -294,7 +294,10 @@ begin
 				when s0 =>
 
 					-- even parity
-					parity_tx := ( (tf_dout(7) xor tf_dout(6)) xor (tf_dout(5) xOR tf_dout(4)) ) xor ( (tf_dout(3) xor tf_dout(2)) xor (tf_dout(1) xor tf_dout(0)) );
+					parity_tx := '0';
+					for k in 0 to 7 loop
+						parity_tx := parity_tx xor tf_dout(k);
+					end loop;  -- k
 
 					if (parity_mode = PARITY_ODD) then   -- odd parity
 						parity_tx := not parity_tx;
@@ -369,7 +372,6 @@ begin
 			rf_wr <= '0';
 			rx_clk_ena <= '0';
 			parity_error <= '0';
-			i := 0;
 
 		elsif rising_edge(clk) then
 
@@ -392,10 +394,16 @@ begin
 						rsr(9 downto 0) <= rsr(10 downto 1);
 						i := i+1;
 
-						if (i=11) or (i=10 and parity_mode=PARITY_NONE) then
+						if i=11 then
 							uart_rx_state <= s2;
 						end if;
-						
+
+						if i=10 and parity_mode=PARITY_NONE then
+							rsr(10) <= rx_d;
+							rsr(9) <= rx_d;
+							rsr(8 downto 0) <= rsr(10 downto 2);
+							uart_rx_state <= s2;
+						end if;						
 					end if;
 					
 				when s2 =>
@@ -403,7 +411,10 @@ begin
 					
 					if rsr(0)='0' and rsr(10)='1' then
 						
-						parity_rx := ( (rsr(8) xor rsr(7)) xor (rsr(6) xor rsr(5)) ) xor ( (rsr(4) xor rsr(3)) xor (rsr(2) xor rsr(1)) );
+						parity_rx := '0';
+						for k in 1 to 8 loop
+							parity_rx := parity_rx xor rsr(k);
+						end loop;  -- k
 
 						if (rsr(9) = parity_rx) then -- ok for even parity
 							parity_error <= '0';
