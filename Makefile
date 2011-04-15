@@ -1,5 +1,5 @@
-PROJECT_DIR=examples/md5
-PROJECT_NAME=md5
+PROJECT_DIR=examples/helloworld
+PROJECT_NAME=helloworld
 
 all: doc tools
 
@@ -12,7 +12,7 @@ configure-libc:
 	cd tools/libc/src; ./configure_lemberg
 
 configure-llvm:
-	cd tools/llvm; ./configure --target=lemberg
+	cd tools/llvm; ./configure --target=lemberg --enable-assertions
 
 # Building
 tools: asm lllib libc llvm
