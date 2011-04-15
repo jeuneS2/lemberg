@@ -109,6 +109,7 @@ begin  -- behavior
 	sync: process (clk)
 	begin  -- process sync
 		if clk'event and clk = '1' then  -- rising clock edge
+
 			if res_cnt = "000" then
 				reset <= '1';
 			else
@@ -116,6 +117,10 @@ begin  -- behavior
 				if pll_locked = '1' then
 					res_cnt <= res_cnt-1;					
 				end if;
+			end if;
+
+			if pll_locked = '0' then
+				res_cnt <= "111";
 			end if;
 		end if;
 	end process sync;
