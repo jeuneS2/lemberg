@@ -1,20 +1,35 @@
-\documentclass[10pt,a4paper]{article}
+\documentclass[10pt,DIV12]{scrartcl}
+
+%% Maky things look nice
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{bytefield}
-\usepackage{bera}
-\usepackage{color}
-\usepackage[DIV12]{typearea}
 
-\newcommand{\colorbitbox}[3]{%
+%% Fonts
+\usepackage{beraserif}
+\usepackage{beramono}
+\usepackage{droidsans}
+
+%% Colors
+\usepackage{graphicx}
+\usepackage{color}
+\definecolor{gray0}{gray}{0.95}
+\definecolor{gray1}{gray}{0.75}
+\definecolor{gray2}{gray}{0.55}
+\definecolor{gray3}{gray}{0.35}
+
+\newcommand{\BitBox}[2]{%
+  \bitbox{#1}{\raisebox{.9\baselineskip}{\rule{0pt}{1.5\baselineskip}#2}}}
+
+\newcommand{\ColorBitBox}[3]{%
   \rlap{\bitbox{#2}{\color{#1}\rule{\width}{\height}}}%
-  \bitbox{#2}{#3}}
+  \BitBox{#2}{#3}}
 
 \newcommand{\shl}{\textless$\,\!$\textless}
 \newcommand{\shr}{\textgreater$\,\!$\textgreater$\,\!$\textgreater}
 \newcommand{\ashr}{\textgreater$\,\!$\textgreater}
 
-\title{Lemberg}
+\title{\scalebox{1.6}{Lemberg}}
 \author{Wolfgang Puffitsch}
 \date{}
 
@@ -29,192 +44,197 @@
 \end{center}
 \end{quote}  
 
+\vspace{\stretch{1}}
+
+\tableofcontents
+
+\vspace{\stretch{1}}
+
+\pagebreak
+
 \section{Opcode Formats}
 
 \subsection{Bundle Formats}
 
-\setlength{\bitwidth}{.45em}
-\setlength{\byteheight}{3ex}
-
-\definecolor{gray0}{gray}{0.95}
-\definecolor{gray1}{gray}{0.75}
-\definecolor{gray2}{gray}{0.55}
-\definecolor{gray3}{gray}{0.35}
+\setlength{\bitwidth}{.43em}
+\setlength{\byteheight}{1.5\baselineskip}
 
 \noindent
 \begin{bytefield}{8}
 \bitheader[l]{0,4,8}\\
-\bitbox{4}{\texttt{\scriptsize 0000}} & \bitbox{4}{} \\
+\BitBox{4}{\texttt{\scriptsize 0000}} & \BitBox{4}{} \\
 \end{bytefield}
 
 \noindent
 \begin{bytefield}{32}
 \bitheader[l]{0,4,8,12,16,20,24,28,32}\\
-\bitbox{4}{\texttt{\scriptsize 0001}} & \colorbitbox{gray0}{25}{insn0} & \bitbox{3}{} \\
+\BitBox{4}{\texttt{\scriptsize 0001}} & \ColorBitBox{gray0}{25}{insn0} & \BitBox{3}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32}\\
-\bitbox{4}{\texttt{\scriptsize 0010}} & \colorbitbox{gray1}{25}{insn1} & \bitbox{3}{} \\
+\BitBox{4}{\texttt{\scriptsize 0010}} & \ColorBitBox{gray1}{25}{insn1} & \BitBox{3}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32}\\
-\bitbox{4}{\texttt{\scriptsize 0100}} & \colorbitbox{gray2}{25}{insn2} & \bitbox{3}{} \\
+\BitBox{4}{\texttt{\scriptsize 0100}} & \ColorBitBox{gray2}{25}{insn2} & \BitBox{3}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32}\\
-\bitbox{4}{\texttt{\scriptsize 1000}} & \colorbitbox{gray3}{25}{insn3} & \bitbox{3}{} \\
+\BitBox{4}{\texttt{\scriptsize 1000}} & \ColorBitBox{gray3}{25}{insn3} & \BitBox{3}{} \\
 \end{bytefield}  
 
 \noindent
 \begin{bytefield}{56}
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
-\bitbox{4}{\texttt{\scriptsize 0011}} &
-\colorbitbox{gray0}{25}{insn0} &
-\colorbitbox{gray1}{25}{insn1} &
-\bitbox{2}{} \\
+\BitBox{4}{\texttt{\scriptsize 0011}} &
+\ColorBitBox{gray0}{25}{insn0} &
+\ColorBitBox{gray1}{25}{insn1} &
+\BitBox{2}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
-\bitbox{4}{\texttt{\scriptsize 0101}} &
-\colorbitbox{gray0}{25}{insn0} &
-\colorbitbox{gray2}{25}{insn2} &
-\bitbox{2}{} \\
+\BitBox{4}{\texttt{\scriptsize 0101}} &
+\ColorBitBox{gray0}{25}{insn0} &
+\ColorBitBox{gray2}{25}{insn2} &
+\BitBox{2}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
-\bitbox{4}{\texttt{\scriptsize 1001}} &
-\colorbitbox{gray0}{25}{insn0} &
-\colorbitbox{gray3}{25}{insn3} &
-\bitbox{2}{} \\
+\BitBox{4}{\texttt{\scriptsize 1001}} &
+\ColorBitBox{gray0}{25}{insn0} &
+\ColorBitBox{gray3}{25}{insn3} &
+\BitBox{2}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
-\bitbox{4}{\texttt{\scriptsize 0110}} &
-\colorbitbox{gray1}{25}{insn1} &
-\colorbitbox{gray2}{25}{insn2} &
-\bitbox{2}{} \\
+\BitBox{4}{\texttt{\scriptsize 0110}} &
+\ColorBitBox{gray1}{25}{insn1} &
+\ColorBitBox{gray2}{25}{insn2} &
+\BitBox{2}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
-\bitbox{4}{\texttt{\scriptsize 1010}} &
-\colorbitbox{gray1}{25}{insn1} &
-\colorbitbox{gray3}{25}{insn3} &
-\bitbox{2}{} \\
+\BitBox{4}{\texttt{\scriptsize 1010}} &
+\ColorBitBox{gray1}{25}{insn1} &
+\ColorBitBox{gray3}{25}{insn3} &
+\BitBox{2}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56}\\
-\bitbox{4}{\texttt{\scriptsize 1100}} &
-\colorbitbox{gray2}{25}{insn2} &
-\colorbitbox{gray3}{25}{insn3} &
-\bitbox{2}{} \\
+\BitBox{4}{\texttt{\scriptsize 1100}} &
+\ColorBitBox{gray2}{25}{insn2} &
+\ColorBitBox{gray3}{25}{insn3} &
+\BitBox{2}{} \\
 
 \end{bytefield}  
 
 \noindent
 \begin{bytefield}{88}
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80}\\
-\bitbox{4}{\texttt{\scriptsize 0111}} &
-\colorbitbox{gray0}{25}{insn0} &
-\colorbitbox{gray1}{25}{insn1} &
-\colorbitbox{gray2}{25}{insn2} &
-\bitbox{1}{} \\
+\BitBox{4}{\texttt{\scriptsize 0111}} &
+\ColorBitBox{gray0}{25}{insn0} &
+\ColorBitBox{gray1}{25}{insn1} &
+\ColorBitBox{gray2}{25}{insn2} &
+\BitBox{1}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80}\\
-\bitbox{4}{\texttt{\scriptsize 1011}} &
-\colorbitbox{gray0}{25}{insn0} &
-\colorbitbox{gray1}{25}{insn1} &
-\colorbitbox{gray3}{25}{insn3} &
-\bitbox{1}{} \\
+\BitBox{4}{\texttt{\scriptsize 1011}} &
+\ColorBitBox{gray0}{25}{insn0} &
+\ColorBitBox{gray1}{25}{insn1} &
+\ColorBitBox{gray3}{25}{insn3} &
+\BitBox{1}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80}\\
-\bitbox{4}{\texttt{\scriptsize 1101}} &
-\colorbitbox{gray0}{25}{insn0} &
-\colorbitbox{gray2}{25}{insn2} &
-\colorbitbox{gray3}{25}{insn3} &
-\bitbox{1}{} \\
+\BitBox{4}{\texttt{\scriptsize 1101}} &
+\ColorBitBox{gray0}{25}{insn0} &
+\ColorBitBox{gray2}{25}{insn2} &
+\ColorBitBox{gray3}{25}{insn3} &
+\BitBox{1}{} \\
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80}\\
-\bitbox{4}{\texttt{\scriptsize 1110}} &
-\colorbitbox{gray1}{25}{insn1} &
-\colorbitbox{gray2}{25}{insn2} &
-\colorbitbox{gray3}{25}{insn3} &
-\bitbox{1}{} \\
+\BitBox{4}{\texttt{\scriptsize 1110}} &
+\ColorBitBox{gray1}{25}{insn1} &
+\ColorBitBox{gray2}{25}{insn2} &
+\ColorBitBox{gray3}{25}{insn3} &
+\BitBox{1}{} \\
 \end{bytefield}  
 
 \noindent
 \begin{bytefield}{104}
 \bitheader[l]{0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72,76,80,84,88,92,96,100,104}\\
-\bitbox{4}{\texttt{\scriptsize 1111}} &
-\colorbitbox{gray0}{25}{insn0} & 
-\colorbitbox{gray1}{25}{insn1} &
-\colorbitbox{gray2}{25}{insn2} &
-\colorbitbox{gray3}{25}{insn3} \\
+\BitBox{4}{\texttt{\scriptsize 1111}} &
+\ColorBitBox{gray0}{25}{insn0} & 
+\ColorBitBox{gray1}{25}{insn1} &
+\ColorBitBox{gray2}{25}{insn2} &
+\ColorBitBox{gray3}{25}{insn3} \\
 \end{bytefield}
 
+\pagebreak
 \subsection{Instruction Formats}
 
-\setlength{\bitwidth}{1em}
+\setlength{\bitwidth}{1.5em}
+\setlength{\byteheight}{1.5\baselineskip}
 
 \begin{itemize}
-\item Base format \textbf{B}:\\
+\item Base format \textsf{\textbf{B}}:\\
 
 \begin{bytefield}{25}
 \bitheader[l]{0-25}\\
-\bitbox{6}{opCode} \bitbox{5}{srcReg1} & \bitbox{5}{srcReg2} & \bitbox{5}{destReg} &
-\bitbox{1}{\texttt{0}} & \bitbox{1}{c} & \bitbox{2}{F} \\
-\bitbox{6}{opCode} & \bitbox{5}{srcReg} & \bitbox{5}{imm} & \bitbox{5}{destReg} &
-\bitbox{1}{\texttt{1}} & \bitbox{1}{c} & \bitbox{2}{F}
+\BitBox{6}{opCode} \BitBox{5}{srcReg1} & \BitBox{5}{srcReg2} & \BitBox{5}{destReg} &
+\BitBox{1}{\texttt{0}} & \BitBox{1}{c} & \BitBox{2}{F} \\
+\BitBox{6}{opCode} & \BitBox{5}{srcReg} & \BitBox{5}{imm} & \BitBox{5}{destReg} &
+\BitBox{1}{\texttt{1}} & \BitBox{1}{c} & \BitBox{2}{F}
 \end{bytefield}\\
 For comparison and test operations, destReg refers to a condition flag.
 
-\item Flag combination format \textbf{C}:\\
+\item Flag combination format \textsf{\textbf{C}}:\\
 
 \begin{bytefield}{25}
 \bitheader[l]{0-25}\\
-\bitbox{6}{opCode} & \bitbox{2}{--} & \bitbox{2}{d} &
- \bitbox{2}{--} & \bitbox{2}{s1} & \bitbox{2}{--} & \bitbox{2}{s2} &
-\bitbox{1}{!1} & \bitbox{1}{!2} & \bitbox{2}{op} &
-\bitbox{1}{c} & \bitbox{2}{F}
+\BitBox{6}{opCode} & \BitBox{2}{--} & \BitBox{2}{d} &
+ \BitBox{2}{--} & \BitBox{2}{s1} & \BitBox{2}{--} & \BitBox{2}{s2} &
+\BitBox{1}{i1} & \BitBox{1}{i2} & \BitBox{2}{op} &
+\BitBox{1}{c} & \BitBox{2}{F}
 \end{bytefield}
 
-\item Floating-point format \textbf{F}:\\
+\item Floating-point format \textsf{\textbf{F}}:\\
 
 \begin{bytefield}{25}
 \bitheader[l]{0-25}\\
-\bitbox{6}{opCode} & \bitbox{4}{dest} & \bitbox{4}{src1} & \bitbox{4}{src2} &  \bitbox{4}{op} &
-\bitbox{1}{c} & \bitbox{2}{F}
+\BitBox{6}{opCode} & \BitBox{4}{dest} & \BitBox{4}{src1} & \BitBox{4}{src2} &  \BitBox{4}{op} &
+\BitBox{1}{c} & \BitBox{2}{F}
 \end{bytefield}
 
-\item Global address format \textbf{G}:\\
+\item Global address format \textsf{\textbf{G}}:\\
 
 \begin{bytefield}{25}
 \bitheader[l]{0-25}\\
-\bitbox{6}{opCode} & \bitbox{19}{address}
+\BitBox{6}{opCode} & \BitBox{19}{address}
 \end{bytefield}
 
-\item Global address load format \textbf{H}:\\
+\item Global address load format \textsf{\textbf{H}}:\\
 
 \begin{bytefield}{25}
 \bitheader[l]{0-25}\\
-\bitbox{3}{opC.} & \bitbox{3}{dest} & \bitbox{19}{address}
+\BitBox{3}{opC.} & \BitBox{3}{dest} & \BitBox{19}{address}
 \end{bytefield}\\
 dest values \texttt{000}-\texttt{011} address r0-r3, values \texttt{100}-\texttt{111} address r16-r18.
 
-\item Immediate load format \textbf{I}:\\
+\item Immediate load format \textsf{\textbf{I}}:\\
 
 \begin{bytefield}{25}
 \bitheader[l]{0-25}\\
-\bitbox{6}{opCode} & \bitbox{5}{destReg} \bitbox{11}{imm} &
-\bitbox{1}{c} & \bitbox{2}{F}
+\BitBox{6}{opCode} & \BitBox{5}{destReg} \BitBox{11}{imm} &
+\BitBox{1}{c} & \BitBox{2}{F}
 \end{bytefield}
 
-\item Jump format \textbf{J}:\\
+\item Jump format \textsf{\textbf{J}}:\\
 
 \begin{bytefield}{25}
 \bitheader[l]{0-25}\\
-\bitbox{6}{opCode} & \bitbox{5}{target} & \bitbox{10}{} &
-\bitbox{1}{\texttt{0}} & \bitbox{1}{c} & \bitbox{2}{F} \\
-\bitbox{6}{opCode} & \bitbox{15}{offset} &
-\bitbox{1}{\texttt{1}} & \bitbox{1}{c} & \bitbox{2}{F}
+\BitBox{6}{opCode} & \BitBox{5}{target} & \BitBox{10}{} &
+\BitBox{1}{\texttt{0}} & \BitBox{1}{c} & \BitBox{2}{F} \\
+\BitBox{6}{opCode} & \BitBox{15}{offset} &
+\BitBox{1}{\texttt{1}} & \BitBox{1}{c} & \BitBox{2}{F}
 \end{bytefield}
 
-\item Load format \textbf{L}:\\
+\item Load format \textsf{\textbf{L}}:\\
 
 \begin{bytefield}{25}
 \bitheader[l]{0-25}\\
-\bitbox{6}{opCode} & \bitbox{5}{addrReg} & \bitbox{11}{offset} &
-\bitbox{1}{c} & \bitbox{2}{F}
+\BitBox{6}{opCode} & \BitBox{5}{addrReg} & \BitBox{11}{offset} &
+\BitBox{1}{c} & \BitBox{2}{F}
 \end{bytefield}
 
-\item Store format \textbf{S}:\\
+\item Store format \textsf{\textbf{S}}:\\
 
 \begin{bytefield}{25}
 \bitheader[l]{0-25}\\
-\bitbox{6}{opCode} & \bitbox{5}{addrReg} & \bitbox{5}{valReg} & \bitbox{5}{offset} &
-\bitbox{1}{\texttt{0}} & \bitbox{1}{c} & \bitbox{2}{F} \\
-\bitbox{6}{opCode} & \bitbox{5}{addrReg} & \bitbox{5}{imm} & \bitbox{5}{offset} &
-\bitbox{1}{\texttt{1}} & \bitbox{1}{c} & \bitbox{2}{F}
+\BitBox{6}{opCode} & \BitBox{5}{addrReg} & \BitBox{5}{valReg} & \BitBox{5}{offset} &
+\BitBox{1}{\texttt{0}} & \BitBox{1}{c} & \BitBox{2}{F} \\
+\BitBox{6}{opCode} & \BitBox{5}{addrReg} & \BitBox{5}{imm} & \BitBox{5}{offset} &
+\BitBox{1}{\texttt{1}} & \BitBox{1}{c} & \BitBox{2}{F}
 \end{bytefield}
 
 \end{itemize}
@@ -294,6 +314,10 @@ Index & Name & Purpose \\
   11 & \$ro & Return offset, global \\
   12 & \$ba & Base address, read only, global \\
   \cmidrule{1-3}
+  13 & ? & \\
+  14 & ? & \\
+  15 & ? & \\
+  \cmidrule{1-3}
   16 & \$f0, \$d0 & FPU register 0 \\
   17 & \$f1 & FPU register 1 \\
   18 & \$f2, \$d1 & FPU register 2 \\
@@ -317,11 +341,11 @@ Index & Name & Purpose \\
 
 \section{Operations}
 
-\begin{longtable}{llllp{.54\textwidth}}
+\begin{longtable}{llllp{.585\textwidth}}
 \toprule
-Opcode & Name & Format & Unit & Semantics \\
+Opcode & Name & Fmt & Unit & Semantics \\
 \midrule
-\multicolumn{5}{c}{\textbf{Arithmetic}} \\
+\multicolumn{5}{c}{\textsf{\textbf{Arithmetic}}} \\
 \cmidrule{1-5}
 \texttt{00 0000} & \texttt{add} & B & A & \texttt{dest = src1 + src2} \\
 \texttt{00 0001} & \texttt{sub} & B & A & \texttt{dest = src1 - src2} \\
@@ -332,7 +356,7 @@ Opcode & Name & Format & Unit & Semantics \\
 \texttt{00 0110} & \texttt{sl} & B & A & \texttt{dest = src1 \shl{} src2} \\
 \texttt{00 0111} & \texttt{sr} & B & A & \texttt{dest = src1 \shr{} src2} \\
 \texttt{00 1000} & \texttt{sra} & B & A & \texttt{dest = src1 \ashr{} src2} \\
-\texttt{00 1001} & \texttt{rl} & B & A & \texttt{dest = (src1 \shl{} src2) | (src1 \shr{} (32-src2))} \\
+\texttt{00 1001} & \texttt{rl} & B & A & \texttt{dest = (src1 \shl{} src2)|(src1 \shr{} (32-src2))} \\
 \texttt{00 1010} & \texttt{mul} & B & A & \texttt{\$mul = src1 * src2} \\
 \texttt{00 1011} & \texttt{carr} & B & A & \texttt{dest = ((int64\_t)src1+(int64\_t)src2) \shr{} 32} \\
 \texttt{00 1100} & \texttt{borr} & B & A & \texttt{dest = ((int64\_t)src1-(int64\_t)src2) \shr{} 32} \\
@@ -340,7 +364,7 @@ Opcode & Name & Format & Unit & Semantics \\
 \texttt{00 1110} & \texttt{?} & & & \\
 \texttt{00 1111} & \texttt{?} & & & \\
 \midrule
-\multicolumn{5}{c}{\textbf{Conditions}} \\
+\multicolumn{5}{c}{\textsf{\textbf{Conditions}}} \\
 \cmidrule{1-5}
 \texttt{010 000} & \texttt{cmpeq} & B & A & \texttt{dest = src1 == src2} \\
 \texttt{010 001} & \texttt{cmpne} & B & A & \texttt{dest = src1 != src2} \\
@@ -351,14 +375,14 @@ Opcode & Name & Format & Unit & Semantics \\
 \texttt{010 110} & \texttt{btest} & B & A & \texttt{dest = (src1 \& (1 \shl{} src)) != 0} \\
 \texttt{010 111} & \texttt{comb} & C & A & flag combination operation (see Section~\ref{sec:comb}) \\
 \midrule
-\multicolumn{5}{c}{\textbf{Constants}} \\
+\multicolumn{5}{c}{\textsf{\textbf{Constants}}} \\
 \cmidrule{1-5}
 \texttt{0110 00} & \texttt{ldi} & I & A & \texttt{dest = imm}, signed \\
 \texttt{0110 01} & \texttt{ldiu} & I & A & \texttt{dest = imm}, unsigned \\
 \texttt{0110 10} & \texttt{ldim} & I & A & \texttt{dest |= imm \shl{} 11}, signed \\
 \texttt{0110 11} & \texttt{ldih} & I & A & \texttt{dest |= imm \shl{} 21} \\
 \midrule
-\multicolumn{5}{c}{\textbf{Flow Control}} \\
+\multicolumn{5}{c}{\textsf{\textbf{Flow Control}}} \\
 \cmidrule{1-5}
 \texttt{0111 00} & \texttt{br} & J & J & \texttt{pc = imm ?\ pc+offset :\ target} \\
 \texttt{0111 01} & \texttt{call} & B & J,M & \texttt{\$rb = \$ba, \$ro = pc, \$ba = src2, pc = 0} \\
@@ -367,7 +391,7 @@ Opcode & Name & Format & Unit & Semantics \\
 \midrule
 \pagebreak
 \midrule
-\multicolumn{5}{c}{\textbf{Memory Accesses}} \\
+\multicolumn{5}{c}{\textsf{\textbf{Memory Accesses}}} \\
 \cmidrule{1-5}
 \texttt{10 0000} & \texttt{stm.a} & S & M & \texttt{[addr+offset*4] = val}, all caches, int32\_t \\
 \texttt{10 0001} & \texttt{stmh.a} & S & M & \texttt{[addr+offset*2] = val}, all caches, int16\_t \\
@@ -378,18 +402,18 @@ Opcode & Name & Format & Unit & Semantics \\
 \texttt{10 0110} & \texttt{wb.s} & L & M & write back data from stack cache \\
 \texttt{10 0111} & \texttt{ldm.b} & L & M & issue \texttt{\$mem = [addr+offset]}, bypass caches \\
 \texttt{10 1000} & \texttt{ldm.d} & L & M & issue \texttt{\$mem = [addr+offset]}, direct mapped cache \\
-\texttt{10 1001} & \texttt{ldm.f} & L & M & issue \texttt{\$mem = [addr+offset]}, fully associative cache \\
+\texttt{10 1001} & \texttt{ldm.f} & L & M & issue \texttt{\$mem = [addr+offset]}, fully assoc. cache \\
 \texttt{10 1010} & \texttt{ldm.s} & L & M & issue \texttt{\$mem = [addr+offset]}, stack cache \\
 \texttt{10 1011} & \texttt{ldmg.d} & G & M & issue \texttt{\$mem = [addr*4]}, direct mapped cache\\
 \midrule
-\multicolumn{5}{c}{\textbf{Special Registers}} \\
+\multicolumn{5}{c}{\textsf{\textbf{Special Registers}}} \\
 \cmidrule{1-5}
 \texttt{1011 00} & \texttt{ldx} & B & A & \texttt{dest = src1}, src1 refers to special register \\
 \texttt{1011 01} & \texttt{stx} & B & A & \texttt{dest = src1}, dest refers to special register \\
 \texttt{1011 10} & \texttt{fop} & F & F & floating-point operation (see Section~\ref{sec:fop}) \\
 \texttt{1011 11} & \texttt{?} & & & \\
 \midrule
-\multicolumn{5}{c}{\textbf{Global Address Constants}} \\
+\multicolumn{5}{c}{\textsf{\textbf{Global Address Constants}}} \\
 \cmidrule{1-5}
 \texttt{110} & \texttt{ldga} & H & A & \texttt{dest = address*4}, unsigned \\
 \midrule
@@ -414,7 +438,7 @@ Opcode & Name & Format & Unit & Semantics \\
 \toprule
 Src2 & Semantics \\
 \midrule
-\multicolumn{2}{c}{\textbf{Extract Unsigned Sub-Words}} \\
+\multicolumn{2}{c}{\textsf{\textbf{Extract Unsigned Sub-Words}}} \\
 \cmidrule{1-2}
 \texttt{000 00} & \texttt{dest = (uint8\_t)src1[ 7\ldots{}\ 0]} \\
 \texttt{000 01} & \texttt{dest = (uint8\_t)src1[15\ldots{}\ 8]} \\
@@ -424,7 +448,7 @@ Src2 & Semantics \\
 \texttt{001 0-} & \texttt{dest = (uint16\_t)src1[15\ldots{}\ 0]} \\
 \texttt{001 1-} & \texttt{dest = (uint16\_t)src1[31\ldots{}16]} \\
 \midrule
-\multicolumn{2}{c}{\textbf{Extract Signed Sub-Words}} \\
+\multicolumn{2}{c}{\textsf{\textbf{Extract Signed Sub-Words}}} \\
 \cmidrule{1-2}
 \texttt{010 00} & \texttt{dest = (int8\_t)src1[ 7\ldots{}\ 0]} \\
 \texttt{010 01} & \texttt{dest = (int8\_t)src1[15\ldots{}\ 8]} \\
@@ -434,7 +458,7 @@ Src2 & Semantics \\
 \texttt{011 0-} & \texttt{dest = (int16\_t)src1[15\ldots{}\ 0]} \\
 \texttt{011 1-} & \texttt{dest = (int16\_t)src1[31\ldots{}16]} \\
 \midrule
-\multicolumn{2}{c}{\textbf{Shift Sub-Words}} \\
+\multicolumn{2}{c}{\textsf{\textbf{Shift Sub-Words}}} \\
 \cmidrule{1-2}
 \texttt{100 00} & \texttt{dest = 0; dest[ 7\ldots{}\ 0] = src1[7\ldots{}0]} \\
 \texttt{100 01} & \texttt{dest = 0; dest[15\ldots{}\ 8] = src1[7\ldots{}0]} \\
@@ -444,7 +468,7 @@ Src2 & Semantics \\
 \texttt{101 0-} & \texttt{dest = 0; dest[15\ldots{}\ 0] = src1[15\ldots{}0]} \\
 \texttt{101 1-} & \texttt{dest = 0; dest[31\ldots{}16] = src1[15\ldots{}0]} \\
 \midrule
-\multicolumn{2}{c}{\textbf{Clear Sub-Words}} \\
+\multicolumn{2}{c}{\textsf{\textbf{Clear Sub-Words}}} \\
 \cmidrule{1-2}
 \texttt{110 00} & \texttt{dest[ 7\ldots{}\ 0] = 0} \\
 \texttt{110 01} & \texttt{dest[15\ldots{}\ 8] = 0} \\
@@ -465,9 +489,9 @@ Src2 & Semantics \\
 \toprule
 Op & Name & Semantics \\
 \midrule
-\texttt{00} & \texttt{and} & \texttt{d = (!1 \textasciicircum{} s1) \& (!2 \textasciicircum{} s2)} \\
-\texttt{01} & \texttt{or} & \texttt{d = (!1 \textasciicircum{} s1) | (!2 \textasciicircum{} s2)} \\
-\texttt{10} & \texttt{xor} & \texttt{d = (!1 \textasciicircum{} s1) \textasciicircum{} (!2 \textasciicircum{} s2)} \\
+\texttt{00} & \texttt{and} & \texttt{d = (i1 \textasciicircum{} s1) \& (i2 \textasciicircum{} s2)} \\
+\texttt{01} & \texttt{or} & \texttt{d = (i1 \textasciicircum{} s1) | (i2 \textasciicircum{} s2)} \\
+\texttt{10} & \texttt{xor} & \texttt{d = (i1 \textasciicircum{} s1) \textasciicircum{} (i2 \textasciicircum{} s2)} \\
 \texttt{11} & \texttt{?} & \\
 \bottomrule  
 \end{tabular}
@@ -523,17 +547,17 @@ Result Bit & Semantics \\
 \midrule
 0 & \texttt{src1 == src2 \&\& !unord(src1, src2)} \\
 1 & \texttt{src1 != src2 \&\& !unord(src1, src2)} \\
-2 & \texttt{src1 < src2 \&\& !unord(src1, src2)} \\
+2 & \texttt{src1 <\ \ src2 \&\& !unord(src1, src2)} \\
 3 & \texttt{src1 <= src2 \&\& !unord(src1, src2)} \\
-4 & \texttt{src1 > src2 \&\& !unord(src1, src2)} \\
+4 & \texttt{src1 >\ \ src2 \&\& !unord(src1, src2)} \\
 5 & \texttt{src1 >= src2 \&\& !unord(src1, src2)} \\
 6 & \texttt{!unord(src1, src2)} \\
-7 & \texttt{unord(src1, src2)} \\
+7 & \texttt{\ unord(src1, src2)} \\
 8 & \texttt{src1 == src2 || unord(src1, src2)} \\
 9 & \texttt{src1 != src2 || unord(src1, src2)} \\
-10 & \texttt{src1 < src2 || unord(src1, src2)} \\
+10 & \texttt{src1 <\ \  src2 || unord(src1, src2)} \\
 11 & \texttt{src1 <= src2 || unord(src1, src2)} \\
-12 & \texttt{src1 > src2 || unord(src1, src2)} \\
+12 & \texttt{src1 >\ \  src2 || unord(src1, src2)} \\
 13 & \texttt{src1 >= src2 || unord(src1, src2)} \\
 \bottomrule
 \end{tabular}
