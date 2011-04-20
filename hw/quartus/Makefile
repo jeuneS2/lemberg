@@ -1,10 +1,16 @@
+SOURCES=$(find ../src -name "*.vhd" -print)
+
 all: syn analyze
 
-syn:
+syn: bootrom lemberg.svf lemberg.sof
+
+lemberg.sof lemberg.svf: ${SOURCES} ../bootrom/bootrom.vhd
 	quartus_map lemberg
 	quartus_fit lemberg
 	quartus_asm lemberg
-	quartus_cpf -c -q 10MHz -g 3.3 -n p lemberg.sof lemberg.svf
 
-analyze:
+bootrom:
+	${MAKE} -C ../bootrom bootrom.vhd
+
+analyze: syn
 	quartus_sta lemberg
