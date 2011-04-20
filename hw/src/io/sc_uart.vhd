@@ -121,7 +121,6 @@ architecture rtl of sc_uart is
 	signal tf_rd		: std_logic;
 	signal tf_empty		: std_logic;
 	signal tf_full		: std_logic;
-	signal tf_half		: std_logic;
 
 	signal ncts_buf		: std_logic_vector(2 downto 0);	-- sync in
 
@@ -148,11 +147,11 @@ architecture rtl of sc_uart is
 	signal rx_clk_ena	: std_logic;
 	
 	constant PARITY_NONE : std_logic_vector(1 downto 0) := "00";
-	constant PARITY_ODD : std_logic_vector(1 downto 0) := "01";
-	constant PARITY_EVEN : std_logic_vector(1 downto 0) := "11";
+	constant PARITY_ODD  : std_logic_vector(1 downto 0) := "01";
+	constant PARITY_EVEN : std_logic_vector(1 downto 0) := "10";
 
 	signal parity_mode  : std_logic_vector(1 downto 0) := PARITY_NONE;
-	signal parity_error  : std_logic;
+	signal parity_error : std_logic;
 
 	constant clk16_cnt	: integer := (clk_freq/baud_rate+8)/16-1;
 	
@@ -265,7 +264,7 @@ begin
 --	transmit fifo
 --
 	tf: fifo generic map (8, txf_depth, txf_thres)
-		port map (clk, reset, wr_data(7 downto 0), tf_dout, tf_rd, ua_wr, tf_empty, tf_full, tf_half);
+		port map (clk, reset, wr_data(7 downto 0), tf_dout, tf_rd, ua_wr, tf_empty, tf_full, open);
 
 --
 --	state machine for actual shift out
@@ -377,7 +376,6 @@ begin
 
 			case uart_rx_state is
 
-
 				when s0 =>
 					i := 0;
 					rf_wr <= '0';
@@ -416,13 +414,12 @@ begin
 							parity_rx := parity_rx xor rsr(k);
 						end loop;  -- k
 
+						parity_error <= '0';
 						if (rsr(9) = parity_rx) then -- ok for even parity
-							parity_error <= '0';
 							if (parity_mode = PARITY_ODD) then  -- odd parity
 								parity_error <= '1';								
 							end if;
 						else -- ok for odd parity
-							parity_error <= '0';
 							if (parity_mode = PARITY_EVEN) then  -- even parity
 								parity_error <= '1';
 							end if;

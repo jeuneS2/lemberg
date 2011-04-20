@@ -65,12 +65,11 @@ architecture rtl of fifo_elem is
 begin
 
 	dout <= buf;
+	full <= f;
 
-process(clk, reset, f)
+process(clk, reset)
 
 begin
-
-	full <= f;
 
 	if (reset='0') then
 
@@ -148,7 +147,6 @@ end component;
 	
 
 begin
-
 
 	g1: for i in 0 to depth-1 generate
 

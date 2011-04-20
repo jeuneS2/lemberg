@@ -42,7 +42,7 @@ end datacache;
 
 architecture rtl of datacache is
 
-	type mux_type is (bp, dm, dmcc, fa, stack);
+	type mux_type is (BP, DM, FA, STACK);
 	signal out_mux_reg, next_out_mux : mux_type;	
 	signal in_mux_reg, next_in_mux : mux_type;	
 	
