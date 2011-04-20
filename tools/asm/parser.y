@@ -683,7 +683,7 @@ static void dump_words(unsigned long long val, int bytes)
 					else if (data_format == FMT_BIN)
 						{
 							fprintf(datafile, "%c%c%c%c",
-									buffer[0], buffer[1], buffer[2], buffer[3]);
+									buffer[3], buffer[2], buffer[1], buffer[0]);
 						}
 					else if (data_format == FMT_VHD)
 						{
@@ -722,7 +722,7 @@ static void dump_dwords(unsigned long long val, int bytes)
 					else if (data_format == FMT_BIN)
 						{
 							fprintf(datafile, "%c%c%c%c",
-									buffer[3], buffer[2], buffer[1], buffer[0]);
+									buffer[0], buffer[1], buffer[2], buffer[3]);
 						}
 					else if (data_format == FMT_VHD)
 						{
@@ -760,6 +760,16 @@ static void dump()
 	if (data_format == FMT_VHD)
 		{
 			fprintf(datafile, "%s", vhd_header);
+		}
+	else if (data_format == FMT_BIN)
+		{
+			fprintf(datafile, "%c%c%c%c",
+					(int)(pos >> 24) & 0xff,
+					(int)(pos >> 16) & 0xff,
+					(int)(pos >> 8) & 0xff,
+					(int)(pos >> 0) & 0xff);
+			fprintf(datafile, "%c%c%c%c",
+					0, 0, 0, 0);
 		}
 
 	for (i = 0; i < code_size; i++)
