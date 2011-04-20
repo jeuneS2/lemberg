@@ -1,6 +1,9 @@
 PROJECT_DIR=examples/helloworld
 PROJECT_NAME=helloworld
 
+SERDEV=/dev/ttyS0
+FPGACABLE="UsbBlaster ftdi 9fb:6001"
+
 all: doc tools
 
 # Configuration
@@ -54,17 +57,24 @@ install-etc:
 
 # Hardware
 syn:
-	echo "You're not slacking off. Your code's compiling."
+	@echo "You're not slacking off. Your code's compiling."
 	${MAKE} -C hw/quartus syn
 
 # Build program
 proj:
-	${MAKE} -C ${PROJECT_DIR} ${PROJECT_NAME}.dat
+	${MAKE} -C ${PROJECT_DIR} ${PROJECT_NAME}.dat ${PROJECT_NAME}.bin
 
 # Simulation
 sim: proj
 	cp ${PROJECT_DIR}/${PROJECT_NAME}.dat hw/sim/mem_main.dat
 	${MAKE} -C hw/sim sim
+
+# Run program in FPGA
+fpga: proj
+	stty -F ${SERDEV} 115200 raw -echo
+	./fpga_config.sh ${FPGACABLE} hw/quartus/lemberg.svf && \
+	cat ${PROJECT_DIR}/${PROJECT_NAME}.bin > ${SERDEV} &
+	cat ${SERDEV}
 
 # Documentation
 doc:
