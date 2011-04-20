@@ -1,1 +1,25 @@
-Lemberg is a time-predictable VLIW optimized for performance.
+Lemberg is a time-predictable VLIW processor optimized for
+performance.
+
+Lemberg can execute up to four instructions per cycle in a four-stage
+pipeline. The processor includes four ALUs, a jump- and a memory-unit,
+and optionally also FPUs for single and double precision
+floating-point numbers. Instructions are cached in a method cache, and
+data may be cached in a stack cache, direct-mapped cache or a fully
+associative cache.
+
+Lemberg is time-predictable in the sense that the execution time of
+program fragments does not depend on the pipeline state. Variable
+execution times may only arise from memory accesses; therefore, the
+caches have been designed to reduce the overestimation for worst-case
+execution time analysis as much as possible.
+
+The processor runs at 70 MHz in an Altera DE2-70 board, where it
+consumes about 45K logic cells and XX bytes of on-chip memory,
+including the floating-point unit and caches.
+
+Along with the hardware implementation come an assembler, a back-end
+for LLVM, and a basic port of the newlib libc implementation. Having
+both a hardware implementation and a tool chain to compile regular C
+programs set Lemberg apart from many other open-source processor
+projects.
