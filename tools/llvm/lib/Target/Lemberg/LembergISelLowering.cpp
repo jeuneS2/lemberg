@@ -335,9 +335,11 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   LoadSDNode *LD = cast<LoadSDNode>(Op);
   SDValue Chain = LD->getChain();
   DebugLoc DL = Op.getDebugLoc();
+  bool isBitLoad = false;
 
   // Promote bit values
-  if (LD->getMemoryVT() == MVT::i1) {	  
+  if (LD->getMemoryVT() == MVT::i1) {
+	  isBitLoad = true;
 	  LD = dyn_cast<LoadSDNode>
 		  (DAG.getExtLoad(ISD::EXTLOAD, MVT::i32, DL, Chain,
 						  LD->getBasePtr(), LD->getMemOperand()->getValue(), 0, MVT::i8,
@@ -392,6 +394,10 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 	   	  SDValue Converted = DAG.getNode(ISD::BIT_CONVERT, DL, MVT::f32, Chain);
 		  SDValue MergeOps [] = { Converted, Chain.getOperand(0) };
 		  Chain = DAG.getMergeValues(MergeOps, 2, DL);
+	  } else if (isBitLoad) {
+	   	  SDValue Converted = DAG.getZExtOrTrunc(Chain, DL, MVT::i1);
+		  SDValue MergeOps [] = { Converted, Chain.getOperand(0) };
+		  Chain = DAG.getMergeValues(MergeOps, 2, DL);		  
 	  }
   } else {
 	  // Create node for load of low part
