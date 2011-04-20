@@ -258,15 +258,14 @@ BuildStackWriteBack(MachineFunction &MF,
 					MachineBasicBlock &MBB, MachineBasicBlock::iterator &MBBI,
 					long Offset) const {
 
-	assert(isUInt<11>(Offset >> 2) && (Offset & 0x03) == 0
-		   && "Wrong offset for stack write back");
+	assert((Offset & 0x03) == 0 && "Wrong offset for stack write back");
 
 	DebugLoc DL = MBB.findDebugLoc(MBBI);
 
 	BuildMI(MBB, MBBI, DL, TII.get(Lemberg::WB))
 		.addImm(-1).addReg(0)
 		.addReg(getStackRegister())
-		.addImm(Offset >> 2);
+		.addImm(isUInt<11>(Offset >> 2) ? Offset >> 2 : 0);
 }
 
 void LembergRegisterInfo::
