@@ -1,10 +1,13 @@
 SOURCES=$(find ../src -name "*.vhd" -print)
+SETTINGS=lemberg.qpf lemberg.qsf lemberg.sdc
 
 all: syn analyze
 
 syn: bootrom lemberg.svf lemberg.sof
 
-lemberg.sof lemberg.svf: ${SOURCES} ../bootrom/bootrom.vhd
+lemberg.svf: lemberg.sof
+
+lemberg.sof: ${SETTINGS} ${SOURCES} ../bootrom/bootrom.vhd
 	quartus_map lemberg
 	quartus_fit lemberg
 	quartus_asm lemberg

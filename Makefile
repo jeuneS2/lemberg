@@ -71,7 +71,7 @@ sim: proj
 
 # Run program in FPGA
 fpga: proj
-	stty -F ${SERDEV} 115200 raw -echo
+	stty -F ${SERDEV} 115200 cstopb raw -echo
 	./fpga_config.sh ${FPGACABLE} hw/quartus/lemberg.svf && \
 	cat ${PROJECT_DIR}/${PROJECT_NAME}.bin > ${SERDEV} &
 	cat ${SERDEV}

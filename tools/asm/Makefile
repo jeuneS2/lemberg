@@ -31,4 +31,4 @@ install: as
 	install -m 0644 crt0.s crtend0.s ${PREFIX}/lib/
 
 clean:
-	rm y.tab.h expr.tab.h expr.tab.c *.o
+	rm -f y.tab.h expr.tab.h expr.tab.c *.o *~
