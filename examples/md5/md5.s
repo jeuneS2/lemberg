@@ -17457,12 +17457,13 @@ __vfprintf_r_end:
 
 	.text
 	.align	4
-___sprint_r:                            ; @__sprint_r
-	.size	___sprint_r_end-___sprint_r
-___sprint_r_start:
+__cleanup_r:                            ; @_cleanup_r
+	.size	__cleanup_r_end-__cleanup_r
+__cleanup_r_start:
 ; BB#0:                                 ; %entry
-#0:	       wb.s	r15, 15
-#1:	       ldiu	60 -> r2
+#0:	       wb.s	r15, 9
+#1:	       ldiu	36 -> r2
+#2:	       ldi	736 -> r1
 	;;
 #0:	       sub	r15, r2 -> r15
 #2:	       ldx	$rb, 0 -> r2.31
@@ -17476,481 +17477,13 @@ ___sprint_r_start:
 	;;
 #3:	       stm.s	r3.31, r15, 2
 	;;
-#0:	       stm.s	r10, r14, 14
-#1:	       or	r0, 0 -> r10
-	;;
-#0:	       stm.s	r11, r14, 13
-	;;
-#0:	       stm.s	r12, r14, 12
-	;;
-#0:	       stm.s	r13, r14, 11
-	;;
-#0:	       ldm.f	r1, 8           ; vfprintf.c:300
-	;;
-#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:300
-#1:	       stm.s	r1, r14, 4
-	;;
-#0:	       cmpne	r0, 0 -> c1     ; vfprintf.c:300
-	;;
-#0:	if  c1 br	.BB7_3          ; vfprintf.c:300
-	;;                              ; vfprintf.c:300
-	       nop	2               ; vfprintf.c:300
-	;;
-; BB#1:                                 ; %bb
-#0:	       stm.a	0, r1, 1        ; vfprintf.c:301
-#1:	       or	r14, 0 -> r15   ; vfprintf.c:326
-#2:	       ldi	0 -> r0
-	;;
-#0:	       ldm.s	r14, 44         ; vfprintf.c:326
-	;;
-#0:	       ldx	$mem, 0 -> r13  ; vfprintf.c:326
-#1:	       ldm.s	r14, 48         ; vfprintf.c:326
-	;;
-#0:	       ldx	$mem, 0 -> r12  ; vfprintf.c:326
-#1:	       ldm.s	r14, 52         ; vfprintf.c:326
-	;;
-#0:	       ldx	$mem, 0 -> r11  ; vfprintf.c:326
-#1:	       ldm.s	r14, 56         ; vfprintf.c:326
-	;;
-#0:	       ldx	$mem, 0 -> r10  ; vfprintf.c:326
-#1:	       ldm.s	r15, 8          ; vfprintf.c:326
-	;;
-#0:	       ldx	$mem, 0 -> r0.31 ; vfprintf.c:326
-#1:	       ldm.s	r15, 4          ; vfprintf.c:326
-	;;
-#0:	       stx	r0.31 -> $ro    ; vfprintf.c:326
-	;;
-#1:	       ldx	$mem, 0 -> r1.31 ; vfprintf.c:326
-	;;
-#1:	       stx	r1.31 -> $rb    ; vfprintf.c:326
-	;;
-.BB7_2:                                 ; %bb
-#0:	       ldm.s	r15, 0          ; vfprintf.c:326
-#1:	       s2add	r15, 15 -> r15  ; vfprintf.c:326
-	;;
-#0:	       ret                      ; vfprintf.c:326
-#1:	       ldx	$mem, 0 -> r14  ; vfprintf.c:326
-	;;                              ; vfprintf.c:326
-	       nop	3               ; vfprintf.c:326
-	;;
-.BB7_3:                                 ; %bb1
-#0:	       ldi	101 -> r1
-#1:	       ldm.f	r10, 101        ; vfprintf.c:304
-	;;
-#0:	       add	r10, r1 -> r1   ; vfprintf.c:304
-	;;
-#0:	       ldx	$membu, r1 -> r1 ; vfprintf.c:304
-	;;
-#0:	       btest	r1, 5 -> c1     ; vfprintf.c:304
-	;;
-#0:	if !c1 br	.BB7_28         ; vfprintf.c:304
-	;;                              ; vfprintf.c:304
-	       nop	2               ; vfprintf.c:304
-	;;
-; BB#4:                                 ; %bb2
-#0:	       ldm.s	r14, 16         ; vfprintf.c:309
-	;;
-#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:309
-	;;
-#0:	       br	.BB7_26
-#1:	       ldm.f	r1, 0           ; vfprintf.c:309
-	;;
-#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:309
-	;;
-#0:	       add	r1, 4 -> r1
-	;;
-#0:	       stm.s	r1, r14, 6      ; vfprintf.c:309
-	;;
-.BB7_5:                                 ; %bb3
-                                        ;   in Loop: Header=BB7_26 Depth=1
-#0:	       ldm.s	r14, 24         ; vfprintf.c:313
-	;;
-#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:313
-	;;
-#0:	       ldm.f	r0, 0           ; vfprintf.c:313
-	;;
-#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:313
-	;;
-#0:	       stm.s	r1, r14, 5      ; vfprintf.c:312
-	;;
-#0:	       br	.BB7_24
-#1:	       ldm.f	r0, -4          ; vfprintf.c:312
-	;;
-#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:312
-	;;
-#0:	       stm.s	r0, r14, 8
-#1:	       sr	r1, 2 -> r0
-	;;
-#0:	       stm.s	r0, r14, 7
-#1:	       ldi	0 -> r0
-	;;
-.BB7_6:                                 ; %bb4
-                                        ;   in Loop: Header=BB7_24 Depth=2
-#0:	       ldm.s	r14, 32
-#1:	       or	r1, 0 -> r2
-#2:	       add	r10, 12 -> r0
-	;;
-#0:	       ldx	$mem, 0 -> r1
-#1:	       ldm.f	r10, 12         ; fputwc.c:164[ vfprintf.c:315 ]
-	;;
-#0:	       s2add	r1, r2 -> r1
-	;;
-#0:	       ldx	$memhu, r0 -> r2 ; fputwc.c:164[ vfprintf.c:315 ]
-#1:	       ldm.f	r1, 0           ; vfprintf.c:315
-	;;
-#0:	       btest	r2, 13 -> c1    ; fputwc.c:164[ vfprintf.c:315 ]
-	;;
-#0:	if  c1 br	.BB7_8
-#1:	       ldx	$mem, 0 -> r11  ; vfprintf.c:315
-	;;
-	       nop	2
-	;;
-; BB#7:                                 ; %bb.i
-                                        ;   in Loop: Header=BB7_24 Depth=2
-#0:	       ldm.f	r10, 100        ; fputwc.c:164[ vfprintf.c:315 ]
-#1:	       ldga	8192 -> r3
-	;;
-#0:	       or	r2, r3 -> r2    ; fputwc.c:164[ vfprintf.c:315 ]
-	;;
-#0:	       ldx	$mem, 0 -> r1   ; fputwc.c:164[ vfprintf.c:315 ]
-	;;
-#0:	       or	r1, r3 -> r1    ; fputwc.c:164[ vfprintf.c:315 ]
-	;;
-#0:	       stm.a	r1, r10, 25     ; fputwc.c:164[ vfprintf.c:315 ]
-	;;
-#0:	       stmh.a	r2, r10, 6      ; fputwc.c:164[ vfprintf.c:315 ]
-	;;
-.BB7_8:                                 ; %bb1.i
-                                        ;   in Loop: Header=BB7_24 Depth=2
-#0:	       sub	r11, 1 -> r1
-#1:	       ldi	255 -> r2
-	;;
-#0:	       cmpult	r1, r2 -> c1    ; fputwc.c:129[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	if !c1 ldi	256 -> r1
-	;;
-#0:	if !c1 cmpult	r11, r1 -> c1
-	;;
-#0:	if  c1 br	.BB7_10
-	;;
-	       nop	2
-	;;
-; BB#9:                                 ; %bb5.i.i
-#0:	       ldi	138 -> r11
-#1:	       ldga	_impure_data -> r1 ; wcrtomb.c:35[ fputwc.c:141[ fputwc.c:165[ vfprintf.c:315 ] ] ]
-	;;
-#0:	       stm.a	r11, r1, 0      ; wctomb_r.c:50[ wcrtomb.c:30[ fputwc.c:141[ fputwc.c:165[ vfprintf.c:315 ] ] ] ]
-	;;
-#0:	       stm.a	0, r10, 23      ; wcrtomb.c:34[ fputwc.c:141[ fputwc.c:165[ vfprintf.c:315 ] ] ]
-	;;
-#0:	       stm.a	r11, r1, 0      ; wcrtomb.c:35[ fputwc.c:141[ fputwc.c:165[ vfprintf.c:315 ] ] ]
-#1:	       ldi	64 -> r1
-	;;
-#0:	       br	.BB7_29
-#1:	       ldm.f	r10, 12         ; fputwc.c:143[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldx	$memhu, r0 -> r11 ; fputwc.c:143[ fputwc.c:165[ vfprintf.c:315 ] ]
-#1:	       ldi	-1 -> r0
-	;;
-#0:	       or	r11, r1 -> r11  ; fputwc.c:143[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       stmh.a	r11, r10, 6     ; fputwc.c:143[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-.BB7_10:                                ; %bb6.i.i
-                                        ;   in Loop: Header=BB7_24 Depth=2
-#0:	       s2add	r14, 8 -> r0
-#1:	       ldi	0 -> r12
-	;;
-#0:	       add	r0, 8 -> r13
-	;;
-#0:	       stmb.a	r11, r13, 0
-	;;
-.BB7_11:                                ; %bb19.i.i
-                                        ;   Parent Loop BB7_26 Depth=1
-                                        ;     Parent Loop BB7_24 Depth=2
-                                        ; =>    This Inner Loop Header: Depth=3
-#0:	       cmpeq	r12, 0 -> c1
-	;;
-#0:	if !c1 br	.BB7_22
-	;;
-	       nop	2
-	;;
-; BB#12:                                ; %bb7.i.i
-                                        ;   in Loop: Header=BB7_11 Depth=3
-#0:	       ldm.f	r10, 8          ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-#1:	       ldi	-1 -> r1
-	;;
-#0:	       ldx	$mem, 0 -> r0   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       sub	r0, 1 -> r0
-	;;
-#0:	       cmplt	r1, r0 -> c1    ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-#1:	       stm.a	r0, r10, 2      ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	if  c1 br	.BB7_21         ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;                              ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	       nop	2               ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-; BB#13:                                ; %bb8.i.i
-                                        ;   in Loop: Header=BB7_11 Depth=3
-#0:	       ldm.f	r10, 24         ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldx	$mem, 0 -> r1   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       cmplt	r0, r1 -> c1    ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	if  c1 br	.BB7_20         ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;                              ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	       nop	2               ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-; BB#14:                                ; %bb9.i.i
-                                        ;   in Loop: Header=BB7_11 Depth=3
-#0:	       sub	r13, r12 -> r0
-	;;
-#0:	       ldm.f	r0, 0           ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldx	$membu, r0 -> r0 ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-#1:	       ldm.f	r10, 0          ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldx	$mem, 0 -> r1   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       stmb.a	r0, r1, 0       ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldm.f	r10, 0          ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldx	$mem, 0 -> r0   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldm.f	r0, 0           ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldx	$membu, r0 -> r1 ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       cmpeq	r1, 10 -> c1    ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	if  c1 br	.BB7_17         ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;                              ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	       nop	2               ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-.BB7_15:                                ; %bb10.i.i
-                                        ;   in Loop: Header=BB7_11 Depth=3
-#0:	       add	r0, 1 -> r0     ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       stm.a	r0, r10, 0      ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-.BB7_16:                                ; %bb18.i.i
-                                        ;   in Loop: Header=BB7_11 Depth=3
-#0:	       sub	r12, 1 -> r12
-#1:	       br	.BB7_11
-	;;
-	       nop	2
-	;;
-.BB7_17:                                ; %bb11.i.i
-                                        ;   in Loop: Header=BB7_11 Depth=3
-#0:	       ldi	10 -> r0
-	;;
-.BB7_18:                                ; %bb11.i.i
-                                        ;   in Loop: Header=BB7_11 Depth=3
-#0:	       or	r10, 0 -> r1    ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-#1:	       callg	___swbuf_r      ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;                              ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	       nop	3               ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       cmpeq	r0, -1 -> c1    ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldx	$c1 -> r0       ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       mask	r0, 0 -> r0     ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       cmpeq	r0, 0 -> c1     ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	if  c1 br	.BB7_16
-	;;
-	       nop	2
-	;;
-.BB7_19:                                ; %bb16.i.i.out_crit_edge
-#0:	       ldi	-1 -> r0
-#1:	       br	.BB7_29
-	;;
-	       nop	2
-	;;
-.BB7_20:                                ; %bb13.i.i
-                                        ;   in Loop: Header=BB7_11 Depth=3
-#0:	       sub	r13, r12 -> r0
-#1:	       br	.BB7_18
-	;;
-#0:	       ldm.f	r0, 0           ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldx	$membu, r0 -> r0 ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-	       nop	0
-	;;
-.BB7_21:                                ; %bb15.i.i
-                                        ;   in Loop: Header=BB7_11 Depth=3
-#0:	       sub	r13, r12 -> r0
-	;;
-#0:	       ldm.f	r0, 0           ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldx	$membu, r0 -> r0 ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-#1:	       ldm.f	r10, 0          ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       br	.BB7_15
-#1:	       ldx	$mem, 0 -> r1   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       stmb.a	r0, r1, 0       ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldm.f	r10, 0          ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-#0:	       ldx	$mem, 0 -> r0   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
-	;;
-.BB7_22:                                ; %_fputwc_r.exit
-                                        ;   in Loop: Header=BB7_24 Depth=2
-#0:	       cmpeq	r11, -1 -> c1   ; vfprintf.c:315
-	;;
-#0:	if  c1 br	.BB7_19
-	;;
-	       nop	2
-	;;
-; BB#23:                                ; %bb6
-                                        ;   in Loop: Header=BB7_24 Depth=2
-#0:	       ldm.s	r14, 36         ; vfprintf.c:314
-	;;
-#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:314
-	;;
-#0:	       add	r0, 1 -> r0     ; vfprintf.c:314
-	;;
-.BB7_24:                                ; %bb6
-                                        ;   Parent Loop BB7_26 Depth=1
-                                        ; =>  This Loop Header: Depth=2
-                                        ;       Child Loop BB7_11 Depth 3
-#0:	       stm.s	r0, r14, 9
-	;;
-#0:	       ldm.s	r14, 36         ; vfprintf.c:314
-	;;
-#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:314
-#1:	       ldm.s	r14, 28         ; vfprintf.c:314
-	;;
-#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:314
-	;;
-#0:	       cmplt	r1, r0 -> c1    ; vfprintf.c:314
-	;;
-#0:	if  c1 br	.BB7_6          ; vfprintf.c:314
-	;;                              ; vfprintf.c:314
-	       nop	2               ; vfprintf.c:314
-	;;
-; BB#25:                                ; %bb8
-                                        ;   in Loop: Header=BB7_26 Depth=1
-#0:	       ldm.s	r14, 16         ; vfprintf.c:311
-#1:	       ldi	-4 -> r2
-	;;
-#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:311
-	;;
-#0:	       ldm.f	r1, 8           ; vfprintf.c:311
-	;;
-#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:311
-#1:	       ldm.s	r14, 20
-	;;
-#0:	       ldx	$mem, 0 -> r3
-#1:	       ldm.s	r14, 24
-	;;
-#0:	       and	r3, r2 -> r2
-	;;
-#0:	       sub	r0, r2 -> r0    ; vfprintf.c:311
-#1:	       ldx	$mem, 0 -> r2
-	;;
-#0:	       add	r2, 8 -> r2
-	;;
-#0:	       stm.s	r2, r14, 6      ; vfprintf.c:311
-	;;
-#0:	       stm.a	r0, r1, 2       ; vfprintf.c:311
-	;;
-.BB7_26:                                ; %bb9
-                                        ; =>This Loop Header: Depth=1
-                                        ;     Child Loop BB7_24 Depth 2
-                                        ;       Child Loop BB7_11 Depth 3
-#0:	       cmpne	r0, 0 -> c1     ; vfprintf.c:310
-	;;
-#0:	if  c1 br	.BB7_5          ; vfprintf.c:310
-	;;                              ; vfprintf.c:310
-	       nop	2               ; vfprintf.c:310
-	;;
-; BB#27:                                ; %bb9.out_crit_edge
-#0:	       ldi	0 -> r0
-#1:	       br	.BB7_29
-	;;
-	       nop	2
-	;;
-.BB7_28:                                ; %bb10
-#0:	       ldm.s	r14, 16         ; vfprintf.c:322
-#1:	       or	r10, 0 -> r0    ; vfprintf.c:322
-	;;
-#0:	       callg	___sfvwrite_r   ; vfprintf.c:322
-#1:	       ldx	$mem, 0 -> r1   ; vfprintf.c:322
-	;;                              ; vfprintf.c:322
-	       nop	3               ; vfprintf.c:322
-	;;
-.BB7_29:                                ; %out
-#0:	       ldm.s	r14, 16         ; vfprintf.c:324
-#1:	       or	r14, 0 -> r15   ; vfprintf.c:326
-	;;
-#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:324
-	;;
-#0:	       stm.a	0, r1, 2        ; vfprintf.c:324
-	;;
-#0:	       stm.a	0, r1, 1        ; vfprintf.c:325
-	;;
-#0:	       ldm.s	r14, 44         ; vfprintf.c:326
-	;;
-#0:	       ldx	$mem, 0 -> r13  ; vfprintf.c:326
-#1:	       ldm.s	r14, 48         ; vfprintf.c:326
-	;;
-#0:	       ldx	$mem, 0 -> r12  ; vfprintf.c:326
-#1:	       ldm.s	r14, 52         ; vfprintf.c:326
-	;;
-#0:	       ldx	$mem, 0 -> r11  ; vfprintf.c:326
-#1:	       ldm.s	r14, 56         ; vfprintf.c:326
-	;;
-#0:	       ldx	$mem, 0 -> r10  ; vfprintf.c:326
-#1:	       ldm.s	r15, 8          ; vfprintf.c:326
-	;;
-#0:	       br	.BB7_2
-#2:	       ldx	$mem, 0 -> r2.31 ; vfprintf.c:326
-#1:	       ldm.s	r15, 4          ; vfprintf.c:326
-	;;
-#2:	       stx	r2.31 -> $ro    ; vfprintf.c:326
-	;;
-#3:	       ldx	$mem, 0 -> r3.31 ; vfprintf.c:326
-	;;
-#3:	       stx	r3.31 -> $rb    ; vfprintf.c:326
-	;;
-	.align	4
-___sprint_r_end:
-
-	.align	4
-__cleanup_r:                            ; @_cleanup_r
-	.size	__cleanup_r_end-__cleanup_r
-__cleanup_r_start:
-; BB#0:                                 ; %entry
-#2:	       wb.s	r15, 9
-#3:	       ldiu	36 -> r2
-#0:	       ldx	$rb, 0 -> r0.31
-#1:	       ldx	$ro, 0 -> r1.31
-	;;
-#0:	       sub	r15, r2 -> r15
-#1:	       ldi	736 -> r1
-	;;
-#0:	       stm.s	r14, r15, 0
-#1:	       or	r15, 0 -> r14
-	;;
-#0:	       stm.s	r0.31, r15, 1
-	;;
-#1:	       stm.s	r1.31, r15, 2
-	;;
 #0:	       stm.s	r10, r14, 8
 #1:	       add	r0, r1 -> r10   ; fwalk.c:47[ findfp.c:165 ]
 	;;
 #0:	       cmpeq	r10, 0 -> c1    ; fwalk.c:47[ findfp.c:165 ]
 #1:	       stm.s	r11, r14, 7
 	;;
-#0:	if  c1 br	.BB8_20
+#0:	if  c1 br	.BB7_20
 #1:	       stm.s	r12, r14, 6
 	;;
 #0:	       stm.s	r13, r14, 5
@@ -17962,9 +17495,9 @@ __cleanup_r_start:
 ; BB#1:                                 ; %entry.bb.i_crit_edge
 #0:	       ldi	-1 -> r11
 	;;
-.BB8_2:                                 ; %bb.i
+.BB7_2:                                 ; %bb.i
                                         ; =>This Loop Header: Depth=1
-                                        ;     Child Loop BB8_4 Depth 2
+                                        ;     Child Loop BB7_4 Depth 2
 #0:	       ldm.f	r10, 4          ; fwalk.c:48[ findfp.c:165 ]
 	;;
 #0:	       ldx	$mem, 0 -> r12  ; fwalk.c:48[ findfp.c:165 ]
@@ -17973,18 +17506,18 @@ __cleanup_r_start:
 	;;
 #0:	       cmplt	r0, 0 -> c1     ; fwalk.c:48[ findfp.c:165 ]
 	;;
-#0:	if  c1 br	.BB8_19
+#0:	if  c1 br	.BB7_19
 	;;
 	       nop	2
 	;;
 ; BB#3:                                 ; %bb.nph.i
-                                        ;   in Loop: Header=BB8_2 Depth=1
+                                        ;   in Loop: Header=BB7_2 Depth=1
 #0:	       ldm.f	r10, 8          ; fwalk.c:48[ findfp.c:165 ]
 	;;
 #0:	       ldx	$mem, 0 -> r13  ; fwalk.c:48[ findfp.c:165 ]
 	;;
-.BB8_4:                                 ; %bb1.i
-                                        ;   Parent Loop BB8_2 Depth=1
+.BB7_4:                                 ; %bb1.i
+                                        ;   Parent Loop BB7_2 Depth=1
                                         ; =>  This Inner Loop Header: Depth=2
 #0:	       ldm.f	r13, 12         ; fwalk.c:49[ findfp.c:165 ]
 #2:	       add	r13, 12 -> r2.23
@@ -18003,24 +17536,24 @@ __cleanup_r_start:
 	;;
 #0:	if !c1 cmpeq	r0, r1 -> c1    ; fwalk.c:51[ findfp.c:165 ]
 	;;
-#0:	if  c1 br	.BB8_18
+#0:	if  c1 br	.BB7_18
 	;;
 	       nop	2
 	;;
 ; BB#5:                                 ; %bb1.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       ldmg.d	_impure_data+56 ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
 #0:	       ldx	$mem, 0 -> r0   ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
 #0:	       cmpne	r0, 0 -> c1     ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-#0:	if  c1 br	.BB8_7
+#0:	if  c1 br	.BB7_7
 	;;
 	       nop	2
 	;;
 ; BB#6:                                 ; %bb4.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       ldga	_impure_data -> r0 ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 #1:	       callg	___sinit        ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;                              ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
@@ -18032,12 +17565,12 @@ __cleanup_r_start:
 	;;
 #0:	       cmpeq	r0, 0 -> c1     ; fclose.c:81[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-#0:	if  c1 br	.BB8_18
+#0:	if  c1 br	.BB7_18
 	;;
 	       nop	2
 	;;
-.BB8_7:                                 ; %bb6.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+.BB7_7:                                 ; %bb6.i.i.i
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       ldga	_impure_data -> r0 ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 #1:	       callg	__fflush_r      ; fclose.c:89[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 #2:	       or	r13, 0 -> r1    ; fclose.c:89[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
@@ -18050,12 +17583,12 @@ __cleanup_r_start:
 	;;
 #0:	       cmpeq	r2, 0 -> c1     ; fclose.c:90[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-#0:	if  c1 br	.BB8_9
+#0:	if  c1 br	.BB7_9
 	;;
 	       nop	2
 	;;
 ; BB#8:                                 ; %bb7.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       ldm.f	r13, 28         ; fclose.c:90[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 #1:	       ldga	_impure_data -> r0 ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
@@ -18067,20 +17600,20 @@ __cleanup_r_start:
 	;;
 #0:	       cmplt	r11, r0 -> c1   ; fclose.c:90[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-.BB8_9:                                 ; %bb9.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+.BB7_9:                                 ; %bb9.i.i.i
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       ldm.f	r13, 12
 	;;
 #2:	       ldx	$memhu, r2.23 -> r0
 	;;
 #0:	       btest	r0, 7 -> c1     ; fclose.c:92[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-#0:	if !c1 br	.BB8_11
+#0:	if !c1 br	.BB7_11
 	;;
 	       nop	2
 	;;
 ; BB#10:                                ; %bb10.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       ldm.f	r13, 16         ; fclose.c:93[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 #1:	       ldga	_impure_data -> r0 ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
@@ -18089,53 +17622,53 @@ __cleanup_r_start:
 	;;                              ; fclose.c:93[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	       nop	3               ; fclose.c:93[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-.BB8_11:                                ; %bb11.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+.BB7_11:                                ; %bb11.i.i.i
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       ldm.f	r13, 48         ; fclose.c:94[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
 #0:	       ldx	$mem, 0 -> r1   ; fclose.c:94[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
 #0:	       cmpeq	r1, 0 -> c1     ; fclose.c:94[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-#0:	if  c1 br	.BB8_15
+#0:	if  c1 br	.BB7_15
 	;;
 	       nop	2
 	;;
 ; BB#12:                                ; %bb12.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       s2add	r13, 16 -> r0
 	;;
 #0:	       cmpeq	r0, r1 -> c1    ; fclose.c:95[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-#0:	if  c1 br	.BB8_14
+#0:	if  c1 br	.BB7_14
 	;;
 	       nop	2
 	;;
 ; BB#13:                                ; %bb13.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       ldga	_impure_data -> r0 ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 #1:	       callg	__free_r        ; fclose.c:95[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;                              ; fclose.c:95[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	       nop	3               ; fclose.c:95[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-.BB8_14:                                ; %bb14.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+.BB7_14:                                ; %bb14.i.i.i
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       stm.a	0, r13, 12      ; fclose.c:95[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-.BB8_15:                                ; %bb15.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+.BB7_15:                                ; %bb15.i.i.i
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       ldm.f	r13, 68         ; fclose.c:96[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
 #0:	       ldx	$mem, 0 -> r1   ; fclose.c:96[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
 #0:	       cmpeq	r1, 0 -> c1     ; fclose.c:96[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-#0:	if  c1 br	.BB8_17
+#0:	if  c1 br	.BB7_17
 	;;
 	       nop	2
 	;;
 ; BB#16:                                ; %bb16.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       ldga	_impure_data -> r0 ; fclose.c:77[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 #1:	       callg	__free_r        ; fclose.c:97[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;                              ; fclose.c:97[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
@@ -18143,34 +17676,34 @@ __cleanup_r_start:
 	;;
 #0:	       stm.a	0, r13, 17      ; fclose.c:97[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-.BB8_17:                                ; %bb17.i.i.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+.BB7_17:                                ; %bb17.i.i.i
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       stmh.a	0, r13, 6       ; fclose.c:99[ fclose.c:116[ fwalk.c:52[ findfp.c:165 ] ] ]
 	;;
-.BB8_18:                                ; %bb5.i
-                                        ;   in Loop: Header=BB8_4 Depth=2
+.BB7_18:                                ; %bb5.i
+                                        ;   in Loop: Header=BB7_4 Depth=2
 #0:	       sub	r12, 1 -> r12
 #1:	       s2add	r13, 26 -> r13
 	;;
 #0:	       cmpne	r12, 0 -> c1    ; fwalk.c:48[ findfp.c:165 ]
 	;;
-#0:	if  c1 br	.BB8_4
+#0:	if  c1 br	.BB7_4
 	;;
 	       nop	2
 	;;
-.BB8_19:                                ; %bb7.i
-                                        ;   in Loop: Header=BB8_2 Depth=1
+.BB7_19:                                ; %bb7.i
+                                        ;   in Loop: Header=BB7_2 Depth=1
 #0:	       ldm.f	r10, 0          ; fwalk.c:47[ findfp.c:165 ]
 	;;
 #0:	       ldx	$mem, 0 -> r10  ; fwalk.c:47[ findfp.c:165 ]
 	;;
 #0:	       cmpne	r10, 0 -> c1    ; fwalk.c:47[ findfp.c:165 ]
 	;;
-#0:	if  c1 br	.BB8_2
+#0:	if  c1 br	.BB7_2
 	;;
 	       nop	2
 	;;
-.BB8_20:                                ; %_fwalk.exit
+.BB7_20:                                ; %_fwalk.exit
 #0:	       ldm.s	r14, 16         ; findfp.c:167
 #1:	       or	r14, 0 -> r15   ; findfp.c:167
 	;;
@@ -18189,16 +17722,16 @@ __cleanup_r_start:
 #0:	       ldx	$mem, 0 -> r10  ; findfp.c:167
 #1:	       ldm.s	r15, 8          ; findfp.c:167
 	;;
-#2:	       ldx	$mem, 0 -> r2.31 ; findfp.c:167
-#0:	       ldm.s	r15, 4          ; findfp.c:167
+#0:	       ldx	$mem, 0 -> r0.31 ; findfp.c:167
+#1:	       ldm.s	r15, 4          ; findfp.c:167
 	;;
-#2:	       stx	r2.31 -> $ro    ; findfp.c:167
+#0:	       stx	r0.31 -> $ro    ; findfp.c:167
 	;;
-#3:	       ldx	$mem, 0 -> r3.31 ; findfp.c:167
+#1:	       ldx	$mem, 0 -> r1.31 ; findfp.c:167
 #0:	       ldm.s	r15, 0          ; findfp.c:167
-#1:	       s2add	r15, 9 -> r15   ; findfp.c:167
+#2:	       s2add	r15, 9 -> r15   ; findfp.c:167
 	;;
-#3:	       stx	r3.31 -> $rb    ; findfp.c:167
+#1:	       stx	r1.31 -> $rb    ; findfp.c:167
 	;;
 #0:	       ret                      ; findfp.c:167
 #1:	       ldx	$mem, 0 -> r14  ; findfp.c:167
@@ -18213,19 +17746,20 @@ ___sinit:                               ; @__sinit
 	.size	___sinit_end-___sinit
 ___sinit_start:
 ; BB#0:                                 ; %entry
-#2:	       wb.s	r15, 7          ; findfp.c:187
-#3:	       ldiu	28 -> r2        ; findfp.c:187
-#0:	       ldx	$rb, 0 -> r0.31 ; findfp.c:187
-#1:	       ldx	$ro, 0 -> r1.31 ; findfp.c:187
+#0:	       wb.s	r15, 7          ; findfp.c:187
+#1:	       ldiu	28 -> r2        ; findfp.c:187
 	;;
 #0:	       sub	r15, r2 -> r15  ; findfp.c:187
+#2:	       ldx	$rb, 0 -> r2.31 ; findfp.c:187
+	;;
+#3:	       ldx	$ro, 0 -> r3.31 ; findfp.c:187
 	;;
 #0:	       stm.s	r14, r15, 0     ; findfp.c:187
 #1:	       or	r15, 0 -> r14   ; findfp.c:187
 	;;
-#0:	       stm.s	r0.31, r15, 1   ; findfp.c:187
+#2:	       stm.s	r2.31, r15, 1   ; findfp.c:187
 	;;
-#1:	       stm.s	r1.31, r15, 2   ; findfp.c:187
+#3:	       stm.s	r3.31, r15, 2   ; findfp.c:187
 	;;
 #0:	       stm.s	r10, r14, 6     ; findfp.c:187
 	;;
@@ -18239,7 +17773,7 @@ ___sinit_start:
 	;;
 #0:	       cmpeq	r1, 0 -> c1     ; findfp.c:187
 	;;
-#0:	if  c1 br	.BB9_3          ; findfp.c:187
+#0:	if  c1 br	.BB8_3          ; findfp.c:187
 	;;                              ; findfp.c:187
 	       nop	2               ; findfp.c:187
 	;;
@@ -18256,16 +17790,16 @@ ___sinit_start:
 #0:	       ldx	$mem, 0 -> r10  ; findfp.c:227
 #1:	       ldm.s	r15, 8          ; findfp.c:227
 	;;
-#2:	       ldx	$mem, 0 -> r2.31 ; findfp.c:227
-#0:	       ldm.s	r15, 4          ; findfp.c:227
+#0:	       ldx	$mem, 0 -> r0.31 ; findfp.c:227
+#1:	       ldm.s	r15, 4          ; findfp.c:227
 	;;
-#2:	       stx	r2.31 -> $ro    ; findfp.c:227
+#0:	       stx	r0.31 -> $ro    ; findfp.c:227
 	;;
-#3:	       ldx	$mem, 0 -> r3.31 ; findfp.c:227
+#1:	       ldx	$mem, 0 -> r1.31 ; findfp.c:227
 	;;
-#3:	       stx	r3.31 -> $rb    ; findfp.c:227
+#1:	       stx	r1.31 -> $rb    ; findfp.c:227
 	;;
-.BB9_2:                                 ; %bb
+.BB8_2:                                 ; %bb
 #0:	       ldm.s	r15, 0          ; findfp.c:227
 #1:	       s2add	r15, 7 -> r15   ; findfp.c:227
 	;;
@@ -18274,7 +17808,7 @@ ___sinit_start:
 	;;                              ; findfp.c:227
 	       nop	3               ; findfp.c:227
 	;;
-.BB9_3:                                 ; %bb1
+.BB8_3:                                 ; %bb1
 #0:	       or	r0, 0 -> r10
 #1:	       ldi	736 -> r0
 #2:	       ldi	740 -> r1
@@ -18439,18 +17973,485 @@ ___sinit_start:
 #0:	       ldx	$mem, 0 -> r10  ; findfp.c:227
 #1:	       ldm.s	r15, 8          ; findfp.c:227
 	;;
-#1:	       br	.BB9_2
-#0:	       ldx	$mem, 0 -> r0.31 ; findfp.c:227
-#2:	       ldm.s	r15, 4          ; findfp.c:227
+#0:	       br	.BB8_2
+#2:	       ldx	$mem, 0 -> r2.31 ; findfp.c:227
+#1:	       ldm.s	r15, 4          ; findfp.c:227
 	;;
-#0:	       stx	r0.31 -> $ro    ; findfp.c:227
+#2:	       stx	r2.31 -> $ro    ; findfp.c:227
 	;;
-#1:	       ldx	$mem, 0 -> r1.31 ; findfp.c:227
+#3:	       ldx	$mem, 0 -> r3.31 ; findfp.c:227
 	;;
-#1:	       stx	r1.31 -> $rb    ; findfp.c:227
+#3:	       stx	r3.31 -> $rb    ; findfp.c:227
 	;;
 	.align	4
 ___sinit_end:
+
+	.align	4
+___sprint_r:                            ; @__sprint_r
+	.size	___sprint_r_end-___sprint_r
+___sprint_r_start:
+; BB#0:                                 ; %entry
+#2:	       wb.s	r15, 15
+#3:	       ldiu	60 -> r2
+#0:	       ldx	$rb, 0 -> r0.31
+#1:	       ldx	$ro, 0 -> r1.31
+	;;
+#0:	       sub	r15, r2 -> r15
+	;;
+#0:	       stm.s	r14, r15, 0
+#1:	       or	r15, 0 -> r14
+	;;
+#0:	       stm.s	r0.31, r15, 1
+	;;
+#1:	       stm.s	r1.31, r15, 2
+	;;
+#0:	       stm.s	r10, r14, 14
+#1:	       or	r0, 0 -> r10
+	;;
+#0:	       stm.s	r11, r14, 13
+	;;
+#0:	       stm.s	r12, r14, 12
+	;;
+#0:	       stm.s	r13, r14, 11
+	;;
+#0:	       ldm.f	r1, 8           ; vfprintf.c:300
+	;;
+#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:300
+#1:	       stm.s	r1, r14, 4
+	;;
+#0:	       cmpne	r0, 0 -> c1     ; vfprintf.c:300
+	;;
+#0:	if  c1 br	.BB9_3          ; vfprintf.c:300
+	;;                              ; vfprintf.c:300
+	       nop	2               ; vfprintf.c:300
+	;;
+; BB#1:                                 ; %bb
+#0:	       stm.a	0, r1, 1        ; vfprintf.c:301
+#1:	       or	r14, 0 -> r15   ; vfprintf.c:326
+#2:	       ldi	0 -> r0
+	;;
+#0:	       ldm.s	r14, 44         ; vfprintf.c:326
+	;;
+#0:	       ldx	$mem, 0 -> r13  ; vfprintf.c:326
+#1:	       ldm.s	r14, 48         ; vfprintf.c:326
+	;;
+#0:	       ldx	$mem, 0 -> r12  ; vfprintf.c:326
+#1:	       ldm.s	r14, 52         ; vfprintf.c:326
+	;;
+#0:	       ldx	$mem, 0 -> r11  ; vfprintf.c:326
+#1:	       ldm.s	r14, 56         ; vfprintf.c:326
+	;;
+#0:	       ldx	$mem, 0 -> r10  ; vfprintf.c:326
+#1:	       ldm.s	r15, 8          ; vfprintf.c:326
+	;;
+#2:	       ldx	$mem, 0 -> r2.31 ; vfprintf.c:326
+#0:	       ldm.s	r15, 4          ; vfprintf.c:326
+	;;
+#2:	       stx	r2.31 -> $ro    ; vfprintf.c:326
+	;;
+#3:	       ldx	$mem, 0 -> r3.31 ; vfprintf.c:326
+	;;
+#3:	       stx	r3.31 -> $rb    ; vfprintf.c:326
+	;;
+.BB9_2:                                 ; %bb
+#0:	       ldm.s	r15, 0          ; vfprintf.c:326
+#1:	       s2add	r15, 15 -> r15  ; vfprintf.c:326
+	;;
+#0:	       ret                      ; vfprintf.c:326
+#1:	       ldx	$mem, 0 -> r14  ; vfprintf.c:326
+	;;                              ; vfprintf.c:326
+	       nop	3               ; vfprintf.c:326
+	;;
+.BB9_3:                                 ; %bb1
+#0:	       ldi	101 -> r1
+#1:	       ldm.f	r10, 101        ; vfprintf.c:304
+	;;
+#0:	       add	r10, r1 -> r1   ; vfprintf.c:304
+	;;
+#0:	       ldx	$membu, r1 -> r1 ; vfprintf.c:304
+	;;
+#0:	       btest	r1, 5 -> c1     ; vfprintf.c:304
+	;;
+#0:	if !c1 br	.BB9_28         ; vfprintf.c:304
+	;;                              ; vfprintf.c:304
+	       nop	2               ; vfprintf.c:304
+	;;
+; BB#4:                                 ; %bb2
+#0:	       ldm.s	r14, 16         ; vfprintf.c:309
+	;;
+#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:309
+	;;
+#0:	       br	.BB9_26
+#1:	       ldm.f	r1, 0           ; vfprintf.c:309
+	;;
+#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:309
+	;;
+#0:	       add	r1, 4 -> r1
+	;;
+#0:	       stm.s	r1, r14, 6      ; vfprintf.c:309
+	;;
+.BB9_5:                                 ; %bb3
+                                        ;   in Loop: Header=BB9_26 Depth=1
+#0:	       ldm.s	r14, 24         ; vfprintf.c:313
+	;;
+#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:313
+	;;
+#0:	       ldm.f	r0, 0           ; vfprintf.c:313
+	;;
+#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:313
+	;;
+#0:	       stm.s	r1, r14, 5      ; vfprintf.c:312
+	;;
+#0:	       br	.BB9_24
+#1:	       ldm.f	r0, -4          ; vfprintf.c:312
+	;;
+#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:312
+	;;
+#0:	       stm.s	r0, r14, 8
+#1:	       sr	r1, 2 -> r0
+	;;
+#0:	       stm.s	r0, r14, 7
+#1:	       ldi	0 -> r0
+	;;
+.BB9_6:                                 ; %bb4
+                                        ;   in Loop: Header=BB9_24 Depth=2
+#0:	       ldm.s	r14, 32
+#1:	       or	r1, 0 -> r2
+#2:	       add	r10, 12 -> r0
+	;;
+#0:	       ldx	$mem, 0 -> r1
+#1:	       ldm.f	r10, 12         ; fputwc.c:164[ vfprintf.c:315 ]
+	;;
+#0:	       s2add	r1, r2 -> r1
+	;;
+#0:	       ldx	$memhu, r0 -> r2 ; fputwc.c:164[ vfprintf.c:315 ]
+#1:	       ldm.f	r1, 0           ; vfprintf.c:315
+	;;
+#0:	       btest	r2, 13 -> c1    ; fputwc.c:164[ vfprintf.c:315 ]
+	;;
+#0:	if  c1 br	.BB9_8
+#1:	       ldx	$mem, 0 -> r11  ; vfprintf.c:315
+	;;
+	       nop	2
+	;;
+; BB#7:                                 ; %bb.i
+                                        ;   in Loop: Header=BB9_24 Depth=2
+#0:	       ldm.f	r10, 100        ; fputwc.c:164[ vfprintf.c:315 ]
+#1:	       ldga	8192 -> r3
+	;;
+#0:	       or	r2, r3 -> r2    ; fputwc.c:164[ vfprintf.c:315 ]
+	;;
+#0:	       ldx	$mem, 0 -> r1   ; fputwc.c:164[ vfprintf.c:315 ]
+	;;
+#0:	       or	r1, r3 -> r1    ; fputwc.c:164[ vfprintf.c:315 ]
+	;;
+#0:	       stm.a	r1, r10, 25     ; fputwc.c:164[ vfprintf.c:315 ]
+	;;
+#0:	       stmh.a	r2, r10, 6      ; fputwc.c:164[ vfprintf.c:315 ]
+	;;
+.BB9_8:                                 ; %bb1.i
+                                        ;   in Loop: Header=BB9_24 Depth=2
+#0:	       sub	r11, 1 -> r1
+#1:	       ldi	255 -> r2
+	;;
+#0:	       cmpult	r1, r2 -> c1    ; fputwc.c:129[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	if !c1 ldi	256 -> r1
+	;;
+#0:	if !c1 cmpult	r11, r1 -> c1
+	;;
+#0:	if  c1 br	.BB9_10
+	;;
+	       nop	2
+	;;
+; BB#9:                                 ; %bb5.i.i
+#0:	       ldi	138 -> r11
+#1:	       ldga	_impure_data -> r1 ; wcrtomb.c:35[ fputwc.c:141[ fputwc.c:165[ vfprintf.c:315 ] ] ]
+	;;
+#0:	       stm.a	r11, r1, 0      ; wctomb_r.c:50[ wcrtomb.c:30[ fputwc.c:141[ fputwc.c:165[ vfprintf.c:315 ] ] ] ]
+	;;
+#0:	       stm.a	0, r10, 23      ; wcrtomb.c:34[ fputwc.c:141[ fputwc.c:165[ vfprintf.c:315 ] ] ]
+	;;
+#0:	       stm.a	r11, r1, 0      ; wcrtomb.c:35[ fputwc.c:141[ fputwc.c:165[ vfprintf.c:315 ] ] ]
+#1:	       ldi	64 -> r1
+	;;
+#0:	       br	.BB9_29
+#1:	       ldm.f	r10, 12         ; fputwc.c:143[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldx	$memhu, r0 -> r11 ; fputwc.c:143[ fputwc.c:165[ vfprintf.c:315 ] ]
+#1:	       ldi	-1 -> r0
+	;;
+#0:	       or	r11, r1 -> r11  ; fputwc.c:143[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       stmh.a	r11, r10, 6     ; fputwc.c:143[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+.BB9_10:                                ; %bb6.i.i
+                                        ;   in Loop: Header=BB9_24 Depth=2
+#0:	       s2add	r14, 8 -> r0
+#1:	       ldi	0 -> r12
+	;;
+#0:	       add	r0, 8 -> r13
+	;;
+#0:	       stmb.a	r11, r13, 0
+	;;
+.BB9_11:                                ; %bb19.i.i
+                                        ;   Parent Loop BB9_26 Depth=1
+                                        ;     Parent Loop BB9_24 Depth=2
+                                        ; =>    This Inner Loop Header: Depth=3
+#0:	       cmpeq	r12, 0 -> c1
+	;;
+#0:	if !c1 br	.BB9_22
+	;;
+	       nop	2
+	;;
+; BB#12:                                ; %bb7.i.i
+                                        ;   in Loop: Header=BB9_11 Depth=3
+#0:	       ldm.f	r10, 8          ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+#1:	       ldi	-1 -> r1
+	;;
+#0:	       ldx	$mem, 0 -> r0   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       sub	r0, 1 -> r0
+	;;
+#0:	       cmplt	r1, r0 -> c1    ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+#1:	       stm.a	r0, r10, 2      ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	if  c1 br	.BB9_21         ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;                              ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	       nop	2               ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+; BB#13:                                ; %bb8.i.i
+                                        ;   in Loop: Header=BB9_11 Depth=3
+#0:	       ldm.f	r10, 24         ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldx	$mem, 0 -> r1   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       cmplt	r0, r1 -> c1    ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	if  c1 br	.BB9_20         ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;                              ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	       nop	2               ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+; BB#14:                                ; %bb9.i.i
+                                        ;   in Loop: Header=BB9_11 Depth=3
+#0:	       sub	r13, r12 -> r0
+	;;
+#0:	       ldm.f	r0, 0           ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldx	$membu, r0 -> r0 ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+#1:	       ldm.f	r10, 0          ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldx	$mem, 0 -> r1   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       stmb.a	r0, r1, 0       ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldm.f	r10, 0          ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldx	$mem, 0 -> r0   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldm.f	r0, 0           ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldx	$membu, r0 -> r1 ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       cmpeq	r1, 10 -> c1    ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	if  c1 br	.BB9_17         ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;                              ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	       nop	2               ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+.BB9_15:                                ; %bb10.i.i
+                                        ;   in Loop: Header=BB9_11 Depth=3
+#0:	       add	r0, 1 -> r0     ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       stm.a	r0, r10, 0      ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+.BB9_16:                                ; %bb18.i.i
+                                        ;   in Loop: Header=BB9_11 Depth=3
+#0:	       sub	r12, 1 -> r12
+#1:	       br	.BB9_11
+	;;
+	       nop	2
+	;;
+.BB9_17:                                ; %bb11.i.i
+                                        ;   in Loop: Header=BB9_11 Depth=3
+#0:	       ldi	10 -> r0
+	;;
+.BB9_18:                                ; %bb11.i.i
+                                        ;   in Loop: Header=BB9_11 Depth=3
+#0:	       or	r10, 0 -> r1    ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+#1:	       callg	___swbuf_r      ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;                              ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	       nop	3               ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       cmpeq	r0, -1 -> c1    ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldx	$c1 -> r0       ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       mask	r0, 0 -> r0     ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       cmpeq	r0, 0 -> c1     ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	if  c1 br	.BB9_16
+	;;
+	       nop	2
+	;;
+.BB9_19:                                ; %bb16.i.i.out_crit_edge
+#0:	       ldi	-1 -> r0
+#1:	       br	.BB9_29
+	;;
+	       nop	2
+	;;
+.BB9_20:                                ; %bb13.i.i
+                                        ;   in Loop: Header=BB9_11 Depth=3
+#0:	       sub	r13, r12 -> r0
+#1:	       br	.BB9_18
+	;;
+#0:	       ldm.f	r0, 0           ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldx	$membu, r0 -> r0 ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+	       nop	0
+	;;
+.BB9_21:                                ; %bb15.i.i
+                                        ;   in Loop: Header=BB9_11 Depth=3
+#0:	       sub	r13, r12 -> r0
+	;;
+#0:	       ldm.f	r0, 0           ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldx	$membu, r0 -> r0 ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+#1:	       ldm.f	r10, 0          ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       br	.BB9_15
+#1:	       ldx	$mem, 0 -> r1   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       stmb.a	r0, r1, 0       ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldm.f	r10, 0          ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+#0:	       ldx	$mem, 0 -> r0   ; fputwc.c:149[ fputwc.c:165[ vfprintf.c:315 ] ]
+	;;
+.BB9_22:                                ; %_fputwc_r.exit
+                                        ;   in Loop: Header=BB9_24 Depth=2
+#0:	       cmpeq	r11, -1 -> c1   ; vfprintf.c:315
+	;;
+#0:	if  c1 br	.BB9_19
+	;;
+	       nop	2
+	;;
+; BB#23:                                ; %bb6
+                                        ;   in Loop: Header=BB9_24 Depth=2
+#0:	       ldm.s	r14, 36         ; vfprintf.c:314
+	;;
+#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:314
+	;;
+#0:	       add	r0, 1 -> r0     ; vfprintf.c:314
+	;;
+.BB9_24:                                ; %bb6
+                                        ;   Parent Loop BB9_26 Depth=1
+                                        ; =>  This Loop Header: Depth=2
+                                        ;       Child Loop BB9_11 Depth 3
+#0:	       stm.s	r0, r14, 9
+	;;
+#0:	       ldm.s	r14, 36         ; vfprintf.c:314
+	;;
+#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:314
+#1:	       ldm.s	r14, 28         ; vfprintf.c:314
+	;;
+#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:314
+	;;
+#0:	       cmplt	r1, r0 -> c1    ; vfprintf.c:314
+	;;
+#0:	if  c1 br	.BB9_6          ; vfprintf.c:314
+	;;                              ; vfprintf.c:314
+	       nop	2               ; vfprintf.c:314
+	;;
+; BB#25:                                ; %bb8
+                                        ;   in Loop: Header=BB9_26 Depth=1
+#0:	       ldm.s	r14, 16         ; vfprintf.c:311
+#1:	       ldi	-4 -> r2
+	;;
+#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:311
+	;;
+#0:	       ldm.f	r1, 8           ; vfprintf.c:311
+	;;
+#0:	       ldx	$mem, 0 -> r0   ; vfprintf.c:311
+#1:	       ldm.s	r14, 20
+	;;
+#0:	       ldx	$mem, 0 -> r3
+#1:	       ldm.s	r14, 24
+	;;
+#0:	       and	r3, r2 -> r2
+	;;
+#0:	       sub	r0, r2 -> r0    ; vfprintf.c:311
+#1:	       ldx	$mem, 0 -> r2
+	;;
+#0:	       add	r2, 8 -> r2
+	;;
+#0:	       stm.s	r2, r14, 6      ; vfprintf.c:311
+	;;
+#0:	       stm.a	r0, r1, 2       ; vfprintf.c:311
+	;;
+.BB9_26:                                ; %bb9
+                                        ; =>This Loop Header: Depth=1
+                                        ;     Child Loop BB9_24 Depth 2
+                                        ;       Child Loop BB9_11 Depth 3
+#0:	       cmpne	r0, 0 -> c1     ; vfprintf.c:310
+	;;
+#0:	if  c1 br	.BB9_5          ; vfprintf.c:310
+	;;                              ; vfprintf.c:310
+	       nop	2               ; vfprintf.c:310
+	;;
+; BB#27:                                ; %bb9.out_crit_edge
+#0:	       ldi	0 -> r0
+#1:	       br	.BB9_29
+	;;
+	       nop	2
+	;;
+.BB9_28:                                ; %bb10
+#0:	       ldm.s	r14, 16         ; vfprintf.c:322
+#1:	       or	r10, 0 -> r0    ; vfprintf.c:322
+	;;
+#0:	       callg	___sfvwrite_r   ; vfprintf.c:322
+#1:	       ldx	$mem, 0 -> r1   ; vfprintf.c:322
+	;;                              ; vfprintf.c:322
+	       nop	3               ; vfprintf.c:322
+	;;
+.BB9_29:                                ; %out
+#0:	       ldm.s	r14, 16         ; vfprintf.c:324
+#1:	       or	r14, 0 -> r15   ; vfprintf.c:326
+	;;
+#0:	       ldx	$mem, 0 -> r1   ; vfprintf.c:324
+	;;
+#0:	       stm.a	0, r1, 2        ; vfprintf.c:324
+	;;
+#0:	       stm.a	0, r1, 1        ; vfprintf.c:325
+	;;
+#0:	       ldm.s	r14, 44         ; vfprintf.c:326
+	;;
+#0:	       ldx	$mem, 0 -> r13  ; vfprintf.c:326
+#1:	       ldm.s	r14, 48         ; vfprintf.c:326
+	;;
+#0:	       ldx	$mem, 0 -> r12  ; vfprintf.c:326
+#1:	       ldm.s	r14, 52         ; vfprintf.c:326
+	;;
+#0:	       ldx	$mem, 0 -> r11  ; vfprintf.c:326
+#1:	       ldm.s	r14, 56         ; vfprintf.c:326
+	;;
+#0:	       ldx	$mem, 0 -> r10  ; vfprintf.c:326
+#1:	       ldm.s	r15, 8          ; vfprintf.c:326
+	;;
+#1:	       br	.BB9_2
+#0:	       ldx	$mem, 0 -> r0.31 ; vfprintf.c:326
+#2:	       ldm.s	r15, 4          ; vfprintf.c:326
+	;;
+#0:	       stx	r0.31 -> $ro    ; vfprintf.c:326
+	;;
+#1:	       ldx	$mem, 0 -> r1.31 ; vfprintf.c:326
+	;;
+#1:	       stx	r1.31 -> $rb    ; vfprintf.c:326
+	;;
+	.align	4
+___sprint_r_end:
 
 	.align	4
 ___ssprint_r:                           ; @__ssprint_r

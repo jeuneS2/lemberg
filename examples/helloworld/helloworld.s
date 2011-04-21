@@ -2950,17 +2950,15 @@ _main_start:
 #1:	       add	r10, r13 -> r10
 #2:	       sub	r11, r13 -> r11
 	;;
-#0:	       ldx	$mem, 0 -> r1
+#0:	       ldx	$mem, 0 -> r0
 	;;
-#0:	       cmpeq	r1, r13 -> c1
-#1:	       sub	r1, r13 -> r0
+#0:	       cmpeq	r0, r13 -> c1
+#1:	       sub	r0, r13 -> r1
 	;;
 #0:	if !c1 br	.BB0_155
-#1:	       or	r0, 0 -> r1
+#1:	       stm.s	r1, r14, 12
 	;;
-#0:	       stm.s	r1, r14, 12
-	;;
-	       nop	1
+	       nop	2
 	;;
 .BB0_182:                               ; %puts.exit
 #0:	       ldm.s	r14, 92
