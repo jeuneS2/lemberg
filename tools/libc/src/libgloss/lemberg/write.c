@@ -8,6 +8,8 @@
 #undef errno
 extern int errno;
 
+#include "ioconsts.h"
+
 int
 _DEFUN (_write, (file, ptr, len),
         int   file  _AND
@@ -19,11 +21,11 @@ _DEFUN (_write, (file, ptr, len),
       int i;
 	  for (i = 0; i < len; i++)
         {
-            while ((*((volatile char *)-8) & 0x01) == 0)
+            while ((UART_STATUS & UART_RTS_MASK) == 0)
               {
                 /* wait for UART to be ready */
               }
-            *((volatile char *)-4) = ptr[i];
+			UART_DATA = ptr[i];
         }
       return len;
     }
