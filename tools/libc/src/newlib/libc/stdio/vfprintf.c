@@ -1632,6 +1632,7 @@ error:
    *LENGTH to the length of the returned string.  CH must be one of
    [aAeEfFgG]; if it is [aA], then the return string lives in BUF,
    otherwise the return value shares the mprec reentrant storage.  */
+__attribute__((noinline))
 static char *
 cvt(struct _reent *data, _PRINTF_FLOAT_TYPE value, int ndigits, int flags,
     char *sign, int *decpt, int ch, int *length, char *buf)
