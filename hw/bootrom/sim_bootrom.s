@@ -9,5 +9,6 @@ exit:
 		;;
 		nop 2
 		;;
+		.align 4
 bootrom_end:
 		

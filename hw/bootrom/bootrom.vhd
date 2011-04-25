@@ -26,9 +26,9 @@ process(a) begin
 		when X"07" => d <= X"28dff0a0";
 		when X"08" => d <= X"48dff120";
 		when X"09" => d <= X"38dca423";
-		when X"0a" => d <= X"0aff1038";
+		when X"0a" => d <= X"0af11038";
 		when X"0b" => d <= X"dcb3a30b";
-		when X"0c" => d <= X"ff9038dc";
+		when X"0c" => d <= X"f19038dc";
 		when X"0d" => d <= X"c3230c04";
 		when X"0e" => d <= X"1018dcd2";
 		when X"0f" => d <= X"a048dd72";

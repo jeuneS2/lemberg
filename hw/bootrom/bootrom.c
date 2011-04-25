@@ -1,5 +1,5 @@
-#define UART_STATUS (*((volatile unsigned char *)-8))
-#define UART_DATA   (*((volatile unsigned char *)-4))
+#define UART_STATUS (*((volatile unsigned char *)-120))
+#define UART_DATA   (*((volatile unsigned char *)-116))
 
 #define BOOTROM ((const unsigned char *)0xffe00000)
 const char * load_msg = "\nLOAD\n";
