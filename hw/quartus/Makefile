@@ -1,4 +1,8 @@
-SOURCES=$(find ../src -name "*.vhd" -print)
+SOURCES=../src/*.vhd \
+	../src/cache/*.vhd \
+	../src/io/*.vhd \
+	../src/fpu/*.vhd ../src/fpu/float_pkg/*.vhdl
+
 SETTINGS=lemberg.qpf lemberg.qsf lemberg.sdc
 
 all: syn analyze

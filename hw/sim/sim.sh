@@ -2,6 +2,9 @@
 
 OPTIONS="-93 -quiet +acc +cover=bcesfx -coveropt 1"
 
+rm -rf rtl_work
+vlib rtl_work
+
 rm -rf ieee_proposed
 vlib ieee_proposed
 vcom $OPTIONS -work ieee_proposed ../src/fpu/float_pkg/fixed_float_types_c.vhdl
@@ -43,6 +46,8 @@ vcom $OPTIONS ../src/fpu/fpu.vhd
 vcom $OPTIONS ../src/core.vhd
 vcom $OPTIONS ../src/iomux.vhd
 vcom $OPTIONS ../src/io/sc_ssram32.vhd
+vcom $OPTIONS ../src/io/sc_sysinfo.vhd
+vcom $OPTIONS ../src/io/sc_timer.vhd
 vcom $OPTIONS ../src/io/fifo.vhd
 vcom $OPTIONS ../src/io/sc_uart.vhd
 vcom $OPTIONS ../bootrom/sim_bootrom.vhd

@@ -140,49 +140,6 @@ set_instance_assignment -name GLOBAL_SIGNAL "GLOBAL CLOCK" -to "pll:pll|altpll:a
 set_global_assignment -name EDA_DESIGN_ENTRY_SYNTHESIS_TOOL "<None>"
 set_global_assignment -name EDA_INPUT_DATA_FORMAT EDIF -section_id eda_design_synthesis
 set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC_FOR_AREA OFF
-set_global_assignment -name SDC_FILE lemberg.sdc
-set_global_assignment -name VHDL_FILE ../src/core_pack.vhd
-set_global_assignment -name VHDL_FILE ../src/reg_pack.vhd
-set_global_assignment -name VHDL_FILE ../src/flag_pack.vhd
-set_global_assignment -name VHDL_FILE ../src/op_pack.vhd
-set_global_assignment -name VHDL_FILE ../src/mem_pack.vhd
-set_global_assignment -name VHDL_FILE ../src/jmp_pack.vhd
-set_global_assignment -name VHDL_FILE ../src/io_pack.vhd
-set_global_assignment -name VHDL_FILE ../src/io/pin_pack.vhd
-set_global_assignment -name VHDL_FILE ../src/fpu/fpu_pack.vhd
-set_global_assignment -name VHDL_FILE ../src/fetch.vhd
-set_global_assignment -name VHDL_FILE ../src/imem_block.vhd
-set_global_assignment -name VHDL_FILE ../src/imem.vhd
-set_global_assignment -name VHDL_FILE ../src/icache.vhd
-set_global_assignment -name VHDL_FILE ../src/inflate.vhd
-set_global_assignment -name VHDL_FILE ../src/regfile.vhd
-set_global_assignment -name VHDL_FILE ../src/decode.vhd
-set_global_assignment -name VHDL_FILE ../src/forward.vhd
-set_global_assignment -name VHDL_FILE ../src/flags.vhd
-set_global_assignment -name VHDL_FILE ../src/alu.vhd
-set_global_assignment -name VHDL_FILE ../src/memunit.vhd
-set_global_assignment -name VHDL_FILE ../src/jumpunit.vhd
-set_global_assignment -name VHDL_FILE ../src/cache/sdpram.vhd
-set_global_assignment -name VHDL_FILE ../src/cache/directmapped.vhd
-set_global_assignment -name VHDL_FILE ../src/cache/lru.vhd
-set_global_assignment -name VHDL_FILE ../src/cache/stack.vhd
-set_global_assignment -name VHDL_FILE ../src/cache/datacache.vhd
-set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/fixed_float_types_c.vhdl -library ieee_proposed
-set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/fixed_pkg_c.vhdl -library ieee_proposed
-set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/float_pkg_c.vhdl -library ieee_proposed
-set_global_assignment -name VHDL_FILE ../src/fpu/cmp.vhd
-set_global_assignment -name VHDL_FILE ../src/fpu/cvt.vhd
-set_global_assignment -name VHDL_FILE ../src/fpu/mac.vhd
-set_global_assignment -name VHDL_FILE ../src/fpu/fpu.vhd
-set_global_assignment -name VHDL_FILE ../src/core.vhd
-set_global_assignment -name VHDL_FILE ../src/iomux.vhd
-set_global_assignment -name VHDL_FILE ../src/io/sc_ssram32.vhd
-set_global_assignment -name VHDL_FILE ../src/io/fifo.vhd
-set_global_assignment -name VHDL_FILE ../src/io/sc_uart.vhd
-set_global_assignment -name VHDL_FILE ../bootrom/bootrom.vhd
-set_global_assignment -name VHDL_FILE ../src/io/sc_io.vhd
-set_global_assignment -name VHDL_FILE ../src/pll.vhd
-set_global_assignment -name VHDL_FILE ../src/cpu.vhd
 set_global_assignment -name MISC_FILE /mnt/local/lemberg/lemberg/hw/quartus/lemberg.dpf
 
 set_location_assignment PIN_AD15 -to clk_pin
@@ -280,4 +237,49 @@ set_global_assignment -name POWER_INPUT_FILE_TYPE VCD -section_id lemberg.vcd
 set_instance_assignment -name POWER_READ_INPUT_FILE lemberg.vcd -to cpu
 set_global_assignment -name STRICT_RAM_RECOGNITION OFF
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name SDC_FILE lemberg.sdc
+set_global_assignment -name VHDL_FILE ../src/core_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/reg_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/flag_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/op_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/mem_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/jmp_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/io_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/io/pin_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/fpu/fpu_pack.vhd
+set_global_assignment -name VHDL_FILE ../src/fetch.vhd
+set_global_assignment -name VHDL_FILE ../src/imem_block.vhd
+set_global_assignment -name VHDL_FILE ../src/imem.vhd
+set_global_assignment -name VHDL_FILE ../src/icache.vhd
+set_global_assignment -name VHDL_FILE ../src/inflate.vhd
+set_global_assignment -name VHDL_FILE ../src/regfile.vhd
+set_global_assignment -name VHDL_FILE ../src/decode.vhd
+set_global_assignment -name VHDL_FILE ../src/forward.vhd
+set_global_assignment -name VHDL_FILE ../src/flags.vhd
+set_global_assignment -name VHDL_FILE ../src/alu.vhd
+set_global_assignment -name VHDL_FILE ../src/memunit.vhd
+set_global_assignment -name VHDL_FILE ../src/jumpunit.vhd
+set_global_assignment -name VHDL_FILE ../src/cache/sdpram.vhd
+set_global_assignment -name VHDL_FILE ../src/cache/directmapped.vhd
+set_global_assignment -name VHDL_FILE ../src/cache/lru.vhd
+set_global_assignment -name VHDL_FILE ../src/cache/stack.vhd
+set_global_assignment -name VHDL_FILE ../src/cache/datacache.vhd
+set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/fixed_float_types_c.vhdl -library ieee_proposed
+set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/fixed_pkg_c.vhdl -library ieee_proposed
+set_global_assignment -name VHDL_FILE ../src/fpu/float_pkg/float_pkg_c.vhdl -library ieee_proposed
+set_global_assignment -name VHDL_FILE ../src/fpu/cmp.vhd
+set_global_assignment -name VHDL_FILE ../src/fpu/cvt.vhd
+set_global_assignment -name VHDL_FILE ../src/fpu/mac.vhd
+set_global_assignment -name VHDL_FILE ../src/fpu/fpu.vhd
+set_global_assignment -name VHDL_FILE ../src/core.vhd
+set_global_assignment -name VHDL_FILE ../src/iomux.vhd
+set_global_assignment -name VHDL_FILE ../src/io/sc_ssram32.vhd
+set_global_assignment -name VHDL_FILE ../src/io/sc_sysinfo.vhd
+set_global_assignment -name VHDL_FILE ../src/io/sc_timer.vhd
+set_global_assignment -name VHDL_FILE ../src/io/fifo.vhd
+set_global_assignment -name VHDL_FILE ../src/io/sc_uart.vhd
+set_global_assignment -name VHDL_FILE ../bootrom/bootrom.vhd
+set_global_assignment -name VHDL_FILE ../src/io/sc_io.vhd
+set_global_assignment -name VHDL_FILE ../src/pll.vhd
+set_global_assignment -name VHDL_FILE ../src/cpu.vhd
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

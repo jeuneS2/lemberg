@@ -123,10 +123,9 @@ begin  -- sim
 		ZZ => '0'
 		);
 
-	--	100 MHz clock		
 	clock : process
 	begin
-		wait for 10 ns; clk  <= not clk;
+		wait for 7.1429 ns; clk  <= not clk;
 	end process clock;
 
 	sim: process

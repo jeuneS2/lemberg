@@ -188,8 +188,13 @@ add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/sc_io/bootrom_
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/sc_io/bootrom_out
 add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/sc_io/uart_in
 add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/sc_io/uart_out
+add wave -noupdate -divider Timer
+add wave -noupdate -format Literal -radix decimal /cpu_tb/cpu/sc_io/sc_timer/cycles
+add wave -noupdate -format Literal -radix decimal -expand /cpu_tb/cpu/sc_io/sc_timer/nanos_pipe
+add wave -noupdate -format Literal -radix decimal /cpu_tb/cpu/sc_io/sc_timer/secs
+add wave -noupdate -format Literal -radix decimal /cpu_tb/cpu/sc_io/sc_timer/usecs
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 3} {17150 ns} 0}
+WaveRestoreCursors {{Cursor 3} {160 ns} 0} {{Cursor 2} {6126000 ns} 0}
 configure wave -namecolwidth 382
 configure wave -valuecolwidth 325
 configure wave -justifyvalue left
@@ -204,4 +209,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ns} {210048 ns}
+WaveRestoreZoom {159 ns} {161 ns}
