@@ -148,6 +148,8 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	setOperationAction(ISD::SELECT_CC, MVT::Other, Expand);
 	setOperationAction(ISD::BR_CC, MVT::Other, Expand);
 	setOperationAction(ISD::BR_JT, MVT::Other, Expand);
+
+	maxStoresPerMemcpy = 12;
 }
 
 const char *LembergTargetLowering::getTargetNodeName(unsigned Opcode) const {
