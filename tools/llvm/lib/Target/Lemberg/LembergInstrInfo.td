@@ -999,6 +999,19 @@ def : Pat<(setugt (f32 F:$src1), (f32 F:$src2)),
 def : Pat<(setuge (f32 F:$src1), (f32 F:$src2)),
 		  (BTEST (COPY_TO_REGCLASS (FCMP F:$src1, F:$src2), A), (i32 13))>;
 
+def : Pat<(seteq (f32 F:$src1), (f32 F:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (FCMP F:$src1, F:$src2), A), (i32 8))>;
+def : Pat<(setne (f32 F:$src1), (f32 F:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (FCMP F:$src1, F:$src2), A), (i32 9))>;
+def : Pat<(setlt (f32 F:$src1), (f32 F:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (FCMP F:$src1, F:$src2), A), (i32 10))>;
+def : Pat<(setle (f32 F:$src1), (f32 F:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (FCMP F:$src1, F:$src2), A), (i32 11))>;
+def : Pat<(setgt (f32 F:$src1), (f32 F:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (FCMP F:$src1, F:$src2), A), (i32 12))>;
+def : Pat<(setge (f32 F:$src1), (f32 F:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (FCMP F:$src1, F:$src2), A), (i32 13))>;
+
 // Comparison of doubles
 def DCMP: F1<(outs F:$dst), (ins pred:$p, D:$src1, D:$src2),
 			 "$p fop\tdcmp\t$src1, $src2 -> $dst", [], IIFpu2>;
@@ -1032,6 +1045,19 @@ def : Pat<(setule (f64 D:$src1), (f64 D:$src2)),
 def : Pat<(setugt (f64 D:$src1), (f64 D:$src2)),
 		  (BTEST (COPY_TO_REGCLASS (DCMP D:$src1, D:$src2), A), (i32 12))>;
 def : Pat<(setuge (f64 D:$src1), (f64 D:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (DCMP D:$src1, D:$src2), A), (i32 13))>;
+
+def : Pat<(seteq (f64 D:$src1), (f64 D:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (DCMP D:$src1, D:$src2), A), (i32 8))>;
+def : Pat<(setne (f64 D:$src1), (f64 D:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (DCMP D:$src1, D:$src2), A), (i32 9))>;
+def : Pat<(setlt (f64 D:$src1), (f64 D:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (DCMP D:$src1, D:$src2), A), (i32 10))>;
+def : Pat<(setle (f64 D:$src1), (f64 D:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (DCMP D:$src1, D:$src2), A), (i32 11))>;
+def : Pat<(setgt (f64 D:$src1), (f64 D:$src2)),
+		  (BTEST (COPY_TO_REGCLASS (DCMP D:$src1, D:$src2), A), (i32 12))>;
+def : Pat<(setge (f64 D:$src1), (f64 D:$src2)),
 		  (BTEST (COPY_TO_REGCLASS (DCMP D:$src1, D:$src2), A), (i32 13))>;
 
 
