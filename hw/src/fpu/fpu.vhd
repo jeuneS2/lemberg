@@ -47,8 +47,8 @@ architecture behavior of fpu is
 --	attribute multstyle of behavior : architecture is "logic";
 
 	type regfile_type is array (0 to FPREG_COUNT/2-1) of std_logic_vector(31 downto 0);
-	signal regfile_lo : regfile_type;
-	signal regfile_hi : regfile_type;
+	signal regfile_lo : regfile_type := (others => (others => '0'));
+	signal regfile_hi : regfile_type := (others => (others => '0'));
 
 	signal single_rddataA, single_rddataB, single_rddataC : float32;	
 	signal double_rddataA, double_rddataB, double_rddataC : float64;
@@ -170,10 +170,8 @@ begin  -- behavior
 		variable wren, wrhi, wrdbl : std_logic;
 		variable r0, r1 : std_logic_vector(31 downto 0);
 	begin  -- process sync
-		if reset = '0' then
-			regfile_hi <= (others => (others => '0'));
-			regfile_lo <= (others => (others => '0'));
-			
+		if reset = '0' then			
+
 			op_reg <= (others => FPOP_NOP);
 			op_pipe <= (others => FPOP_NOP);
 
