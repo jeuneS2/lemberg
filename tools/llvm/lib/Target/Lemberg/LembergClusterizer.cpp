@@ -54,7 +54,10 @@ namespace {
 		static char ID;
 		Clusterizer(TargetMachine &tm) 
 			: MachineFunctionPass(ID), TM(tm), TII(tm.getInstrInfo()),
-			  NeighborhoodQueue(neighborhood(RegClasses, Neighbors)) { }
+			  NeighborhoodQueue(neighborhood(RegClasses, Neighbors)) {
+			
+			initializeRegisterCoalescerAnalysisGroup(*PassRegistry::getPassRegistry());
+		}
 
 		virtual const char *getPassName() const {
 			return "Lemberg Clusterizer";

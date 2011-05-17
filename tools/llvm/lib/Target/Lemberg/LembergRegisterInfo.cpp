@@ -14,6 +14,7 @@
 
 #include "Lemberg.h"
 #include "LembergRegisterInfo.h"
+#include "LembergFrameLowering.h"
 #include "llvm/Function.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineFunction.h"
@@ -43,7 +44,7 @@ const unsigned*
 LembergRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
   using namespace Lemberg;
   static const unsigned CalleeSavedRegs[] = {
-	  R10, R11, R12, R13,
+	  R10, R11, R12, R13, R14,
 	  R0_23, R1_23, R2_23, R3_23,
 	  R0_24, R1_24, R2_24, R3_24,
 	  R0_25, R1_25, R2_25, R3_25,
@@ -53,41 +54,19 @@ LembergRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
 	  R0_29, R1_29, R2_29, R3_29,
 	  R0_30, R1_30, R2_30, R3_30,
 	  F10, F11, F12, F13, F14, F15,
-	  D5, D6, D7,
 	  0 };
   return  CalleeSavedRegs;
-}
-
-const TargetRegisterClass* const *LembergRegisterInfo::
-getCalleeSavedRegClasses(const MachineFunction *MF) const {
-  using namespace Lemberg;
-  static const TargetRegisterClass * const CalleeSavedRegClasses[] = {
-	  &ARegClass, &ARegClass, &ARegClass, &ARegClass,
-	  &ARegClass, &ARegClass, &ARegClass, &ARegClass,
-	  &ARegClass, &ARegClass, &ARegClass, &ARegClass,
-	  &ARegClass, &ARegClass, &ARegClass, &ARegClass,
-	  &ARegClass, &ARegClass, &ARegClass, &ARegClass,
-	  &ARegClass, &ARegClass, &ARegClass, &ARegClass,
-	  &ARegClass, &ARegClass, &ARegClass, &ARegClass,
-	  &ARegClass, &ARegClass, &ARegClass, &ARegClass,
-	  &ARegClass, &ARegClass, &ARegClass, &ARegClass,
-	  &ARegClass, &ARegClass, &ARegClass, &ARegClass,
-	  &FRegClass, &FRegClass, &FRegClass, &FRegClass, &FRegClass, &FRegClass,
-	  &DRegClass, &DRegClass, &DRegClass,
-	  0 };
-  return CalleeSavedRegClasses;
-}
-
-const TargetRegisterClass* LembergRegisterInfo::
-getPointerRegClass(unsigned Kind) const {
-	return Lemberg::ARegisterClass;
 }
 
 BitVector
 LembergRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   using namespace Lemberg;
   BitVector Reserved(getNumRegs());
-  Reserved.set(R14);
+
+  const TargetFrameLowering *TFI = MF.getTarget().getFrameLowering();
+  if (TFI->hasFP(MF))
+	  Reserved.set(R14);
+
   Reserved.set(R15);
   Reserved.set(R0_31);
   Reserved.set(R1_31);
@@ -104,24 +83,6 @@ LembergRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   return Reserved;
 }
 
-// hasFP - Return true if the specified function should have a dedicated frame
-// pointer register.  This is true if the function has variable sized allocas or
-// if frame pointer elimination is disabled.
-bool LembergRegisterInfo::hasFP(const MachineFunction &MF) const {
-  const MachineFrameInfo *MFI = MF.getFrameInfo();
-  return NoFramePointerElim || MFI->hasCalls() || MFI->hasVarSizedObjects();
-}
-
-bool LembergRegisterInfo::
-requiresRegisterScavenging(const MachineFunction &MF) const {
-  return true;
-}
-
-bool LembergRegisterInfo::
-requiresFrameIndexScavenging(const MachineFunction &MF) const {
-  return true;
-}
-
 bool LembergRegisterInfo::
 saveScavengerRegister(MachineBasicBlock &MBB,
 					  MachineBasicBlock::iterator I,
@@ -135,12 +96,6 @@ saveScavengerRegister(MachineBasicBlock &MBB,
 	  }
   }
   return false;
-}
-
-// just here to avoid misplacement of scavening slot
-bool LembergRegisterInfo::
-needsStackRealignment(const MachineFunction &MF) const {
-  return true;
 }
 
 unsigned LembergRegisterInfo::
@@ -159,8 +114,8 @@ BuildLargeFrameOffset (MachineFunction &MF,
 		for (MachineBasicBlock::iterator II = MBBI, IE = MBB.begin(); MaxLookup-- > 0; --II) {
 			// Do not search beyond definitions, kills, and calls
 			if (II != LastLargeFrame->Killer
-				&& (II->definesRegister(LastLargeFrame->Register)
-					|| II->killsRegister(LastLargeFrame->Register)
+				&& (II->modifiesRegister(LastLargeFrame->Register, this)
+					|| II->killsRegister(LastLargeFrame->Register, this)
 					|| II->getDesc().isCall())) {
 				break;
 			}
@@ -221,93 +176,6 @@ BuildLargeFrameOffset (MachineFunction &MF,
 	return ScratchReg;
 }
 
-void LembergRegisterInfo::
-BuildStackLoad(MachineFunction &MF,
-			   MachineBasicBlock &MBB, MachineBasicBlock::iterator &MBBI,
-			   unsigned DestReg, long Offset) const {
-
-	assert(isInt<11>(Offset) && "Offset too big for stack load");
-
-	DebugLoc DL = MBB.findDebugLoc(MBBI);
-	BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOAD32spi))
-		.addImm(-1).addReg(0)
-		.addReg(getStackRegister()).addImm(Offset);
-	BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LDXi), DestReg)
-		.addImm(-1).addReg(0)
-		.addReg(Lemberg::MEM).addImm(0);
-}
-
-void LembergRegisterInfo::
-BuildStackStore(MachineFunction &MF,
-				MachineBasicBlock &MBB, MachineBasicBlock::iterator &MBBI,
-				unsigned SrcReg, long Offset) const {
-
-	assert(isUInt<5>(Offset >> 2) && (Offset & 0x03) == 0
-		   && "Wrong offset for stack store");
-
-	DebugLoc DL = MBB.findDebugLoc(MBBI);
-	BuildMI(MBB, MBBI, DL, TII.get(Lemberg::STORE32spi))
-		.addImm(-1).addReg(0)
-		.addReg(SrcReg)
-		.addReg(getStackRegister())
-		.addImm(Offset >> 2);
-}
-
-void LembergRegisterInfo::
-BuildStackWriteBack(MachineFunction &MF,
-					MachineBasicBlock &MBB, MachineBasicBlock::iterator &MBBI,
-					long Offset) const {
-
-	assert((Offset & 0x03) == 0 && "Wrong offset for stack write back");
-
-	DebugLoc DL = MBB.findDebugLoc(MBBI);
-
-	BuildMI(MBB, MBBI, DL, TII.get(Lemberg::WB))
-		.addImm(-1).addReg(0)
-		.addReg(getStackRegister())
-		.addImm(isUInt<11>(Offset >> 2) ? Offset >> 2 : 0);
-}
-
-void LembergRegisterInfo::
-BuildStackAdd (MachineFunction &MF,
-			   MachineBasicBlock &MBB, MachineBasicBlock::iterator &MBBI,
-			   long Offset) const {
-
-	DebugLoc DL = MBB.findDebugLoc(MBBI);
-
-	bool isAdd = Offset >= 0;
-	Offset = Offset < 0 ? -Offset : Offset;
-
-	if (isAdd && (Offset & 0x03) == 0 && isUInt<5>(Offset >> 2)) {
-		BuildMI(MBB, MBBI, DL,
-				TII.get(Lemberg::S2ADDaia), getStackRegister())
-			.addImm(-1).addReg(0)
-			.addReg(getStackRegister())
-			.addImm(Offset >> 2);
-	} else {
-		unsigned ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
-
-		if (isUInt<11>(Offset)){
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ScratchReg)
-				.addImm(-1).addReg(0)
-				.addImm(Offset);
-		} else {
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ScratchReg)
-				.addImm(-1).addReg(0)
-				.addImm(Offset & 0x7ff);
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADimm11mi), ScratchReg)
-				.addImm(-1).addReg(0)
-				.addReg(ScratchReg)
-				.addImm((Offset >> 11) & 0x7ff);
-		}
-		BuildMI(MBB, MBBI, DL,
-				TII.get(isAdd ? Lemberg::ADDaaa : Lemberg::SUBaaa), getStackRegister())
-			.addImm(-1).addReg(0)
-			.addReg(getStackRegister())
-			.addReg(ScratchReg, RegState::Kill);
-	}
-}
-
 static int getModOffset(int Offset, bool isLoad, int storeIdxShift) {
 	if (isLoad) {
 		return ((unsigned)Offset % (1 << 11)) - (1 << 10);
@@ -319,18 +187,26 @@ static int getModOffset(int Offset, bool isLoad, int storeIdxShift) {
 void LembergRegisterInfo::
 eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
 							  MachineBasicBlock::iterator I) const {
-	MachineInstr &MI = *I;
-	long Size = MI.getOperand(0).getImm();
-	Size = MI.getOpcode() == Lemberg::ADJCALLSTACKDOWN ? -Size : Size;
-	if (Size != 0) {
-		BuildStackAdd(MF, MBB, I, Size);
-	}
-	MBB.erase(I);
+  const LembergFrameLowering *TFI =
+	  (const LembergFrameLowering *)MF.getTarget().getFrameLowering();
+
+  MachineInstr &MI = *I;
+  long Size = MI.getOperand(0).getImm();
+
+  Size = MI.getOpcode() == Lemberg::ADJCALLSTACKDOWN ? -Size : Size;
+
+  if (!TFI->hasReservedCallFrame(MF) && Size != 0) {
+	  TFI->BuildStackAdd(MF, MBB, I, Size);
+  }
+
+  MBB.erase(I);
 }
 
-void
-LembergRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
-										 int SPAdj, RegScavenger *RS) const {
+void LembergRegisterInfo::
+eliminateFrameIndex(MachineBasicBlock::iterator II,
+					int SPAdj, RegScavenger *RS) const {
+  assert(SPAdj == 0 && "Unexpected");
+
   MachineInstr &MI = *II;
   MachineBasicBlock &MBB = *MI.getParent();
   MachineFunction &MF = *MBB.getParent();
@@ -721,136 +597,9 @@ LembergRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   return;
 }
 
-void LembergRegisterInfo::
-processFunctionBeforeCalleeSavedScan(MachineFunction &MF,
-                                     RegScavenger *RS) const {
-  MachineFrameInfo *MFI = MF.getFrameInfo();
-  const TargetRegisterClass *RC = Lemberg::GRegisterClass;
-  if (requiresRegisterScavenging(MF)) {
-    // Reserve a slot close to SP/FP
-    RS->setScavengingFrameIndex(MFI->CreateStackObject(RC->getSize(),
-													   RC->getAlignment(),
-													   false));
-  }
-}
-
-void LembergRegisterInfo::
-processFunctionBeforeFrameFinalized(MachineFunction &MF) const {
-}
-
-// Emit a prologue that sets up a stack frame
-void LembergRegisterInfo::emitPrologue(MachineFunction &MF) const {
-
-  MachineBasicBlock &MBB = MF.front();
-  MachineFrameInfo *MFI = MF.getFrameInfo();
-  MachineBasicBlock::iterator MBBI = MBB.begin();
-  DebugLoc DL = MBB.findDebugLoc(MBBI);
-
-  long NumBytes = MFI->getStackSize();
-
-  if (hasFP(MF)) {
-	  // Space for frame pointer
-	  NumBytes += 4;
-  }
-  if (MFI->hasCalls()) {
-	  // Space for return addresses
-	  NumBytes += 8;
-  }
-
-  MFI->setStackSize(NumBytes);
-
-  // Take into account room for varargs passed in registers
-  // TODO: get rid of magic number here
-  if (MF.getFunction()->isVarArg()) {
-	  NumBytes += 16;
-  }
-
-  if (NumBytes != 0) {
-	  // Update stack pointer for current frame
-	  BuildStackWriteBack(MF, MBB, MBBI, NumBytes);
-	  BuildStackAdd(MF, MBB, MBBI, -NumBytes);
-  }
-
-  if (hasFP(MF)) {
-	  // Save old frame pointer
-	  BuildStackStore(MF, MBB, MBBI, getFrameRegister(MF), 0);
-  }
-
-  // Save the return address only if the function isnt a leaf one.
-  if (MFI->hasCalls()) {
-	  // Save $ra
-	  unsigned TmpReg = getEmergencyRegister();
-	  BuildMI(MBB, MBBI, DL, TII.get(Lemberg::MOVExa), TmpReg)
-		  .addImm(-1).addReg(0)
-		  .addReg(getRARegister());
-	  BuildStackStore(MF, MBB, MBBI, TmpReg, hasFP(MF) ? 4 : 0);
-	  // Save $ro
-	  TmpReg = getEmergencyRegister();
-	  BuildMI(MBB, MBBI, DL, TII.get(Lemberg::MOVExa), TmpReg)
-		  .addImm(-1).addReg(0)
-		  .addReg(getRAOffRegister());
-	  BuildStackStore(MF, MBB, MBBI, TmpReg, hasFP(MF) ? 8 : 4);
-  }
-
-  if (hasFP(MF)) {
-	  // Copy stack pointer to frame pointer
-	  BuildMI(MBB, MBBI, DL, TII.get(Lemberg::MOVEaa), getFrameRegister(MF))
-	  	  .addImm(-1).addReg(0)
-		  .addReg(getStackRegister());
-  }
-}
-
-// Emit an epilogue that tears down a stack frame
-void LembergRegisterInfo::emitEpilogue(MachineFunction &MF, MachineBasicBlock &MBB) const {
-
-  MachineBasicBlock::iterator MBBI = prior(MBB.end());
-  MachineFrameInfo *MFI = MF.getFrameInfo();
-  DebugLoc DL = MBB.findDebugLoc(MBBI);
-
-  long NumBytes = MFI->getStackSize();
-
-  // Take into account room for varargs passed in registers
-  // TODO: get rid of magic number here
-  if (MF.getFunction()->isVarArg()) {
-	  NumBytes += 16;
-  }
-
-  if (hasFP(MF)) {
-	  // Copy frame pointer to stack pointer
-	  BuildMI(MBB, MBBI, DL, TII.get(Lemberg::MOVEaa), getStackRegister())
-	  	  .addImm(-1).addReg(0)
-		  .addReg(getFrameRegister(MF));
-  }
-
-  // Restore the return address only if the function isnt a leaf one.
-  if (MFI->hasCalls()) { 
-	  // Restore $ro
-	  unsigned TmpReg = getEmergencyRegister();
-	  BuildStackLoad(MF, MBB, MBBI, TmpReg, hasFP(MF) ? 8 : 4);
-	  BuildMI(MBB, MBBI, DL, TII.get(Lemberg::MOVEax), getRAOffRegister())
-		  .addImm(-1).addReg(0)
-		  .addReg(TmpReg);
-	  // Restore $ra
-	  TmpReg = getEmergencyRegister();
-	  BuildStackLoad(MF, MBB, MBBI, TmpReg, hasFP(MF) ? 4 : 0);
-	  BuildMI(MBB, MBBI, DL, TII.get(Lemberg::MOVEax), getRARegister())
-		  .addImm(-1).addReg(0)
-		  .addReg(TmpReg);
-  }
-
-  if (hasFP(MF)) {
-	  // Restore old frame pointer
-	  BuildStackLoad(MF, MBB, MBBI, getFrameRegister(MF), 0);
-  }
-
-  if (NumBytes != 0) {
-	  // Restore stack pointer
-	  BuildStackAdd(MF, MBB, MBBI, NumBytes);
-  }
-}
-
 unsigned LembergRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
-	return hasFP(MF) ? Lemberg::R14 : Lemberg::R15;
+	const TargetFrameLowering *TFI = MF.getTarget().getFrameLowering();
+	return TFI->hasFP(MF) ? Lemberg::R14 : Lemberg::R15;
 }
 
 unsigned LembergRegisterInfo::getStackRegister() const {
@@ -875,6 +624,51 @@ unsigned LembergRegisterInfo::getEmergencyRegister() const {
 	}
 
 	return EmergencyRegs[EmergencyCounter];
+}
+
+unsigned LembergRegisterInfo::getRegPressureLimit(const TargetRegisterClass *RC,
+												  MachineFunction &MF) const {
+	switch (RC->getID()) {
+	default:
+		return 0;
+
+	case Lemberg::L0RegClassID:
+	case Lemberg::L1RegClassID:
+	case Lemberg::L2RegClassID:
+	case Lemberg::L3RegClassID:
+		return 15;
+
+	case Lemberg::LG0RegClassID:
+	case Lemberg::LG1RegClassID:
+	case Lemberg::LG2RegClassID:
+	case Lemberg::LG3RegClassID:
+		return MF.getTarget().getFrameLowering()->hasFP(MF) ? 29 : 30;
+	case Lemberg::GRegClassID:
+		return MF.getTarget().getFrameLowering()->hasFP(MF) ? 14 : 15;
+
+	case Lemberg::LG0ImmRegClassID:
+	case Lemberg::LG1ImmRegClassID:
+	case Lemberg::LG2ImmRegClassID:
+	case Lemberg::LG3ImmRegClassID:
+		return 8;
+	case Lemberg::GImmRegClassID:
+		return 4;
+
+	case Lemberg::M0RegClassID:
+	case Lemberg::M1RegClassID:
+	case Lemberg::M2RegClassID:
+	case Lemberg::M3RegClassID:
+		return 1;
+	case Lemberg::MulRegClassID:
+		return 4;
+
+	case Lemberg::CRegClassID:
+		return 3;
+	case Lemberg::FRegClassID:
+		return 16;
+	case Lemberg::DRegClassID:
+		return 8;
+	}
 }
 
 int LembergRegisterInfo::getDwarfRegNum(unsigned RegNum, bool isEH) const {

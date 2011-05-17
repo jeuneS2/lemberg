@@ -27,6 +27,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/ADT/OwningPtr.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Bitcode/BitstreamReader.h"
 #include "llvm/Bitcode/LLVMBitCodes.h"
@@ -37,7 +38,8 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/PrettyStackTrace.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/System/Signals.h"
+#include "llvm/Support/Signals.h"
+#include "llvm/Support/system_error.h"
 #include <cstdio>
 #include <map>
 #include <algorithm>
@@ -57,15 +59,22 @@ static cl::opt<bool> NoHistogram("disable-histogram",
 
 static cl::opt<bool>
 NonSymbolic("non-symbolic",
-            cl::desc("Emit numberic info in dump even if"
+            cl::desc("Emit numeric info in dump even if"
                      " symbolic info is available"));
+
+namespace {
+
+/// CurStreamTypeType - A type for CurStreamType
+enum CurStreamTypeType {
+  UnknownBitstream,
+  LLVMIRBitstream
+};
+
+}
 
 /// CurStreamType - If we can sniff the flavor of this stream, we can produce
 /// better dump info.
-static enum {
-  UnknownBitstream,
-  LLVMIRBitstream
-} CurStreamType;
+static CurStreamTypeType CurStreamType;
 
 
 /// GetBlockName - Return a symbolic block name if known, otherwise return
@@ -254,6 +263,7 @@ static const char *GetCodeName(unsigned CodeID, unsigned BlockID,
     switch(CodeID) {
     default:return 0;
     case bitc::METADATA_ATTACHMENT:  return "METADATA_ATTACHMENT";
+    case bitc::METADATA_ATTACHMENT2: return "METADATA_ATTACHMENT2";
     }
   case bitc::METADATA_BLOCK_ID:
     switch(CodeID) {
@@ -268,7 +278,6 @@ static const char *GetCodeName(unsigned CodeID, unsigned BlockID,
     case bitc::METADATA_NODE2:       return "METADATA_NODE2";
     case bitc::METADATA_FN_NODE2:    return "METADATA_FN_NODE2";
     case bitc::METADATA_NAMED_NODE2: return "METADATA_NAMED_NODE2";
-    case bitc::METADATA_ATTACHMENT2: return "METADATA_ATTACHMENT2";
     }
   }
 }
@@ -462,21 +471,22 @@ static bool ParseBlock(BitstreamCursor &Stream, unsigned IndentLevel) {
 }
 
 static void PrintSize(double Bits) {
-  fprintf(stderr, "%.2f/%.2fB/%lluW", Bits, Bits/8,(unsigned long long)Bits/32);
+  fprintf(stderr, "%.2f/%.2fB/%luW", Bits, Bits/8,(unsigned long)(Bits/32));
 }
 static void PrintSize(uint64_t Bits) {
-  fprintf(stderr, "%llub/%.2fB/%lluW", (unsigned long long)Bits,
-          (double)Bits/8, (unsigned long long)Bits/32);
+  fprintf(stderr, "%lub/%.2fB/%luW", (unsigned long)Bits,
+          (double)Bits/8, (unsigned long)(Bits/32));
 }
 
 
 /// AnalyzeBitcode - Analyze the bitcode file specified by InputFilename.
 static int AnalyzeBitcode() {
   // Read the input file.
-  MemoryBuffer *MemBuf = MemoryBuffer::getFileOrSTDIN(InputFilename.c_str());
+  OwningPtr<MemoryBuffer> MemBuf;
 
-  if (MemBuf == 0)
-    return Error("Error reading '" + InputFilename + "'.");
+  if (error_code ec =
+        MemoryBuffer::getFileOrSTDIN(InputFilename.c_str(), MemBuf))
+    return Error("Error reading '" + InputFilename + "': " + ec.message());
 
   if (MemBuf->getBufferSize() & 3)
     return Error("Bitcode stream should be a multiple of 4 bytes in length");
@@ -591,8 +601,8 @@ static int AnalyzeBitcode() {
       for (unsigned i = 0, e = FreqPairs.size(); i != e; ++i) {
         const PerRecordStats &RecStats = Stats.CodeFreq[FreqPairs[i].second];
 
-        fprintf(stderr, "\t\t%7d %9llu ", RecStats.NumInstances,
-                (unsigned long long)RecStats.TotalBits);
+        fprintf(stderr, "\t\t%7d %9lu ", RecStats.NumInstances,
+                (unsigned long)RecStats.TotalBits);
 
         if (RecStats.NumAbbrev)
           fprintf(stderr, "%7.2f  ",

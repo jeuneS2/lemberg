@@ -19,6 +19,7 @@
 #include "llvm/Target/TargetFrameInfo.h"
 #include "LembergInstrInfo.h"
 #include "LembergISelLowering.h"
+#include "LembergFrameLowering.h"
 #include "LembergSelectionDAGInfo.h"
 #include "LembergSubtarget.h"
 
@@ -31,7 +32,7 @@ namespace llvm {
 	LembergTargetLowering TLInfo;
 	LembergSelectionDAGInfo TSInfo;
 	LembergInstrInfo InstrInfo;
-	TargetFrameInfo FrameInfo;
+    LembergFrameLowering FrameLowering;
 
   public:
     LembergTargetMachine(const Target &T, const std::string &TT,
@@ -41,15 +42,17 @@ namespace llvm {
     virtual void setCodeModelForStatic();
 
 	virtual const LembergInstrInfo *getInstrInfo() const { return &InstrInfo; }
-    virtual const TargetFrameInfo *getFrameInfo() const { return &FrameInfo; }
     virtual const LembergSubtarget *getSubtargetImpl() const {
       return &Subtarget;
     }
-    virtual const InstrItineraryData getInstrItineraryData() const {
-      return Subtarget.getInstrItins();
+    virtual const InstrItineraryData *getInstrItineraryData() const {
+      return &Subtarget.getInstrItins();
 	}
     virtual const LembergRegisterInfo *getRegisterInfo() const {
       return &InstrInfo.getRegisterInfo();
+    }
+	virtual const TargetFrameLowering  *getFrameLowering() const {
+      return &FrameLowering;
     }
     virtual const LembergTargetLowering* getTargetLowering() const { return &TLInfo; }
 	virtual const LembergSelectionDAGInfo* getSelectionDAGInfo() const { return &TSInfo; }

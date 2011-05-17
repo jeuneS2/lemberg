@@ -9,9 +9,11 @@ add_llvm_library(LLVMAnalysis
   CFGPrinter.cpp
   CaptureTracking.cpp
   ConstantFolding.cpp
+  DIBuilder.cpp
   DbgInfoPrinter.cpp
   DebugInfo.cpp
   DomPrinter.cpp
+  DominanceFrontier.cpp
   IVUsers.cpp
   InlineCost.cpp
   InstCount.cpp
@@ -22,16 +24,19 @@ add_llvm_library(LLVMAnalysis
   LibCallAliasAnalysis.cpp
   LibCallSemantics.cpp
   Lint.cpp
-  LiveValues.cpp
   Loads.cpp
   LoopDependenceAnalysis.cpp
   LoopInfo.cpp
   LoopPass.cpp
+  MemDepPrinter.cpp
   MemoryBuiltins.cpp
   MemoryDependenceAnalysis.cpp
   ModuleDebugInfoPrinter.cpp
+  NoAliasAnalysis.cpp
   PHITransAddr.cpp
-  PointerTracking.cpp
+  PathNumbering.cpp
+  PathProfileInfo.cpp
+  PathProfileVerifier.cpp
   PostDominators.cpp
   ProfileEstimatorPass.cpp
   ProfileInfo.cpp
@@ -39,6 +44,7 @@ add_llvm_library(LLVMAnalysis
   ProfileInfoLoaderPass.cpp
   ProfileVerifierPass.cpp
   RegionInfo.cpp
+  RegionPass.cpp
   RegionPrinter.cpp
   ScalarEvolution.cpp
   ScalarEvolutionAliasAnalysis.cpp
@@ -50,4 +56,4 @@ add_llvm_library(LLVMAnalysis
   ValueTracking.cpp
   )
 
-target_link_libraries (LLVMAnalysis LLVMSupport)
+add_subdirectory(IPA)

@@ -83,18 +83,28 @@ namespace llvm {
 
 	virtual bool DefinesPredicate(MachineInstr *MI, std::vector<MachineOperand> &Pred) const;
 
-    virtual bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs) const {
+    virtual bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs,
+									 unsigned ExtraPredCycles,
+									 float Probability, float Confidence) const {
       return NumInstrs < 8;
     }
 
-    virtual bool isProfitableToIfCvt(MachineBasicBlock &TMBB, unsigned NumT,
-									 MachineBasicBlock &FMBB, unsigned NumF) const {
+    virtual bool isProfitableToIfCvt(MachineBasicBlock &TMBB,
+									 unsigned NumT, unsigned ExtraTCycles,
+									 MachineBasicBlock &FMBB,
+									 unsigned NumF, unsigned ExtraFCycles,
+									 float Probability, float Confidence) const {
       return (NumT + NumF) < 12;
 	}
 
-	virtual bool isProfitableToDupForIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs) const {
+	  virtual bool isProfitableToDupForIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs,
+											 float Probability, float Confidence) const {
       return NumInstrs < 4;
 	}
+
+	virtual ScheduleHazardRecognizer *
+	CreateTargetPostRAHazardRecognizer(const InstrItineraryData *InstrItins,
+									   const ScheduleDAG *DAG) const;
   };
 } // end namespace llvm
 

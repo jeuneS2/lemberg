@@ -44,9 +44,6 @@ namespace llvm {
     /// Topo - A topological ordering for SUnits.
     ScheduleDAGTopologicalSort Topo;
 
-    /// HazardRec - The hazard recognizer to use.
-    ScheduleHazardRecognizer *HazardRec;
-
     /// AntiDepBreak - Anti-dependence breaking object, or NULL if none
     AntiDepBreaker *AntiDepBreak;
 
@@ -58,18 +55,16 @@ namespace llvm {
     std::vector<unsigned> KillIndices;
 
   public:
-    SchedulePostRATDList(MachineFunction &MF,
-                         const MachineLoopInfo &MLI,
-                         const MachineDominatorTree &MDT,
-                         ScheduleHazardRecognizer *HR,
-                         AntiDepBreaker *ADB,
-                         AliasAnalysis *aa)
-      : ScheduleDAGInstrs(MF, MLI, MDT), Topo(SUnits),
-        HazardRec(HR), AntiDepBreak(ADB), AA(aa),
-        KillIndices(TRI->getNumRegs()) {}
+    /// HazardRec - The hazard recognizer to use.
+    ScheduleHazardRecognizer *HazardRec;
 
-    ~SchedulePostRATDList() {
-    }
+  public:
+    SchedulePostRATDList(
+      MachineFunction &MF, MachineLoopInfo &MLI, MachineDominatorTree &MDT,
+      AliasAnalysis *AA, TargetSubtarget::AntiDepBreakMode AntiDepMode,
+      SmallVectorImpl<TargetRegisterClass*> &CriticalPathRCs);
+
+    ~SchedulePostRATDList();
 
     /// StartBlock - Initialize register live-range state for scheduling in
     /// this block.

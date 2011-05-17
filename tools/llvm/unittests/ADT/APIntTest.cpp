@@ -39,6 +39,9 @@ TEST(APIntTest, i128_NegativeCount) {
   EXPECT_EQ(-1, Minus1.getSExtValue());
 }
 
+// XFAIL this test on FreeBSD where the system gcc-4.2.1 seems to miscompile it.
+#if defined(__llvm__) || !defined(__FreeBSD__)
+
 TEST(APIntTest, i33_Count) {
   APInt i33minus2(33, static_cast<uint64_t>(-2), true);
   EXPECT_EQ(0u, i33minus2.countLeadingZeros());
@@ -50,9 +53,11 @@ TEST(APIntTest, i33_Count) {
   EXPECT_EQ(((uint64_t)-2)&((1ull<<33) -1), i33minus2.getZExtValue());
 }
 
+#endif
+
 TEST(APIntTest, i65_Count) {
   APInt i65minus(65, 0, true);
-  i65minus.set(64);
+  i65minus.setBit(64);
   EXPECT_EQ(0u, i65minus.countLeadingZeros());
   EXPECT_EQ(1u, i65minus.countLeadingOnes());
   EXPECT_EQ(65u, i65minus.getActiveBits());
@@ -325,6 +330,24 @@ TEST(APIntTest, Log2) {
   EXPECT_EQ(APInt(15, 9).logBase2(), 3U);
   EXPECT_EQ(APInt(15, 9).ceilLogBase2(), 4U);
   EXPECT_EQ(APInt(15, 9).exactLogBase2(), -1);
+}
+
+TEST(APIntTest, magic) {
+  EXPECT_EQ(APInt(32, 3).magic().m, APInt(32, "55555556", 16));
+  EXPECT_EQ(APInt(32, 3).magic().s, 0U);
+  EXPECT_EQ(APInt(32, 5).magic().m, APInt(32, "66666667", 16));
+  EXPECT_EQ(APInt(32, 5).magic().s, 1U);
+  EXPECT_EQ(APInt(32, 7).magic().m, APInt(32, "92492493", 16));
+  EXPECT_EQ(APInt(32, 7).magic().s, 2U);
+}
+
+TEST(APIntTest, magicu) {
+  EXPECT_EQ(APInt(32, 3).magicu().m, APInt(32, "AAAAAAAB", 16));
+  EXPECT_EQ(APInt(32, 3).magicu().s, 1U);
+  EXPECT_EQ(APInt(32, 5).magicu().m, APInt(32, "CCCCCCCD", 16));
+  EXPECT_EQ(APInt(32, 5).magicu().s, 2U);
+  EXPECT_EQ(APInt(32, 7).magicu().m, APInt(32, "24924925", 16));
+  EXPECT_EQ(APInt(32, 7).magicu().s, 3U);
 }
 
 #ifdef GTEST_HAS_DEATH_TEST

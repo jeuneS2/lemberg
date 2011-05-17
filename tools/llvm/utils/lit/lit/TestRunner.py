@@ -8,6 +8,8 @@ import Util
 import platform
 import tempfile
 
+import re
+
 class InternalShellError(Exception):
     def __init__(self, command, message):
         self.command = command
@@ -178,6 +180,13 @@ def executeShCmd(cmd, cfg, cwd, results):
         else:
             input = subprocess.PIPE
 
+    # Explicitly close any redirected files. We need to do this now because we
+    # need to release any handles we may have on the temporary files (important
+    # on Win32, for example). Since we have already spawned the subprocess, our
+    # handles have already been transferred so we do not need them anymore.
+    for f in opened_files:
+        f.close()
+
     # FIXME: There is probably still deadlock potential here. Yawn.
     procData = [None] * len(procs)
     procData[-1] = procs[-1].communicate()
@@ -214,10 +223,6 @@ def executeShCmd(cmd, cfg, cwd, results):
                 exitCode = max(exitCode, res)
         else:
             exitCode = res
-
-    # Explicitly close any redirected files.
-    for f in opened_files:
-        f.close()
 
     # Remove any named temporary files we created.
     for f in named_temp_files:
@@ -332,23 +337,28 @@ def executeTclScriptInternal(test, litConfig, tmpBase, commands, cwd):
     return out, err, exitCode
 
 def executeScript(test, litConfig, tmpBase, commands, cwd):
+    bashPath = litConfig.getBashPath();
+    isWin32CMDEXE = (litConfig.isWindows and not bashPath)
     script = tmpBase + '.script'
-    if litConfig.isWindows:
+    if isWin32CMDEXE:
         script += '.bat'
 
     # Write script file
     f = open(script,'w')
-    if litConfig.isWindows:
+    if isWin32CMDEXE:
         f.write('\nif %ERRORLEVEL% NEQ 0 EXIT\n'.join(commands))
     else:
         f.write(' &&\n'.join(commands))
     f.write('\n')
     f.close()
 
-    if litConfig.isWindows:
+    if isWin32CMDEXE:
         command = ['cmd','/c', script]
     else:
-        command = ['/bin/sh', script]
+        if bashPath:
+            command = [bashPath, script]
+        else:
+            command = ['/bin/sh', script]
         if litConfig.useValgrind:
             # FIXME: Running valgrind on sh is overkill. We probably could just
             # run on clang with no real loss.
@@ -441,11 +451,15 @@ def parseIntegratedTestScript(test, normalize_slashes=False):
             if ln[ln.index('END.'):].strip() == 'END.':
                 break
 
-    # Apply substitutions to the script.
+    # Apply substitutions to the script.  Allow full regular
+    # expression syntax.  Replace each matching occurrence of regular
+    # expression pattern a with substitution b in line ln.
     def processLine(ln):
         # Apply substitutions
         for a,b in substitutions:
-            ln = ln.replace(a,b)
+            if kIsWindows:
+                b = b.replace("\\","\\\\")
+            ln = re.sub(a, b, ln)
 
         # Strip the trailing newline and any extra whitespace.
         return ln.strip()
@@ -544,7 +558,7 @@ def executeShTest(test, litConfig, useExternalSh):
     if test.config.unsupported:
         return (Test.UNSUPPORTED, 'Test is unsupported')
 
-    res = parseIntegratedTestScript(test)
+    res = parseIntegratedTestScript(test, useExternalSh)
     if len(res) == 2:
         return res
 

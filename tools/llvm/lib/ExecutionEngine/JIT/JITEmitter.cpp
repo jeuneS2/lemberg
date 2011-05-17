@@ -42,8 +42,8 @@
 #include "llvm/Support/MutexGuard.h"
 #include "llvm/Support/ValueHandle.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/System/Disassembler.h"
-#include "llvm/System/Memory.h"
+#include "llvm/Support/Disassembler.h"
+#include "llvm/Support/Memory.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
@@ -985,7 +985,7 @@ bool JITEmitter::finishFunction(MachineFunction &F) {
     CurBufferPtr = SavedCurBufferPtr;
 
     if (JITExceptionHandling) {
-      TheJIT->RegisterTable(FrameRegister);
+      TheJIT->RegisterTable(F.getFunction(), FrameRegister);
     }
 
     if (JITEmitDebugInfo) {
@@ -1033,8 +1033,9 @@ void JITEmitter::deallocateMemForFunction(const Function *F) {
     EmittedFunctions.erase(Emitted);
   }
 
-  // TODO: Do we need to unregister exception handling information from libgcc
-  // here?
+  if(JITExceptionHandling) {
+    TheJIT->DeregisterTable(F);
+  }
 
   if (JITEmitDebugInfo) {
     DR->UnregisterFunction(F);

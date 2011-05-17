@@ -1,7 +1,11 @@
-; RUN: llc < %s -march=x86-64 | grep {movq	8(%rsp), %rax}
-; RUN: llc < %s -march=x86 > %t
-; RUN: grep {movl	8(%esp), %edx} %t
-; RUN: grep {movl	4(%esp), %eax} %t
+; RUN: llc < %s -mtriple=x86_64-linux | FileCheck -check-prefix=X86-64 %s
+; Win64 has not supported byval yet.
+; RUN: llc < %s -march=x86 | FileCheck -check-prefix=X86 %s
+
+; X86: movl	4(%esp), %eax
+; X86: movl	8(%esp), %edx
+
+; X86-64: movq	8(%rsp), %rax
 
 %struct.s = type { i64, i64, i64 }
 

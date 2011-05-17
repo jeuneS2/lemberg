@@ -72,7 +72,7 @@ have an if/then/else expression plus a simple 'for' loop.</p>
 
 <p>
 Extending Kaleidoscope to support if/then/else is quite straightforward.  It
-basically requires adding lexer support for this "new" concept to the lexer,
+basically requires adding support for this "new" concept to the lexer,
 parser, AST, and LLVM code emitter.  This example is nice, because it shows how
 easy it is to "grow" a language over time, incrementally extending it as new
 ideas are discovered.</p>
@@ -907,6 +907,7 @@ if/then/else and for expressions..  To build this example, use:
 #include "llvm/Module.h"
 #include "llvm/PassManager.h"
 #include "llvm/Analysis/Verifier.h"
+#include "llvm/Analysis/Passes.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Target/TargetSelect.h"
 #include "llvm/Transforms/Scalar.h"
@@ -1731,6 +1732,8 @@ int main() {
   // Set up the optimizer pipeline.  Start with registering info about how the
   // target lays out data structures.
   OurFPM.add(new TargetData(*TheExecutionEngine-&gt;getTargetData()));
+  // Provide basic AliasAnalysis support for GVN.
+  OurFPM.add(createBasicAliasAnalysisPass());
   // Do simple "peephole" optimizations and bit-twiddling optzns.
   OurFPM.add(createInstructionCombiningPass());
   // Reassociate expressions.
@@ -1771,7 +1774,7 @@ int main() {
 
   <a href="mailto:sabre@nondot.org">Chris Lattner</a><br>
   <a href="http://llvm.org">The LLVM Compiler Infrastructure</a><br>
-  Last modified: $Date: 2010-09-01 15:09:20 -0500 (Wed, 01 Sep 2010) $
+  Last modified: $Date: 2011-02-27 05:54:01 -0800 (Sun, 27 Feb 2011) $
 </address>
 </body>
 </html>

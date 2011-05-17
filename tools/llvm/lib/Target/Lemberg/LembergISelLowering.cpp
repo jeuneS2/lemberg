@@ -31,6 +31,7 @@
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCSymbol.h"
+#include "llvm/Target/TargetFrameLowering.h"
 #include "llvm/Target/Mangler.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -43,7 +44,7 @@ using namespace llvm;
 // Calling Convention Implementation
 //===----------------------------------------------------------------------===//
 
-static bool CC_Lemberg_Custom_f64(unsigned &ValNo, EVT &ValVT, EVT &LocVT,
+static bool CC_Lemberg_Custom_f64(unsigned &ValNo, MVT &ValVT, MVT &LocVT,
 								  CCValAssign::LocInfo &LocInfo,
 								  ISD::ArgFlagsTy &ArgFlags,
 								  CCState &State);
@@ -59,9 +60,11 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 
 	const LembergRegisterInfo *LRI = (const LembergRegisterInfo *)TM.getRegisterInfo();
 	setStackPointerRegisterToSaveRestore(LRI->getStackRegister());
-	setShiftAmountType(MVT::i32);
+	setJumpIsExpensive(true);
 	setIntDivIsCheap(false);
 	setBooleanContents(ZeroOrOneBooleanContent);
+
+	maxStoresPerMemset = maxStoresPerMemcpy = maxStoresPerMemmove = 12;
 
 	// Set up the legal register classes.
 	addRegisterClass(MVT::i32,   Lemberg::ARegisterClass);
@@ -118,6 +121,7 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	setOperationAction(ISD::SMUL_LOHI, MVT::i32, Expand);
 
 	// Expand whatever we don't have
+	setOperationAction(ISD::BSWAP, MVT::i32, Expand);
 	setOperationAction(ISD::CTPOP, MVT::i32, Expand);
 	setOperationAction(ISD::CTLZ, MVT::i32, Expand);
 	setOperationAction(ISD::CTTZ, MVT::i32, Expand);
@@ -135,8 +139,17 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	setOperationAction(ISD::FDIV, MVT::f64, Expand);
 	setOperationAction(ISD::FPOW, MVT::f32, Expand);
 	setOperationAction(ISD::FPOW, MVT::f64, Expand);
+	setOperationAction(ISD::FSQRT, MVT::f32, Expand);
+	setOperationAction(ISD::FSQRT, MVT::f64, Expand);
+	setOperationAction(ISD::FSIN, MVT::f32, Expand);
+	setOperationAction(ISD::FSIN, MVT::f64, Expand);
+	setOperationAction(ISD::FCOS, MVT::f32, Expand);
+	setOperationAction(ISD::FCOS, MVT::f64, Expand);
 	setOperationAction(ISD::UINT_TO_FP, MVT::i32, Expand);
 	setOperationAction(ISD::FP_TO_UINT, MVT::i32, Expand);
+
+	// TODO: should be Custom for proper stack write-back
+	setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i32, Expand);
 
 	// Use the default implementation.
 	setOperationAction(ISD::VASTART, MVT::Other, Custom);
@@ -148,8 +161,6 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	setOperationAction(ISD::SELECT_CC, MVT::Other, Expand);
 	setOperationAction(ISD::BR_CC, MVT::Other, Expand);
 	setOperationAction(ISD::BR_JT, MVT::Other, Expand);
-
-	maxStoresPerMemcpy = 12;
 }
 
 const char *LembergTargetLowering::getTargetNodeName(unsigned Opcode) const {
@@ -169,52 +180,6 @@ const char *LembergTargetLowering::getTargetNodeName(unsigned Opcode) const {
   case LembergISD::StoreStack: return "LembergISD::StoreStack";
   case LembergISD::WriteBack:  return "LembergISD::WriteBack";
   }
-}
-
-unsigned LembergTargetLowering::getRegPressureLimit(const TargetRegisterClass *RC,
-													MachineFunction &MF) const {
-
-	switch (RC->getID()) {
-	default:
-		return 0;
-
-	case Lemberg::L0RegClassID:
-	case Lemberg::L1RegClassID:
-	case Lemberg::L2RegClassID:
-	case Lemberg::L3RegClassID:
-		return 15;
-
-	case Lemberg::LG0RegClassID:
-	case Lemberg::LG1RegClassID:
-	case Lemberg::LG2RegClassID:
-	case Lemberg::LG3RegClassID:
-		return getTargetMachine().getRegisterInfo()->hasFP(MF) ? 29 : 30;
-	case Lemberg::GRegClassID:
-		return getTargetMachine().getRegisterInfo()->hasFP(MF) ? 14 : 15;
-
-	case Lemberg::LG0ImmRegClassID:
-	case Lemberg::LG1ImmRegClassID:
-	case Lemberg::LG2ImmRegClassID:
-	case Lemberg::LG3ImmRegClassID:
-		return 8;
-	case Lemberg::GImmRegClassID:
-		return 4;
-
-	case Lemberg::M0RegClassID:
-	case Lemberg::M1RegClassID:
-	case Lemberg::M2RegClassID:
-	case Lemberg::M3RegClassID:
-		return 1;
-	case Lemberg::MulRegClassID:
-		return 4;
-
-	case Lemberg::CRegClassID:
-		return 3;
-	case Lemberg::FRegClassID:
-		return 16;
-	case Lemberg::DRegClassID:
-		return 8;
-	}
 }
 
 SDValue LembergTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
@@ -343,18 +308,17 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   if (LD->getMemoryVT() == MVT::i1) {
 	  isBitLoad = true;
 	  LD = dyn_cast<LoadSDNode>
-		  (DAG.getExtLoad(ISD::EXTLOAD, MVT::i32, DL, Chain,
-						  LD->getBasePtr(), LD->getMemOperand()->getValue(), 0, MVT::i8,
-						  LD->isVolatile(), LD->isNonTemporal(), LD->getAlignment()));
+		  (DAG.getExtLoad(ISD::EXTLOAD, DL, MVT::i32, Chain,
+						  LD->getBasePtr(), LD->getPointerInfo(),
+						  MVT::i8, LD->isVolatile(), LD->isNonTemporal(), LD->getAlignment()));
   }
 
   ISD::LoadExtType ExtType = LD->getExtensionType();
 
   // Check whether the access goes to a stack location
-  const Value *U = LD->getMemOperand()->getValue()->getUnderlyingObject(0);
   bool isStackLoad = false;
-  if (dyn_cast<Instruction>(U))
-	  isStackLoad = dyn_cast<Instruction>(U)->getOpcode() == Instruction::Alloca;
+  if (LD->getTBAAInfo() && LD->getTBAAInfo()->isFunctionLocal())
+	  isStackLoad = true;
 
   assert(LD->getOffset().getOpcode() == ISD::UNDEF && "Assumed undefined offset");
 
@@ -375,16 +339,16 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   }
 
   // Type lists with chain & flag
-  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Flag);
-  SDVTList WaitLoadTys = DAG.getVTList(MVT::i32, MVT::Other, MVT::Flag);
+  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
+  SDVTList WaitLoadTys = DAG.getVTList(MVT::i32, MVT::Other, MVT::Glue);
 
   if (LD->getMemoryVT() != MVT::f64) {
 	  // Create node for load
 	  SDValue Ops [] = { Chain, LD->getBasePtr(), LD->getOffset() };
 
 	  Chain = DAG.getMemIntrinsicNode(isStackLoad ? LembergISD::LoadStack : LembergISD::Load,
-									  DL, NodeTys, Ops, 3, MVT::i32, NULL, 0,
-									  LD->getAlignment(), LD->isVolatile(),
+									  DL, NodeTys, Ops, 3, MVT::i32,
+									  LD->getPointerInfo(), LD->getAlignment(), LD->isVolatile(),
 									  true, false);
 	  SDValue Flag = Chain.getValue(1);
 
@@ -393,7 +357,7 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 						  Chain, DAG.getRegister(MemReg, MVT::i32), WordOffset, Flag);
 
 	  if (LD->getMemoryVT() == MVT::f32) {
-	   	  SDValue Converted = DAG.getNode(ISD::BIT_CONVERT, DL, MVT::f32, Chain);
+	   	  SDValue Converted = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Chain);
 		  SDValue MergeOps [] = { Converted, Chain.getOperand(0) };
 		  Chain = DAG.getMergeValues(MergeOps, 2, DL);
 	  } else if (isBitLoad) {
@@ -406,16 +370,17 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 	  SDValue OpsLo [] = { Chain, LD->getBasePtr(), LD->getOffset() };
 	  Chain = DAG.getMemIntrinsicNode(isStackLoad ? LembergISD::LoadStack : LembergISD::Load,
 									  DL, NodeTys, OpsLo, 3, MVT::i32,
-									  NULL, 0, 4, LD->isVolatile(), true, false);
+									  LD->getPointerInfo(),
+									  4, LD->isVolatile(), true, false);
 	  SDValue Flag = Chain.getValue(1);
 
 	  // Read result from load via LDX
-	  SDVTList WaitLoadTys = DAG.getVTList(MVT::i32, MVT::Other, MVT::Flag);
+	  SDVTList WaitLoadTys = DAG.getVTList(MVT::i32, MVT::Other, MVT::Glue);
 	  SDValue Lo = DAG.getNode(LembergISD::WaitLoad, DL, WaitLoadTys,
 							   Chain, DAG.getRegister(MemReg, MVT::i32), WordOffset, Flag);
 	  Chain = Lo.getValue(1);
 	  Flag = Lo.getValue(2);
-	  Lo = DAG.getNode(ISD::BIT_CONVERT, DL, MVT::f32, Lo);
+	  Lo = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Lo);
 
 	  // Create node for load of high part
 	  SDValue OpsHi [] = { Chain, DAG.getNode(ISD::ADD, DL, MVT::i32,
@@ -423,13 +388,14 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 											  DAG.getConstant(4, MVT::i32)), LD->getOffset() };
 	  Chain = DAG.getMemIntrinsicNode(isStackLoad ? LembergISD::LoadStack : LembergISD::Load,
 									  DL, NodeTys, OpsHi, 3, MVT::i32,
-									  NULL, 0, 4, LD->isVolatile(), true, false);
+									  LD->getPointerInfo().getWithOffset(4),
+									  4, LD->isVolatile(), true, false);
 	  Flag = Chain.getValue(1);
 	  
 	  // Read result from load via LDX
 	  SDValue Hi = DAG.getNode(LembergISD::WaitLoad, DL, WaitLoadTys,
 							   Chain, DAG.getRegister(MemReg, MVT::i32), WordOffset, Flag);
-	  Hi = DAG.getNode(ISD::BIT_CONVERT, DL, MVT::f32, Hi);
+	  Hi = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Hi);
 	  
 	  SDNode *Undef = DAG.getMachineNode(TargetOpcode::IMPLICIT_DEF, DL, MVT::f64);
 	  SDNode *InsertLo = DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL, MVT::f64,
@@ -437,7 +403,7 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 											DAG.getTargetConstant(Lemberg::sub_even, MVT::i32));
 
 	  Chain = SDValue(DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL,
-										 MVT::f64, MVT::Other, MVT::Flag,
+										 MVT::f64, MVT::Other, MVT::Glue,
 										 SDValue(InsertLo, 0), Hi,
 										 DAG.getTargetConstant(Lemberg::sub_odd, MVT::i32)), 0);
   }
@@ -452,7 +418,7 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
 
   // A chain & a flag as result types
-  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Flag);
+  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
 
   // Promote bit values
   if (ST->getValue().getValueType() == MVT::i1) {	  
@@ -465,53 +431,25 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 
   // Convert float store to int store
   if (ST->getMemoryVT() == MVT::f32) {
-	  SDValue Converted = DAG.getNode(ISD::BIT_CONVERT, DL, MVT::i32, ST->getValue());
+	  SDValue Converted = DAG.getNode(ISD::BITCAST, DL, MVT::i32, ST->getValue());
 	  ST = dyn_cast<StoreSDNode>
 		  (DAG.getStore(Chain, DL,
 						Converted, ST->getBasePtr(), ST->getMemOperand()).getNode());
   }
 
   bool isStackStore = false;
+  if (ST->getTBAAInfo() && ST->getTBAAInfo()->isFunctionLocal())
+	  isStackStore = true;
 
-  if (ST->getMemOperand()->getValue()) {
-	  // Check whether the access goes to a non-escaping stack location
-	  const Value *U = ST->getMemOperand()->getValue()->getUnderlyingObject(0);
-
-	  if (dyn_cast<Instruction>(U))
-		  isStackStore = dyn_cast<Instruction>(U)->getOpcode() == Instruction::Alloca;
-
-	  // Calls, returns and stores may lead to escaping
-	  // TODO: only stores that use the stack address as _value_ may lead to escapes
-	  for (Value::const_use_iterator I = U->use_begin(), E = U->use_end();
-		   isStackStore && I != E; ++I) {
-		  // Check direct uses
-		  const Instruction *II = dyn_cast<Instruction>(*I);
-		  if (II->getOpcode() == Instruction::Call 
-			  || II->getOpcode() == Instruction::Ret
-			  || II->getOpcode() == Instruction::Store) {
-			  isStackStore = false;
-		  }
-		  for (Value::const_use_iterator SI = I->use_begin(), SE = I->use_end();
-			   isStackStore && SI != SE; ++SI) {
-			  // Check indirect uses
-			  const Instruction *SII = dyn_cast<Instruction>(*SI);
-			  if (SII->getOpcode() == Instruction::Call
-				  || SII->getOpcode() == Instruction::Ret
-				  || SII->getOpcode() == Instruction::Store) {
-				  isStackStore = false;
-			  }
-		  }
-	  }
-  }
-
+  assert(ST->getOffset().getOpcode() == ISD::UNDEF && "Assumed undefined offset");
+  
   // Create node for store
   if (ST->getMemoryVT() != MVT::f64) {
 	  // Normal store
 	  SDValue Ops [] = { Chain, ST->getValue(), ST->getBasePtr(), ST->getOffset() };
 	  Chain = DAG.getMemIntrinsicNode(isStackStore ? LembergISD::StoreStack : LembergISD::Store,
 									  DL, NodeTys, Ops, 4, ST->getMemoryVT(),
-									  ST->getSrcValue(), ST->getSrcValueOffset(),
-									  ST->getAlignment(), ST->isVolatile(),
+									  ST->getPointerInfo(), ST->getAlignment(), ST->isVolatile(),
 									  false, true);
   } else {
 	  // 64-bit store needs to be split
@@ -526,7 +464,7 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 
 	  Chain = DAG.getMemIntrinsicNode(isStackStore ? LembergISD::StoreStack : LembergISD::Store,
 									  DL, NodeTys, OpsLo, 4, MVT::i32, 
-									  ST->getSrcValue(), ST->getSrcValueOffset(),
+									  ST->getPointerInfo(),
 									  4, ST->isVolatile(), false, true);
 
 	  SDValue OpsHi [] =  { Chain, Hi, DAG.getNode(ISD::ADD, DL, MVT::i32,
@@ -535,7 +473,7 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 
 	  Chain = DAG.getMemIntrinsicNode(isStackStore ? LembergISD::StoreStack : LembergISD::Store,
 									  DL, NodeTys, OpsHi, 4, MVT::i32, 
-									  ST->getSrcValue(), ST->getSrcValueOffset()+4,
+									  ST->getPointerInfo().getWithOffset(4),
 									  4, ST->isVolatile(), false, true);
   }
 
@@ -551,12 +489,12 @@ SDValue LembergTargetLowering::LowerVASTART(SDValue Op, SelectionDAG &DAG) const
   DebugLoc DL = Op.getDebugLoc();
   SDValue FR = DAG.getFrameIndex(FuncInfo->getVarArgsFrameIndex(), MVT::i32);
   const Value *SV = cast<SrcValueSDNode>(Op.getOperand(2))->getValue();
-  return DAG.getStore(Op.getOperand(0), DL, FR, Op.getOperand(1), SV, 0,
-                      false, false, 0);
+  return DAG.getStore(Op.getOperand(0), DL, FR, Op.getOperand(1),
+					  MachinePointerInfo(SV), false, false, 0);
 }
 
 // f64 is in register pairs, possibly split to stack
-static bool CC_Lemberg_Custom_f64(unsigned &ValNo, EVT &ValVT, EVT &LocVT,
+static bool CC_Lemberg_Custom_f64(unsigned &ValNo, MVT &ValVT, MVT &LocVT,
 								  CCValAssign::LocInfo &LocInfo,
 								  ISD::ArgFlagsTy &ArgFlags,
 								  CCState &State) {
@@ -632,19 +570,20 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 			  int FIHi = MFI->CreateFixedObject(4, VAHi.getLocMemOffset() + (isVarArg ? 4*4 : 0),
 												true);
 			  SDValue FINHi = DAG.getFrameIndex(FIHi, MVT::i32);
-			  ArgValueHi = DAG.getLoad(MVT::i32, DL, Chain, FINHi, NULL, 0,
+			  ArgValueHi = DAG.getLoad(MVT::i32, DL, Chain, FINHi,
+									   MachinePointerInfo(new FixedStackPseudoSourceValue(FIHi)),
 									   false, false, 0);
 		  }
 
-		  ArgValue = DAG.getNode(ISD::BIT_CONVERT, DL, MVT::f32, ArgValue);
-		  ArgValueHi = DAG.getNode(ISD::BIT_CONVERT, DL, MVT::f32, ArgValueHi);
+		  ArgValue = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValue);
+		  ArgValueHi = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValueHi);
 
 		  SDNode *Undef = DAG.getMachineNode(TargetOpcode::IMPLICIT_DEF, DL, MVT::f64);
 		  SDNode *InsertLo = DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL, MVT::f64,
 												SDValue(Undef, 0), ArgValue, 
 												DAG.getTargetConstant(Lemberg::sub_even, MVT::i32));
 		  ArgValue = SDValue(DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL,
-												MVT::f64, MVT::Other, MVT::Flag,
+												MVT::f64, MVT::Other, MVT::Glue,
 												SDValue(InsertLo, 0), ArgValueHi,
 												DAG.getTargetConstant(Lemberg::sub_odd, MVT::i32)), 0);
 	  }
@@ -666,10 +605,11 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 
     } else {
       assert(VA.isMemLoc() && "CCValAssign must be RegLoc or MemLoc");
-      int FI = MFI->CreateFixedObject(4, VA.getLocMemOffset() + (isVarArg ? 4*4 : 0),
-									  true);
+      int FI = MFI->CreateFixedObject(4, VA.getLocMemOffset() + (isVarArg ? 4*4 : 0), true);
       SDValue FIN = DAG.getFrameIndex(FI, MVT::i32);
-	  SDValue ArgValue = DAG.getLoad(VA.getValVT(), DL, Chain, FIN, NULL, 0, false, false, 0);
+	  SDValue ArgValue = DAG.getLoad(VA.getValVT(), DL, Chain, FIN,
+									 MachinePointerInfo(new FixedStackPseudoSourceValue(FI)),
+									 false, false, 0);
 	  
 	  if (VA.needsCustom()) {
 		  assert(i+1 < e);
@@ -677,11 +617,12 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 		  
 		  int FIHi = MFI->CreateFixedObject(4, VAHi.getLocMemOffset() + (isVarArg ? 4*4 : 0), true);
 		  SDValue FINHi = DAG.getFrameIndex(FIHi, MVT::i32);
-		  SDValue ArgValueHi = DAG.getLoad(MVT::i32, DL, Chain, FINHi, NULL, 0,
+		  SDValue ArgValueHi = DAG.getLoad(MVT::i32, DL, Chain, FINHi,
+										   MachinePointerInfo(new FixedStackPseudoSourceValue(FIHi)),
 										   false, false, 0);
 		  
-		  ArgValue = DAG.getNode(ISD::BIT_CONVERT, DL, MVT::f32, ArgValue);
-		  ArgValueHi = DAG.getNode(ISD::BIT_CONVERT, DL, MVT::f32, ArgValueHi);
+		  ArgValue = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValue);
+		  ArgValueHi = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValueHi);
 		  
 		  SDNode *Undef = DAG.getMachineNode(TargetOpcode::IMPLICIT_DEF, DL, MVT::f64);
 		  SDNode *InsertLo = DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL, MVT::f64,
@@ -711,8 +652,8 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 		int FrameIdx = MF.getFrameInfo()->CreateFixedObject(4, i*4, true);
 		SDValue FIPtr = DAG.getFrameIndex(FrameIdx, MVT::i32);
 		OutChains.push_back(DAG.getStore(DAG.getRoot(), DL, Arg, FIPtr,
-										 PseudoSourceValue::getStack(),
-										 0, false, false, 0));
+										 MachinePointerInfo(new FixedStackPseudoSourceValue(FrameIdx)),
+										 false, false, 0));
 
 		// Remember the first vararg offset for the va_start implementation.
 		if (i == RegArgs) {
@@ -736,6 +677,8 @@ LembergTargetLowering::LowerReturn(SDValue Chain,
 								   const SmallVectorImpl<SDValue> &OutVals,
 								   DebugLoc DL, SelectionDAG &DAG) const {
 
+  MachineFunction &MF = DAG.getMachineFunction();
+
   // CCValAssign - represent the assignment of the return value to locations.
   SmallVector<CCValAssign, 16> RVLocs;
 
@@ -748,9 +691,9 @@ LembergTargetLowering::LowerReturn(SDValue Chain,
 
   // If this is the first return lowered for this function, add the regs to the
   // liveout set for the function.
-  if (DAG.getMachineFunction().getRegInfo().liveout_empty()) {
+  if (MF.getRegInfo().liveout_empty()) {
     for (unsigned i = 0; i != RVLocs.size(); ++i)
-      DAG.getMachineFunction().getRegInfo().addLiveOut(RVLocs[i].getLocReg());
+      MF.getRegInfo().addLiveOut(RVLocs[i].getLocReg());
   }
 
   SDValue Flag;
@@ -781,7 +724,7 @@ LembergTargetLowering::LowerReturn(SDValue Chain,
   }
 
   // A chain & a flag
-  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Flag);
+  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
 
   // The actual return
   if (Flag.getNode()) {
@@ -815,6 +758,9 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
   // Get a count of how many bytes are to be pushed on the stack.
   unsigned NumBytes = CCInfo.getNextStackOffset();
 
+  // Round up to next doubleword boundary
+  NumBytes = (NumBytes + 7) & ~7;
+
   Chain = DAG.getCALLSEQ_START(Chain, DAG.getConstant(NumBytes, MVT::i32, true));
 
   SmallVector<std::pair<unsigned, SDValue>, 4> RegsToPass;
@@ -842,7 +788,7 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
       default: assert(0 && "Unknown loc info!");
       case CCValAssign::Full: break;
       case CCValAssign::BCvt:
-        Arg = DAG.getNode(ISD::BIT_CONVERT, DL, VA.getLocVT(), Arg);
+        Arg = DAG.getNode(ISD::BITCAST, DL, VA.getLocVT(), Arg);
         break;
       case CCValAssign::SExt:
         Arg = DAG.getNode(ISD::SIGN_EXTEND, DL, VA.getLocVT(), Arg);
@@ -872,7 +818,7 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
 								   DAG.getIntPtrConstant(VA.getLocMemOffset()));
 
       MemOpChains.push_back(DAG.getStore(Chain, DL, Arg, PtrOff,
-                                         PseudoSourceValue::getStack(), 0,
+                                         MachinePointerInfo(),
                                          false, false, 0));
     }
   }
@@ -894,7 +840,7 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
   }
 
   // A chain & a flag
-  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Flag);
+  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
 
   // Operands for call instruction
   SmallVector<SDValue, 8> Ops;

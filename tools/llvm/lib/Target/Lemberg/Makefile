@@ -15,10 +15,12 @@ TARGET = Lemberg
 BUILT_SOURCES = LembergGenRegisterInfo.h.inc LembergGenRegisterNames.inc \
                 LembergGenRegisterInfo.inc LembergGenInstrNames.inc \
                 LembergGenInstrInfo.inc LembergGenAsmWriter.inc \
-                LembergGenDAGISel.inc LembergGenCallingConv.inc \
-                LembergGenSubtarget.inc
+                LembergGenDAGISel.inc LembergGenSubtarget.inc \
+                LembergGenCodeEmitter.inc LembergGenCallingConv.inc \
+				LembergGenEDInfo.inc \
+                LembergGenFastISel.inc LembergGenMCCodeEmitter.inc
 
-DIRS = AsmPrinter TargetInfo
+DIRS = TargetInfo
 
 include $(LEVEL)/Makefile.common
 

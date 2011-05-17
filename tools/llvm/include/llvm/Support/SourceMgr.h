@@ -26,6 +26,7 @@ namespace llvm {
   class MemoryBuffer;
   class SourceMgr;
   class SMDiagnostic;
+  class Twine;
   class raw_ostream;
 
 /// SourceMgr - This owns the files read by a parser, handles include stacks,
@@ -35,8 +36,7 @@ public:
   /// DiagHandlerTy - Clients that want to handle their own diagnostics in a
   /// custom way can register a function pointer+context as a diagnostic
   /// handler.  It gets called each time PrintMessage is invoked.
-  typedef void (*DiagHandlerTy)(const SMDiagnostic&, void *Context,
-                                unsigned LocCookie);
+  typedef void (*DiagHandlerTy)(const SMDiagnostic&, void *Context);
 private:
   struct SrcBuffer {
     /// Buffer - The memory buffer for the file.
@@ -60,7 +60,6 @@ private:
 
   DiagHandlerTy DiagHandler;
   void *DiagContext;
-  unsigned DiagLocCookie;
   
   SourceMgr(const SourceMgr&);    // DO NOT IMPLEMENT
   void operator=(const SourceMgr&); // DO NOT IMPLEMENT
@@ -73,12 +72,10 @@ public:
   }
 
   /// setDiagHandler - Specify a diagnostic handler to be invoked every time
-  /// PrintMessage is called.  Ctx and Cookie are passed into the handler when
-  /// it is invoked.
-  void setDiagHandler(DiagHandlerTy DH, void *Ctx = 0, unsigned Cookie = 0) {
+  /// PrintMessage is called. Ctx is passed into the handler when it is invoked.
+  void setDiagHandler(DiagHandlerTy DH, void *Ctx = 0) {
     DiagHandler = DH;
     DiagContext = Ctx;
-    DiagLocCookie = Cookie;
   }
 
   const SrcBuffer &getBufferInfo(unsigned i) const {
@@ -125,7 +122,7 @@ public:
   /// @param Type - If non-null, the kind of message (e.g., "error") which is
   /// prefixed to the message.
   /// @param ShowLine - Should the diagnostic show the source line.
-  void PrintMessage(SMLoc Loc, const std::string &Msg, const char *Type,
+  void PrintMessage(SMLoc Loc, const Twine &Msg, const char *Type,
                     bool ShowLine = true) const;
 
 
@@ -136,7 +133,7 @@ public:
   /// prefixed to the message.
   /// @param ShowLine - Should the diagnostic show the source line.
   SMDiagnostic GetMessage(SMLoc Loc,
-                          const std::string &Msg, const char *Type,
+                          const Twine &Msg, const char *Type,
                           bool ShowLine = true) const;
 
 
@@ -159,10 +156,9 @@ public:
   // Null diagnostic.
   SMDiagnostic() : SM(0), LineNo(0), ColumnNo(0), ShowLine(0) {}
   // Diagnostic with no location (e.g. file not found, command line arg error).
-  SMDiagnostic(const std::string &filename, const std::string &Msg,
-               bool showline = true)
+  SMDiagnostic(const std::string &filename, const std::string &Msg)
     : SM(0), Filename(filename), LineNo(-1), ColumnNo(-1),
-      Message(Msg), ShowLine(showline) {}
+      Message(Msg), ShowLine(false) {}
   
   // Diagnostic with a location.
   SMDiagnostic(const SourceMgr &sm, SMLoc L, const std::string &FN,
@@ -174,7 +170,7 @@ public:
 
   const SourceMgr *getSourceMgr() const { return SM; }
   SMLoc getLoc() const { return Loc; }
-  const std::string &getFilename() { return Filename; }
+  const std::string &getFilename() const { return Filename; }
   int getLineNo() const { return LineNo; }
   int getColumnNo() const { return ColumnNo; }
   const std::string &getMessage() const { return Message; }

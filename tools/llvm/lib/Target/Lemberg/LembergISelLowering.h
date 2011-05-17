@@ -64,9 +64,6 @@ namespace llvm {
 	virtual unsigned getJumpTableEncoding() const {
 		return MachineJumpTableInfo::EK_Custom32;
 	}
-	virtual unsigned getRegPressureLimit(const TargetRegisterClass *RC,
-										 MachineFunction &MF) const;
-
     virtual SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const;
 
   private:

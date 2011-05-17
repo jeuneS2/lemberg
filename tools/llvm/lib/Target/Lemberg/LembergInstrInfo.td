@@ -38,18 +38,18 @@ def SDT_LembergCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>]>;
 def SDT_LembergCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 
 def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_LembergCallSeqStart,
-                           [SDNPHasChain, SDNPOutFlag]>;
+                           [SDNPHasChain, SDNPOutGlue]>;
 def callseq_end   : SDNode<"ISD::CALLSEQ_END", SDT_LembergCallSeqEnd,
-                           [SDNPHasChain, SDNPOutFlag, SDNPOptInFlag]>;
+                           [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue]>;
 
 // Call
 def SDT_LembergCall : SDTypeProfile<0, 1, [SDTCisVT<0, i32>]>;
 def LembergCall : SDNode<"LembergISD::Call", SDT_LembergCall,
-						 [SDNPHasChain, SDNPOutFlag, SDNPOptInFlag, SDNPVariadic]>;
+						 [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 // Return
 def SDT_LembergReturn : SDTypeProfile<0, 0, []>;
 def LembergReturn : SDNode<"LembergISD::Return", SDT_LembergReturn,
-						   [SDNPHasChain, SDNPOptInFlag]>;
+						   [SDNPHasChain, SDNPOptInGlue]>;
 // Carry and Borrow
 def LembergCarry: SDNode<"LembergISD::Carry", SDTIntBinOp,
 						 [SDNPCommutative]>;
@@ -70,14 +70,14 @@ def LembergWrapper: SDNode<"LembergISD::Wrapper", SDT_LembergWrapper, []>;
 // WaitLoad
 def SDT_LembergWaitLoad : SDTypeProfile<1, 2, [SDTCisVT<0, i32>, SDTCisVT<1, i32>, SDTCisVT<2, i32>]>;
 def LembergWaitLoad : SDNode<"LembergISD::WaitLoad", SDT_LembergWaitLoad,
-							 [SDNPHasChain, SDNPOutFlag, SDNPInFlag, SDNPSideEffect]>;
+							 [SDNPHasChain, SDNPOutGlue, SDNPInGlue, SDNPSideEffect]>;
 
 // Load
 def SDT_LembergLoad : SDTypeProfile<0, 1, [SDTCisVT<0, i32>]>;
 def LembergLoad : SDNode<"LembergISD::Load", SDT_LembergLoad,
-						 [SDNPHasChain, SDNPMayLoad, SDNPOutFlag, SDNPMemOperand]>;
+						 [SDNPHasChain, SDNPMayLoad, SDNPOutGlue, SDNPMemOperand]>;
 def LembergLoadStack : SDNode<"LembergISD::LoadStack", SDT_LembergLoad,
-							  [SDNPHasChain, SDNPMayLoad, SDNPOutFlag, SDNPMemOperand]>;
+							  [SDNPHasChain, SDNPMayLoad, SDNPOutGlue, SDNPMemOperand]>;
 
 // Cached and volatile loads
 def LembergLoadCached : PatFrag<(ops node:$ptr),
@@ -92,9 +92,9 @@ def LembergLoadVolatile : PatFrag<(ops node:$ptr),
 // Store
 def SDT_LembergStore : SDTypeProfile<0, 2, [SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 def LembergStore : SDNode<"LembergISD::Store", SDT_LembergStore,
-						  [SDNPHasChain, SDNPMayStore, SDNPOutFlag, SDNPMemOperand]>;
+						  [SDNPHasChain, SDNPMayStore, SDNPOutGlue, SDNPMemOperand]>;
 def LembergStoreStack : SDNode<"LembergISD::StoreStack", SDT_LembergStore,
-							   [SDNPHasChain, SDNPMayStore, SDNPOutFlag, SDNPMemOperand]>;
+							   [SDNPHasChain, SDNPMayStore, SDNPOutGlue, SDNPMemOperand]>;
 
 // Stores of different widths
 def LembergStore8 : PatFrag<(ops node:$val, node:$ptr),
@@ -802,7 +802,7 @@ def : Pat<(i32 (anyext C:$src)),
 
 // Conversion from a register to a flag
 def TRNCC: F1<(outs C:$dst), (ins pred:$p, A:$src),
-			  "$p cmpne\t$src, 0 -> $dst",
+			  "$p btest\t$src, 0 -> $dst",
 			  [(set C:$dst, (i1 (trunc A:$src)))],
 			  IIAlu>;
 
@@ -846,10 +846,10 @@ def FMUL: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2),
  			 "$p fop\tfmul\t$src1, $src2 -> $dst",
  			 [(set F:$dst, (fmul F:$src1, F:$src2))],
  			 IIFpu6>;
-let Constraints = "$src3 = $dst" in
+let Constraints = "$src1 = $dst" in
 def FMAC: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2, F:$src3),
- 			 "$p fop\tfmac\t$src1, $src2 -> $dst",
- 			 [(set F:$dst, (fadd (fmul F:$src1, F:$src2), F:$src3))],
+ 			 "$p fop\tfmac\t$src2, $src3 -> $dst",
+ 			 [(set F:$dst, (fadd (fmul F:$src2, F:$src3), F:$src1))],
  			 IIFpu6>;
 
 // Double-precision floating-point operations
@@ -879,10 +879,10 @@ def DMUL: F1<(outs D:$dst), (ins pred:$p, D:$src1, D:$src2),
  			 "$p fop\tdmul\t$src1, $src2 -> $dst",
  			 [(set D:$dst, (fmul D:$src1, D:$src2))],
  			 IIFpu7>;
-let Constraints = "$src3 = $dst" in
+let Constraints = "$src1 = $dst" in
 def DMAC: F1<(outs D:$dst), (ins pred:$p, D:$src1, D:$src2, D:$src3),
- 			 "$p fop\tdmac\t$src1, $src2 -> $dst",
- 			 [(set D:$dst, (fadd (fmul D:$src1, D:$src2), D:$src3))],
+ 			 "$p fop\tdmac\t$src2, $src3 -> $dst",
+ 			 [(set D:$dst, (fadd (fmul D:$src2, D:$src3), D:$src1))],
  			 IIFpu7>;
 
 // All kinds of floating-point conversions

@@ -1,10 +1,10 @@
 //===- IntrinsicsARM.td - Defines ARM intrinsics -----------*- tablegen -*-===//
-// 
+//
 //                     The LLVM Compiler Infrastructure
 //
 // This file is distributed under the University of Illinois Open Source
 // License. See LICENSE.TXT for details.
-// 
+//
 //===----------------------------------------------------------------------===//
 //
 // This file defines all of the ARM-specific intrinsics.
@@ -285,6 +285,12 @@ def int_arm_neon_vcvtfp2fxs : Neon_CvtFPToFx_Intrinsic;
 def int_arm_neon_vcvtfp2fxu : Neon_CvtFPToFx_Intrinsic;
 def int_arm_neon_vcvtfxs2fp : Neon_CvtFxToFP_Intrinsic;
 def int_arm_neon_vcvtfxu2fp : Neon_CvtFxToFP_Intrinsic;
+
+// Vector Conversions Between Half-Precision and Single-Precision.
+def int_arm_neon_vcvtfp2hf
+    : Intrinsic<[llvm_v4i16_ty], [llvm_v4f32_ty], [IntrNoMem]>;
+def int_arm_neon_vcvthf2fp
+    : Intrinsic<[llvm_v4f32_ty], [llvm_v4i16_ty], [IntrNoMem]>;
 
 // Narrowing Saturating Vector Moves.
 def int_arm_neon_vqmovns : Neon_1Arg_Narrow_Intrinsic;

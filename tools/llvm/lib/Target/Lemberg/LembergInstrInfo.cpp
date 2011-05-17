@@ -215,7 +215,9 @@ LembergInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 	  } else {
 		  // A fugly special case
 		  unsigned TmpReg = getRegisterInfo().getEmergencyRegister();
-		  BuildMI(MBB, I, DL, get(Lemberg::LOADga), DestReg)
+		  // __mem_emergency must be addressably with 11 bits
+		  BuildMI(MBB, I, DL, get(Lemberg::LOADsym11lo), DestReg)
+			  .addImm(-1).addReg(0)
 			  .addExternalSymbol("__mem_emergency");
 		  BuildMI(MBB, I, DL, get(Lemberg::LDXi), TmpReg)
 			  .addImm(-1).addReg(0)

@@ -51,7 +51,7 @@ namespace {
 	  SDNode *Select(SDNode *N);
 
 	  // Complex Pattern
-	  bool SelectAddr(SDNode *Op, SDValue N, SDValue &Base, SDValue &Offset); 
+	  bool SelectAddr(SDValue N, SDValue &Base, SDValue &Offset); 
 
 	  inline SDValue getI32Imm(unsigned Imm) {
 		  return CurDAG->getTargetConstant(Imm, MVT::i32);
@@ -77,7 +77,7 @@ SDNode *LembergDAGToDAGISel::Select(SDNode *N) {
 
 /// ComplexPattern used on LembergInstrInfo
 /// Used on Lemberg Load/Store instructions
-bool LembergDAGToDAGISel::SelectAddr(SDNode *Op, SDValue Addr, SDValue &Offset, SDValue &Base)
+bool LembergDAGToDAGISel::SelectAddr(SDValue Addr, SDValue &Offset, SDValue &Base)
 {
   FrameIndexSDNode *FIN = 0;
 

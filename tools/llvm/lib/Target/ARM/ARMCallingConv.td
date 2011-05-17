@@ -22,6 +22,9 @@ class CCIfAlign<string Align, CCAction A>:
 //===----------------------------------------------------------------------===//
 def CC_ARM_APCS : CallingConv<[
 
+  // Handles byval parameters.
+  CCIfByVal<CCPassByVal<8, 8>>,
+    
   CCIfType<[i8, i16], CCPromoteToType<i32>>,
 
   // Handle all vector types as either f64 or v2f64.
@@ -51,6 +54,34 @@ def RetCC_ARM_APCS : CallingConv<[
   CCIfType<[i32], CCAssignToReg<[R0, R1, R2, R3]>>,
   CCIfType<[i64], CCAssignToRegWithShadow<[R0, R2], [R1, R3]>>
 ]>;
+
+//===----------------------------------------------------------------------===//
+// ARM APCS Calling Convention for FastCC (when VFP2 or later is available)
+//===----------------------------------------------------------------------===//
+def FastCC_ARM_APCS : CallingConv<[
+  // Handle all vector types as either f64 or v2f64.
+  CCIfType<[v1i64, v2i32, v4i16, v8i8, v2f32], CCBitConvertToType<f64>>,
+  CCIfType<[v2i64, v4i32, v8i16, v16i8, v4f32], CCBitConvertToType<v2f64>>,
+
+  CCIfType<[v2f64], CCAssignToReg<[Q0, Q1, Q2, Q3]>>,
+  CCIfType<[f64], CCAssignToReg<[D0, D1, D2, D3, D4, D5, D6, D7]>>,
+  CCIfType<[f32], CCAssignToReg<[S0, S1, S2, S3, S4, S5, S6, S7, S8,
+                                 S9, S10, S11, S12, S13, S14, S15]>>,
+  CCDelegateTo<CC_ARM_APCS>
+]>;
+
+def RetFastCC_ARM_APCS : CallingConv<[
+  // Handle all vector types as either f64 or v2f64.
+  CCIfType<[v1i64, v2i32, v4i16, v8i8, v2f32], CCBitConvertToType<f64>>,
+  CCIfType<[v2i64, v4i32, v8i16, v16i8, v4f32], CCBitConvertToType<v2f64>>,
+
+  CCIfType<[v2f64], CCAssignToReg<[Q0, Q1, Q2, Q3]>>,
+  CCIfType<[f64], CCAssignToReg<[D0, D1, D2, D3, D4, D5, D6, D7]>>,
+  CCIfType<[f32], CCAssignToReg<[S0, S1, S2, S3, S4, S5, S6, S7, S8,
+                                 S9, S10, S11, S12, S13, S14, S15]>>,
+  CCDelegateTo<RetCC_ARM_APCS>
+]>;
+
 
 //===----------------------------------------------------------------------===//
 // ARM AAPCS (EABI) Calling Convention, common parts
@@ -105,6 +136,7 @@ def RetCC_ARM_AAPCS : CallingConv<[
 
 //===----------------------------------------------------------------------===//
 // ARM AAPCS-VFP (EABI) Calling Convention
+// Also used for FastCC (when VFP2 or later is available)
 //===----------------------------------------------------------------------===//
 
 def CC_ARM_AAPCS_VFP : CallingConv<[

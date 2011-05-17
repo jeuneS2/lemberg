@@ -33,15 +33,15 @@ namespace X86 {
     AddrScaleAmt = 1,
     AddrIndexReg = 2,
     AddrDisp = 3,
-    
+
     /// AddrSegmentReg - The operand # of the segment in the memory operand.
     AddrSegmentReg = 4,
 
     /// AddrNumOperands - Total number of operands in a memory reference.
     AddrNumOperands = 5
   };
-  
-  
+
+
   // X86 specific condition code. These correspond to X86_*_COND in
   // X86InstrInfo.td. They must be kept in synch.
   enum CondCode {
@@ -72,16 +72,16 @@ namespace X86 {
 
     COND_INVALID
   };
-    
+
   // Turn condition code into conditional branch opcode.
   unsigned GetCondBranchFromCond(CondCode CC);
-  
+
   /// GetOppositeBranchCondition - Return the inverse of the specified cond,
   /// e.g. turning COND_E to COND_NE.
   CondCode GetOppositeBranchCondition(X86::CondCode CC);
 
 }
-  
+
 /// X86II - This namespace holds all of the target specific flags that
 /// instruction info tracks.
 ///
@@ -90,14 +90,14 @@ namespace X86II {
   enum TOF {
     //===------------------------------------------------------------------===//
     // X86 Specific MachineOperand flags.
-    
+
     MO_NO_FLAG,
-    
+
     /// MO_GOT_ABSOLUTE_ADDRESS - On a symbol operand, this represents a
     /// relocation of:
     ///    SYMBOL_LABEL + [. - PICBASELABEL]
     MO_GOT_ABSOLUTE_ADDRESS,
-    
+
     /// MO_PIC_BASE_OFFSET - On a symbol operand this indicates that the
     /// immediate should get the value of the symbol minus the PIC base label:
     ///    SYMBOL_LABEL - PICBASELABEL
@@ -106,77 +106,77 @@ namespace X86II {
     /// MO_GOT - On a symbol operand this indicates that the immediate is the
     /// offset to the GOT entry for the symbol name from the base of the GOT.
     ///
-    /// See the X86-64 ELF ABI supplement for more details. 
+    /// See the X86-64 ELF ABI supplement for more details.
     ///    SYMBOL_LABEL @GOT
     MO_GOT,
-    
+
     /// MO_GOTOFF - On a symbol operand this indicates that the immediate is
-    /// the offset to the location of the symbol name from the base of the GOT. 
+    /// the offset to the location of the symbol name from the base of the GOT.
     ///
-    /// See the X86-64 ELF ABI supplement for more details. 
+    /// See the X86-64 ELF ABI supplement for more details.
     ///    SYMBOL_LABEL @GOTOFF
     MO_GOTOFF,
-    
+
     /// MO_GOTPCREL - On a symbol operand this indicates that the immediate is
     /// offset to the GOT entry for the symbol name from the current code
-    /// location. 
+    /// location.
     ///
-    /// See the X86-64 ELF ABI supplement for more details. 
+    /// See the X86-64 ELF ABI supplement for more details.
     ///    SYMBOL_LABEL @GOTPCREL
     MO_GOTPCREL,
-    
+
     /// MO_PLT - On a symbol operand this indicates that the immediate is
-    /// offset to the PLT entry of symbol name from the current code location. 
+    /// offset to the PLT entry of symbol name from the current code location.
     ///
-    /// See the X86-64 ELF ABI supplement for more details. 
+    /// See the X86-64 ELF ABI supplement for more details.
     ///    SYMBOL_LABEL @PLT
     MO_PLT,
-    
+
     /// MO_TLSGD - On a symbol operand this indicates that the immediate is
     /// some TLS offset.
     ///
-    /// See 'ELF Handling for Thread-Local Storage' for more details. 
+    /// See 'ELF Handling for Thread-Local Storage' for more details.
     ///    SYMBOL_LABEL @TLSGD
     MO_TLSGD,
-    
+
     /// MO_GOTTPOFF - On a symbol operand this indicates that the immediate is
     /// some TLS offset.
     ///
-    /// See 'ELF Handling for Thread-Local Storage' for more details. 
+    /// See 'ELF Handling for Thread-Local Storage' for more details.
     ///    SYMBOL_LABEL @GOTTPOFF
     MO_GOTTPOFF,
-   
+
     /// MO_INDNTPOFF - On a symbol operand this indicates that the immediate is
     /// some TLS offset.
     ///
-    /// See 'ELF Handling for Thread-Local Storage' for more details. 
+    /// See 'ELF Handling for Thread-Local Storage' for more details.
     ///    SYMBOL_LABEL @INDNTPOFF
     MO_INDNTPOFF,
-    
+
     /// MO_TPOFF - On a symbol operand this indicates that the immediate is
     /// some TLS offset.
     ///
-    /// See 'ELF Handling for Thread-Local Storage' for more details. 
+    /// See 'ELF Handling for Thread-Local Storage' for more details.
     ///    SYMBOL_LABEL @TPOFF
     MO_TPOFF,
-    
+
     /// MO_NTPOFF - On a symbol operand this indicates that the immediate is
     /// some TLS offset.
     ///
-    /// See 'ELF Handling for Thread-Local Storage' for more details. 
+    /// See 'ELF Handling for Thread-Local Storage' for more details.
     ///    SYMBOL_LABEL @NTPOFF
     MO_NTPOFF,
-    
+
     /// MO_DLLIMPORT - On a symbol operand "FOO", this indicates that the
     /// reference is actually to the "__imp_FOO" symbol.  This is used for
     /// dllimport linkage on windows.
     MO_DLLIMPORT,
-    
+
     /// MO_DARWIN_STUB - On a symbol operand "FOO", this indicates that the
     /// reference is actually to the "FOO$stub" symbol.  This is used for calls
-    /// and jumps to external functions on Tiger and before.
+    /// and jumps to external functions on Tiger and earlier.
     MO_DARWIN_STUB,
-    
+
     /// MO_DARWIN_NONLAZY - On a symbol operand "FOO", this indicates that the
     /// reference is actually to the "FOO$non_lazy_ptr" symbol, which is a
     /// non-PIC-base-relative reference to a non-hidden dyld lazy pointer stub.
@@ -186,19 +186,19 @@ namespace X86II {
     /// that the reference is actually to "FOO$non_lazy_ptr - PICBASE", which is
     /// a PIC-base-relative reference to a non-hidden dyld lazy pointer stub.
     MO_DARWIN_NONLAZY_PIC_BASE,
-    
+
     /// MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE - On a symbol operand "FOO", this
     /// indicates that the reference is actually to "FOO$non_lazy_ptr -PICBASE",
     /// which is a PIC-base-relative reference to a hidden dyld lazy pointer
     /// stub.
     MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE,
-    
+
     /// MO_TLVP - On a symbol operand this indicates that the immediate is
     /// some TLS offset.
     ///
     /// This is the TLS offset for the Darwin TLS mechanism.
     MO_TLVP,
-    
+
     /// MO_TLVP_PIC_BASE - On a symbol operand this indicates that the immediate
     /// is some TLS offset from the picbase.
     ///
@@ -239,7 +239,7 @@ inline static bool isGlobalRelativeToPICBase(unsigned char TargetFlag) {
     return false;
   }
 }
- 
+
 /// X86II - This namespace holds all of the target specific flags that
 /// instruction info tracks.
 ///
@@ -299,7 +299,7 @@ namespace X86II {
     // MRMInitReg - This form is used for instructions whose source and
     // destinations are the same register.
     MRMInitReg = 32,
-    
+
     //// MRM_C1 - A mod/rm byte of exactly 0xC1.
     MRM_C1 = 33,
     MRM_C2 = 34,
@@ -311,12 +311,19 @@ namespace X86II {
     MRM_F0 = 40,
     MRM_F8 = 41,
     MRM_F9 = 42,
-    
+    MRM_D0 = 45,
+    MRM_D1 = 46,
+
+    /// RawFrmImm8 - This is used for the ENTER instruction, which has two
+    /// immediates, the first of which is a 16-bit immediate (specified by
+    /// the imm encoding) and the second is a 8-bit fixed value.
+    RawFrmImm8 = 43,
+
     /// RawFrmImm16 - This is used for CALL FAR instructions, which have two
     /// immediates, the first of which is a 16 or 32-bit immediate (specified by
     /// the imm encoding) and the second is a 16-bit fixed value.  In the AMD
     /// manual, this operand is described as pntr16:32 and pntr16:16
-    RawFrmImm16 = 43,
+    RawFrmImm16 = 44,
 
     FormMask       = 63,
 
@@ -363,7 +370,7 @@ namespace X86II {
 
     // T8, TA - Prefix after the 0x0F prefix.
     T8 = 13 << Op0Shift,  TA = 14 << Op0Shift,
-    
+
     // TF - Prefix before and after 0x0F
     TF = 15 << Op0Shift,
 
@@ -444,41 +451,49 @@ namespace X86II {
     OpcodeMask    = 0xFF << OpcodeShift,
 
     //===------------------------------------------------------------------===//
-    // VEX - The opcode prefix used by AVX instructions
+    /// VEX - The opcode prefix used by AVX instructions
     VEX         = 1U << 0,
 
-    // VEX_W - Has a opcode specific functionality, but is used in the same
-    // way as REX_W is for regular SSE instructions.
+    /// VEX_W - Has a opcode specific functionality, but is used in the same
+    /// way as REX_W is for regular SSE instructions.
     VEX_W       = 1U << 1,
 
-    // VEX_4V - Used to specify an additional AVX/SSE register. Several 2
-    // address instructions in SSE are represented as 3 address ones in AVX
-    // and the additional register is encoded in VEX_VVVV prefix.
+    /// VEX_4V - Used to specify an additional AVX/SSE register. Several 2
+    /// address instructions in SSE are represented as 3 address ones in AVX
+    /// and the additional register is encoded in VEX_VVVV prefix.
     VEX_4V      = 1U << 2,
 
-    // VEX_I8IMM - Specifies that the last register used in a AVX instruction,
-    // must be encoded in the i8 immediate field. This usually happens in
-    // instructions with 4 operands.
+    /// VEX_I8IMM - Specifies that the last register used in a AVX instruction,
+    /// must be encoded in the i8 immediate field. This usually happens in
+    /// instructions with 4 operands.
     VEX_I8IMM   = 1U << 3,
 
-    // VEX_L - Stands for a bit in the VEX opcode prefix meaning the current
-    // instruction uses 256-bit wide registers. This is usually auto detected if
-    // a VR256 register is used, but some AVX instructions also have this field
-    // marked when using a f256 memory references.
-    VEX_L       = 1U << 4
+    /// VEX_L - Stands for a bit in the VEX opcode prefix meaning the current
+    /// instruction uses 256-bit wide registers. This is usually auto detected
+    /// if a VR256 register is used, but some AVX instructions also have this
+    /// field marked when using a f256 memory references.
+    VEX_L       = 1U << 4,
+
+    /// Has3DNow0F0FOpcode - This flag indicates that the instruction uses the
+    /// wacky 0x0F 0x0F prefix for 3DNow! instructions.  The manual documents
+    /// this as having a 0x0F prefix with a 0x0F opcode, and each instruction
+    /// storing a classifier in the imm8 field.  To simplify our implementation,
+    /// we handle this by storeing the classifier in the opcode field and using
+    /// this flag to indicate that the encoder should do the wacky 3DNow! thing.
+    Has3DNow0F0FOpcode = 1U << 5
   };
-  
+
   // getBaseOpcodeFor - This function returns the "base" X86 opcode for the
   // specified machine instruction.
   //
   static inline unsigned char getBaseOpcodeFor(uint64_t TSFlags) {
     return TSFlags >> X86II::OpcodeShift;
   }
-  
+
   static inline bool hasImm(uint64_t TSFlags) {
     return (TSFlags & X86II::ImmMask) != 0;
   }
-  
+
   /// getSizeOfImm - Decode the "size of immediate" field from the TSFlags field
   /// of the specified instruction.
   static inline unsigned getSizeOfImm(uint64_t TSFlags) {
@@ -493,7 +508,7 @@ namespace X86II {
     case X86II::Imm64:      return 8;
     }
   }
-  
+
   /// isImmPCRel - Return true if the immediate of the specified instruction's
   /// TSFlags indicates that it is pc relative.
   static inline unsigned isImmPCRel(uint64_t TSFlags) {
@@ -510,7 +525,7 @@ namespace X86II {
       return false;
     }
   }
-  
+
   /// getMemoryOperandNo - The function returns the MCInst operand # for the
   /// first field of the memory operand.  If the instruction doesn't have a
   /// memory operand, this returns -1.
@@ -528,6 +543,7 @@ namespace X86II {
     case X86II::AddRegFrm:
     case X86II::MRMDestReg:
     case X86II::MRMSrcReg:
+    case X86II::RawFrmImm8:
     case X86II::RawFrmImm16:
        return -1;
     case X86II::MRMDestMem:
@@ -537,7 +553,7 @@ namespace X86II {
       unsigned FirstMemOp = 1;
       if (HasVEX_4V)
         ++FirstMemOp;// Skip the register source (which is encoded in VEX_VVVV).
-      
+
       // FIXME: Maybe lea should have its own form?  This is a horrible hack.
       //if (Opcode == X86::LEA64r || Opcode == X86::LEA64_32r ||
       //    Opcode == X86::LEA16r || Opcode == X86::LEA32r)
@@ -563,6 +579,8 @@ namespace X86II {
     case X86II::MRM_F0:
     case X86II::MRM_F8:
     case X86II::MRM_F9:
+    case X86II::MRM_D0:
+    case X86II::MRM_D1:
       return -1;
     }
   }
@@ -595,18 +613,18 @@ inline static bool isMem(const MachineInstr *MI, unsigned Op) {
 class X86InstrInfo : public TargetInstrInfoImpl {
   X86TargetMachine &TM;
   const X86RegisterInfo RI;
-  
+
   /// RegOp2MemOpTable2Addr, RegOp2MemOpTable0, RegOp2MemOpTable1,
   /// RegOp2MemOpTable2 - Load / store folding opcode maps.
   ///
-  DenseMap<unsigned*, std::pair<unsigned,unsigned> > RegOp2MemOpTable2Addr;
-  DenseMap<unsigned*, std::pair<unsigned,unsigned> > RegOp2MemOpTable0;
-  DenseMap<unsigned*, std::pair<unsigned,unsigned> > RegOp2MemOpTable1;
-  DenseMap<unsigned*, std::pair<unsigned,unsigned> > RegOp2MemOpTable2;
-  
+  DenseMap<unsigned, std::pair<unsigned,unsigned> > RegOp2MemOpTable2Addr;
+  DenseMap<unsigned, std::pair<unsigned,unsigned> > RegOp2MemOpTable0;
+  DenseMap<unsigned, std::pair<unsigned,unsigned> > RegOp2MemOpTable1;
+  DenseMap<unsigned, std::pair<unsigned,unsigned> > RegOp2MemOpTable2;
+
   /// MemOp2RegOpTable - Load / store unfolding opcode map.
   ///
-  DenseMap<unsigned*, std::pair<unsigned, unsigned> > MemOp2RegOpTable;
+  DenseMap<unsigned, std::pair<unsigned, unsigned> > MemOp2RegOpTable;
 
 public:
   explicit X86InstrInfo(X86TargetMachine &tm);
@@ -728,17 +746,6 @@ public:
                                MachineInstr::mmo_iterator MMOBegin,
                                MachineInstr::mmo_iterator MMOEnd,
                                SmallVectorImpl<MachineInstr*> &NewMIs) const;
-  
-  virtual bool spillCalleeSavedRegisters(MachineBasicBlock &MBB,
-                                         MachineBasicBlock::iterator MI,
-                                        const std::vector<CalleeSavedInfo> &CSI,
-                                         const TargetRegisterInfo *TRI) const;
-
-  virtual bool restoreCalleeSavedRegisters(MachineBasicBlock &MBB,
-                                           MachineBasicBlock::iterator MI,
-                                        const std::vector<CalleeSavedInfo> &CSI,
-                                           const TargetRegisterInfo *TRI) const;
-  
   virtual
   MachineInstr *emitFrameIndexDebugValue(MachineFunction &MF,
                                          int FrameIx, uint64_t Offset,
@@ -788,7 +795,7 @@ public:
   virtual unsigned getOpcodeAfterMemoryUnfold(unsigned Opc,
                                       bool UnfoldLoad, bool UnfoldStore,
                                       unsigned *LoadRegIndex = 0) const;
-  
+
   /// areLoadsFromSameBasePtr - This is used by the pre-regalloc scheduler
   /// to determine if two loads are loading from the same base address. It
   /// should only return true if the base pointers are the same and the
@@ -822,7 +829,7 @@ public:
     return (reg == X86::SPL || reg == X86::BPL ||
           reg == X86::SIL || reg == X86::DIL);
   }
-  
+
   static bool isX86_64ExtendedReg(const MachineOperand &MO) {
     if (!MO.isReg()) return false;
     return isX86_64ExtendedReg(MO.getReg());
@@ -845,17 +852,24 @@ public:
   /// SetSSEDomain - Set the SSEDomain of MI.
   void SetSSEDomain(MachineInstr *MI, unsigned Domain) const;
 
+  MachineInstr* foldMemoryOperandImpl(MachineFunction &MF,
+                                      MachineInstr* MI,
+                                      unsigned OpNum,
+                                      const SmallVectorImpl<MachineOperand> &MOs,
+                                      unsigned Size, unsigned Alignment) const;
+
+  bool isHighLatencyDef(int opc) const;
+
+  bool hasHighOperandLatency(const InstrItineraryData *ItinData,
+                             const MachineRegisterInfo *MRI,
+                             const MachineInstr *DefMI, unsigned DefIdx,
+                             const MachineInstr *UseMI, unsigned UseIdx) const;
+
 private:
   MachineInstr * convertToThreeAddressWithLEA(unsigned MIOpc,
                                               MachineFunction::iterator &MFI,
                                               MachineBasicBlock::iterator &MBBI,
                                               LiveVariables *LV) const;
-
-  MachineInstr* foldMemoryOperandImpl(MachineFunction &MF,
-                                     MachineInstr* MI,
-                                     unsigned OpNum,
-                                     const SmallVectorImpl<MachineOperand> &MOs,
-                                     unsigned Size, unsigned Alignment) const;
 
   /// isFrameOperand - Return true and the FrameIndex if the specified
   /// operand and follow operands form a reference to the stack frame.

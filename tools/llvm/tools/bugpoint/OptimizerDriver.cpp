@@ -15,10 +15,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// Note: as a short term hack, the old Unix-specific code and platform-
-// independent code co-exist via conditional compilation until it is verified
-// that the new code works correctly on Unix.
-
 #include "BugDriver.h"
 #include "llvm/Module.h"
 #include "llvm/PassManager.h"
@@ -29,9 +25,9 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/SystemUtils.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/System/Path.h"
-#include "llvm/System/Program.h"
+#include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Support/Path.h"
+#include "llvm/Support/Program.h"
 
 #define DONT_GET_PLUGIN_LOADER_OPTION
 #include "llvm/Support/PluginLoader.h"
@@ -93,7 +89,8 @@ void BugDriver::EmitProgressBitcode(const Module *M,
   outs() << getPassesString(PassesToRun) << "\n";
 }
 
-cl::opt<bool> SilencePasses("silence-passes", cl::desc("Suppress output of running passes (both stdout and stderr)"));
+cl::opt<bool> SilencePasses("silence-passes",
+        cl::desc("Suppress output of running passes (both stdout and stderr)"));
 
 static cl::list<std::string> OptArgs("opt-args", cl::Positional,
                                      cl::desc("<opt arguments>..."),
@@ -130,12 +127,12 @@ bool BugDriver::runPasses(Module *Program,
            << ErrMsg << "\n";
     return(1);
   }
-  
+
   std::string ErrInfo;
   tool_output_file InFile(inputFilename.c_str(), ErrInfo,
                           raw_fd_ostream::F_Binary);
-  
-  
+
+
   if (!ErrInfo.empty()) {
     errs() << "Error opening bitcode file: " << inputFilename.str() << "\n";
     return 1;
@@ -147,11 +144,19 @@ bool BugDriver::runPasses(Module *Program,
     InFile.os().clear_error();
     return 1;
   }
+
+  sys::Path tool = PrependMainExecutablePath("opt", getToolName(),
+                                             (void*)"opt");
+  if (tool.empty()) {
+    errs() << "Cannot find `opt' in executable directory!\n";
+    return 1;
+  }
+
+  // Ok, everything that could go wrong before running opt is done.
   InFile.keep();
 
   // setup the child process' arguments
   SmallVector<const char*, 8> Args;
-  sys::Path tool = FindExecutable("opt", getToolName(), (void*)"opt");
   std::string Opt = tool.str();
   if (UseValgrind) {
     Args.push_back("valgrind");
@@ -192,7 +197,7 @@ bool BugDriver::runPasses(Module *Program,
     prog = sys::Program::FindProgramByName("valgrind");
   else
     prog = tool;
-  
+
   // Redirect stdout and stderr to nowhere if SilencePasses is given
   sys::Path Nowhere;
   const sys::Path *Redirects[3] = {0, &Nowhere, &Nowhere};

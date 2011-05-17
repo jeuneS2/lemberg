@@ -108,9 +108,34 @@ namespace {
 
 }
 
+SchedulePostRATDList::SchedulePostRATDList(
+  MachineFunction &MF, MachineLoopInfo &MLI, MachineDominatorTree &MDT,
+  AliasAnalysis *AA, TargetSubtarget::AntiDepBreakMode AntiDepMode,
+  SmallVectorImpl<TargetRegisterClass*> &CriticalPathRCs)
+  : ScheduleDAGInstrs(MF, MLI, MDT), Topo(SUnits), AA(AA),
+    KillIndices(TRI->getNumRegs())
+{
+  const TargetMachine &TM = MF.getTarget();
+  const InstrItineraryData *InstrItins = TM.getInstrItineraryData();
+  HazardRec =
+    TM.getInstrInfo()->CreateTargetPostRAHazardRecognizer(InstrItins, this);
+  AntiDepBreak =
+    ((AntiDepMode == TargetSubtarget::ANTIDEP_ALL) ?
+     (AntiDepBreaker *)new AggressiveAntiDepBreaker(MF, CriticalPathRCs) :
+     ((AntiDepMode == TargetSubtarget::ANTIDEP_CRITICAL) ?
+      (AntiDepBreaker *)new CriticalAntiDepBreaker(MF) : NULL));
+}
+
+SchedulePostRATDList::~SchedulePostRATDList() {
+  delete HazardRec;
+  delete AntiDepBreak;
+}
+
 bool PostRAScheduler::runOnMachineFunction(MachineFunction &Fn) {
-  AA = &getAnalysis<AliasAnalysis>();
   TII = Fn.getTarget().getInstrInfo();
+  MachineLoopInfo &MLI = getAnalysis<MachineLoopInfo>();
+  MachineDominatorTree &MDT = getAnalysis<MachineDominatorTree>();
+  AliasAnalysis *AA = &getAnalysis<AliasAnalysis>();
 
   // Check for explicit enable/disable of post-ra scheduling.
   TargetSubtarget::AntiDepBreakMode AntiDepMode = TargetSubtarget::ANTIDEP_NONE;
@@ -120,6 +145,7 @@ bool PostRAScheduler::runOnMachineFunction(MachineFunction &Fn) {
       return false;
   } else {
     // Check that post-RA scheduling is enabled for this target.
+    // This may upgrade the AntiDepMode.
     const TargetSubtarget &ST = Fn.getTarget().getSubtarget<TargetSubtarget>();
     if (!ST.enablePostRAScheduler(OptLevel, AntiDepMode, CriticalPathRCs))
       return false;
@@ -135,19 +161,8 @@ bool PostRAScheduler::runOnMachineFunction(MachineFunction &Fn) {
 
   DEBUG(dbgs() << "PostRAScheduler\n");
 
-  const MachineLoopInfo &MLI = getAnalysis<MachineLoopInfo>();
-  const MachineDominatorTree &MDT = getAnalysis<MachineDominatorTree>();
-  const TargetMachine &TM = Fn.getTarget();
-  const InstrItineraryData &InstrItins = TM.getInstrItineraryData();
-  ScheduleHazardRecognizer *HR =
-    TM.getInstrInfo()->CreateTargetPostRAHazardRecognizer(InstrItins);
-  AntiDepBreaker *ADB =
-    ((AntiDepMode == TargetSubtarget::ANTIDEP_ALL) ?
-     (AntiDepBreaker *)new AggressiveAntiDepBreaker(Fn, CriticalPathRCs) :
-     ((AntiDepMode == TargetSubtarget::ANTIDEP_CRITICAL) ?
-      (AntiDepBreaker *)new CriticalAntiDepBreaker(Fn) : NULL));
-
-  SchedulePostRATDList Scheduler(Fn, MLI, MDT, HR, ADB, AA);
+  SchedulePostRATDList Scheduler(Fn, MLI, MDT, AA, AntiDepMode,
+                                 CriticalPathRCs);
 
   // Loop over all of the basic blocks
   for (MachineFunction::iterator MBB = Fn.begin(), MBBe = Fn.end();
@@ -194,9 +209,6 @@ bool PostRAScheduler::runOnMachineFunction(MachineFunction &Fn) {
     // Update register kills
     Scheduler.FixupKills(MBB);
   }
-
-  delete HR;
-  delete ADB;
 
   return true;
 }
@@ -542,13 +554,7 @@ void SchedulePostRATDList::ListScheduleTopDown() {
         MinDepth = PendingQueue[i]->getDepth();
     }
 
-    DEBUG(dbgs() << "\n*** Examining Available\n";
-          LatencyPriorityQueue q = AvailableQueue;
-          while (!q.empty()) {
-            SUnit *su = q.pop();
-            dbgs() << "Height " << su->getHeight() << ": ";
-            su->dump(this);
-          });
+    DEBUG(dbgs() << "\n*** Examining Available\n"; AvailableQueue.dump(this));
 
     SUnit *FoundSUnit = 0;
     bool HasNoopHazards = false;
@@ -556,7 +562,7 @@ void SchedulePostRATDList::ListScheduleTopDown() {
       SUnit *CurSUnit = AvailableQueue.pop();
 
       ScheduleHazardRecognizer::HazardType HT =
-        HazardRec->getHazardType(CurSUnit);
+        HazardRec->getHazardType(CurSUnit, 0/*no stalls*/);
       if (HT == ScheduleHazardRecognizer::NoHazard) {
         FoundSUnit = CurSUnit;
         break;

@@ -4,11 +4,16 @@ include(LLVMConfig)
 macro(add_llvm_library name)
   llvm_process_sources( ALL_FILES ${ARGN} )
   add_library( ${name} ${ALL_FILES} )
-  set( llvm_libs ${llvm_libs} ${name} PARENT_SCOPE)
-  set( llvm_lib_targets ${llvm_lib_targets} ${name} PARENT_SCOPE )
+  set_property( GLOBAL APPEND PROPERTY LLVM_LIBS ${name} )
   if( LLVM_COMMON_DEPENDS )
     add_dependencies( ${name} ${LLVM_COMMON_DEPENDS} )
   endif( LLVM_COMMON_DEPENDS )
+
+  if( BUILD_SHARED_LIBS )
+    get_system_libs(sl)
+    target_link_libraries( ${name} ${sl} )
+  endif()
+
   install(TARGETS ${name}
     LIBRARY DESTINATION lib${LLVM_LIBDIR_SUFFIX}
     ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX})
@@ -19,16 +24,25 @@ macro(add_llvm_library name)
   if( CURRENT_LLVM_TARGET )
     add_dependencies(${name} ${CURRENT_LLVM_TARGET})
   endif()
+  set_target_properties(${name} PROPERTIES FOLDER "Libraries")
 endmacro(add_llvm_library name)
 
 
 macro(add_llvm_loadable_module name)
-  if( NOT LLVM_ON_UNIX )
+  if( NOT LLVM_ON_UNIX OR CYGWIN )
     message(STATUS "Loadable modules not supported on this platform.
 ${name} ignored.")
+    # Add empty "phony" target
+    add_custom_target(${name})
   else()
     llvm_process_sources( ALL_FILES ${ARGN} )
-    add_library( ${name} MODULE ${ALL_FILES} )
+    if (MODULE)
+      set(libkind MODULE)
+    else()
+      set(libkind SHARED)
+    endif()
+
+    add_library( ${name} ${libkind} ${ALL_FILES} )
     set_target_properties( ${name} PROPERTIES PREFIX "" )
 
     if (APPLE)
@@ -41,6 +55,8 @@ ${name} ignored.")
       LIBRARY DESTINATION lib${LLVM_LIBDIR_SUFFIX}
       ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX})
   endif()
+
+  set_target_properties(${name} PROPERTIES FOLDER "Loadable modules")
 endmacro(add_llvm_loadable_module name)
 
 
@@ -60,13 +76,15 @@ macro(add_llvm_executable name)
   if( LLVM_LINK_COMPONENTS )
     llvm_config(${name} ${LLVM_LINK_COMPONENTS})
   endif( LLVM_LINK_COMPONENTS )
-  get_system_libs(llvm_system_libs)
-  if( llvm_system_libs )
-    target_link_libraries(${name} ${llvm_system_libs})
-  endif()
   if( LLVM_COMMON_DEPENDS )
     add_dependencies( ${name} ${LLVM_COMMON_DEPENDS} )
   endif( LLVM_COMMON_DEPENDS )
+  if( NOT MINGW )
+    get_system_libs(llvm_system_libs)
+    if( llvm_system_libs )
+      target_link_libraries(${name} ${llvm_system_libs})
+    endif()
+  endif()
 endmacro(add_llvm_executable name)
 
 
@@ -79,6 +97,7 @@ macro(add_llvm_tool name)
   if( LLVM_BUILD_TOOLS )
     install(TARGETS ${name} RUNTIME DESTINATION bin)
   endif()
+  set_target_properties(${name} PROPERTIES FOLDER "Tools")
 endmacro(add_llvm_tool name)
 
 
@@ -91,7 +110,14 @@ macro(add_llvm_example name)
   if( LLVM_BUILD_EXAMPLES )
     install(TARGETS ${name} RUNTIME DESTINATION examples)
   endif()
+  set_target_properties(${name} PROPERTIES FOLDER "Examples")
 endmacro(add_llvm_example name)
+
+
+macro(add_llvm_utility name)
+  add_llvm_executable(${name} ${ARGN})
+  set_target_properties(${name} PROPERTIES FOLDER "Utils")
+endmacro(add_llvm_utility name)
 
 
 macro(add_llvm_target target_name)
@@ -104,6 +130,7 @@ macro(add_llvm_target target_name)
   add_llvm_library(LLVM${target_name} ${ARGN} ${TABLEGEN_OUTPUT})
   if ( TABLEGEN_OUTPUT )
     add_dependencies(LLVM${target_name} ${target_name}Table_gen)
+    set_target_properties(${target_name}Table_gen PROPERTIES FOLDER "Tablegenning")
   endif (TABLEGEN_OUTPUT)
-  set(CURRENT_LLVM_TARGET LLVM${target_name} PARENT_SCOPE)
+  set( CURRENT_LLVM_TARGET LLVM${target_name} )
 endmacro(add_llvm_target)

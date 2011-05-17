@@ -29,12 +29,12 @@ LembergTargetMachine::LembergTargetMachine(const Target &T,
 										   const std::string &TT,
 										   const std::string &FS)
   : LLVMTargetMachine(T, TT),
-    DataLayout("e-p:32:32:32-i8:8:32-i16:16:32-i64:32-f64:32-n32"),
+    DataLayout("e-p:32:32:32-i1:8:32-i8:8:32-i16:16:32-i32:32:32-i64:32:32-f32:32:32-f64:32:32-n32"),
     Subtarget(TT, FS),
     TLInfo(*this),
     TSInfo(*this),
     InstrInfo(Subtarget),
-    FrameInfo(TargetFrameInfo::StackGrowsDown, 4, 0) {
+	FrameLowering(*this, Subtarget) {
 }
 
 void LembergTargetMachine::setCodeModelForJIT() {

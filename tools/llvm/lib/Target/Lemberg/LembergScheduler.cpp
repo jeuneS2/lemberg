@@ -24,8 +24,8 @@
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
-#include "llvm/CodeGen/PostRAHazardRecognizer.h"
 #include "llvm/CodeGen/ScheduleHazardRecognizer.h"
+#include "llvm/CodeGen/ScoreboardHazardRecognizer.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
@@ -41,12 +41,11 @@ namespace {
 	struct Scheduler : public MachineFunctionPass {
       AliasAnalysis *AA;
       TargetMachine &TM;
-      const TargetInstrInfo *TII;
 
 	public:
 		static char ID;
 		Scheduler(TargetMachine &tm) 
-			: MachineFunctionPass(ID), TM(tm), TII(tm.getInstrInfo()) { 
+			: MachineFunctionPass(ID), TM(tm) { 
 		}
 
 		void getAnalysisUsage(AnalysisUsage &AU) const {
@@ -71,39 +70,42 @@ namespace {
 	class ScheduleTDList : public SchedulePostRATDList {
 	public:
 		ScheduleTDList(MachineFunction &MF,
-					   const MachineLoopInfo &MLI,
-					   const MachineDominatorTree &MDT,
-					   ScheduleHazardRecognizer *HR,
-					   AntiDepBreaker *ADB,
-					   AliasAnalysis *AA)
-			: SchedulePostRATDList(MF, MLI, MDT, HR, ADB, AA) {}
+					   MachineLoopInfo &MLI,
+					   MachineDominatorTree &MDT,
+					   AliasAnalysis *AA,
+					   TargetSubtarget::AntiDepBreakMode AntiDepMode,
+					   SmallVectorImpl<TargetRegisterClass*> &CriticalPathRCs)
+			: SchedulePostRATDList(MF, MLI, MDT, AA, AntiDepMode, CriticalPathRCs) {}
 
 		~ScheduleTDList() {
-		}		
+		}
 
 		virtual void BuildSchedGraph(AliasAnalysis *AA);
 	};
 
-	class HazardRecognizer : public PostRAHazardRecognizer {
+	class HazardRecognizer : public ScoreboardHazardRecognizer {
+
+		MachineFunction &MF;
+		const TargetInstrInfo *TII;
+		ScheduleDAG *Sched;
 
 		unsigned fpuPipe;
 
 	public:
-		MachineFunction &MF;
-		const TargetInstrInfo *TII;
-		ScheduleTDList *Sched;
-
-		HazardRecognizer(const InstrItineraryData &ItinData,
+		HazardRecognizer(const InstrItineraryData *ItinData,
+						 const ScheduleDAG *DAG,
 						 MachineFunction &mf,
 						 const TargetInstrInfo *tii) :
-			PostRAHazardRecognizer(ItinData), MF(mf), TII(tii) {
+			ScoreboardHazardRecognizer(ItinData, DAG), MF(mf), TII(tii) {
 			fpuPipe = 0;
 		}
 
 		~HazardRecognizer() {
 		}
 
-		void setScheduler(ScheduleTDList *S) { Sched = S; }
+		void setSched(ScheduleDAG *DAG) {
+			Sched = DAG;
+		}
 
 		void insertSep();
 		void insertNop();
@@ -120,6 +122,12 @@ namespace {
 FunctionPass *llvm::createLembergSchedulerPass(LembergTargetMachine &TM,
 											   CodeGenOpt::Level OptLevel) {
 	return new Scheduler(TM);
+}
+
+ScheduleHazardRecognizer *
+LembergInstrInfo::CreateTargetPostRAHazardRecognizer(const InstrItineraryData *InstrItins,
+													 const ScheduleDAG *DAG) const {
+	return new HazardRecognizer(InstrItins, DAG, DAG->MF, this);
 }
 
 static bool isStackAccess(const MachineInstr *MI) {
@@ -149,17 +157,21 @@ void ScheduleTDList::BuildSchedGraph(AliasAnalysis *AA) {
 			// Pick a suitable latency
 			unsigned MemLatency = 1;
 			if (!isStackAccess(SU.getInstr())) {
-				MemLatency = SU.getInstr()->getDesc().mayStore() ? 3 : 2;
+				MemLatency = SU.getInstr()->getDesc().mayStore() ? 2 : 2;
 			} else {
 			 	MemLatency = SU.getInstr()->getDesc().mayStore() ? 1 : 2;
 			}
 
-			// Insert approprate latencies
+			// Insert appropriate latencies
 			for (SUnit::succ_iterator I = SU.Succs.begin(), E = SU.Succs.end();
 				 I != E; ++I) {
 				if (I->getKind() == SDep::Order) {
 
 					SUnit *Succ = I->getSUnit();
+
+					// TODO: why do we see successors without real instruction?
+					if (!Succ->getInstr())
+						continue;
 
 					// Latencies are just interesting for some combinations
 					if ((SU.getInstr()->getDesc().mayStore()
@@ -204,11 +216,13 @@ void ScheduleTDList::BuildSchedGraph(AliasAnalysis *AA) {
 void HazardRecognizer::insertSep() {
 
 	MachineInstr *MI = BuildMI(MF, DebugLoc(), TII->get(Lemberg::SEP));
-	SUnit *Sep = Sched->NewSUnit(MI);
+	SUnit *Sep = new SUnit();
+	Sep->setInstr(MI);
 	// Force the separator to pass verification
 	Sep->NumPreds = 1;
 	Sep->NumSuccs = 1;
 	Sep->isScheduled = true;
+	Sched->SUnits.push_back(*Sep);
 	
 	// Add the separator to the current sequence
 	Sched->Sequence.push_back(Sep);
@@ -219,11 +233,13 @@ void HazardRecognizer::insertSep() {
 void HazardRecognizer::insertNop() {
 
 	MachineInstr *MI = BuildMI(MF, DebugLoc(), TII->get(Lemberg::NOP)).addImm(0);
-	SUnit *Nop = Sched->NewSUnit(MI);
+	SUnit *Nop = new SUnit();
+	Nop->setInstr(MI);
 	// Force the noop to pass verification
 	Nop->NumPreds = 1;
 	Nop->NumSuccs = 1;
 	Nop->isScheduled = true;
+	Sched->SUnits.push_back(*Nop);
 	
 	// Add the noop to the current sequence
 	Sched->Sequence.push_back(Nop);
@@ -270,7 +286,7 @@ void HazardRecognizer::EmitInstruction(SUnit *SU) {
 		break;
 	}
 
-	return PostRAHazardRecognizer::EmitInstruction(SU);
+	return ScoreboardHazardRecognizer::EmitInstruction(SU);
 }
 
 void HazardRecognizer::AdvanceCycle() {
@@ -289,7 +305,7 @@ void HazardRecognizer::AdvanceCycle() {
 	}
 
 	// Update hazard information
-	PostRAHazardRecognizer::AdvanceCycle();
+	ScoreboardHazardRecognizer::AdvanceCycle();
 }
 
 void HazardRecognizer::FlushPipe() {
@@ -300,7 +316,7 @@ void HazardRecognizer::FlushPipe() {
 
 void HazardRecognizer::Reset() {
 	fpuPipe = 0;
-	PostRAHazardRecognizer::Reset();
+	ScoreboardHazardRecognizer::Reset();
 }
 
 /// isSchedulingBoundary - Test if the given instruction should be
@@ -320,16 +336,17 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
 
   DEBUG(dbgs() << "Lemberg Post RA Scheduler: " << Fn.getFunction()->getName() << "\n");
 
-  const MachineLoopInfo &MLI = getAnalysis<MachineLoopInfo>();
-  const MachineDominatorTree &MDT = getAnalysis<MachineDominatorTree>();
-  const InstrItineraryData &InstrItins = Fn.getTarget().getInstrItineraryData();
-  HazardRecognizer *HR = new HazardRecognizer(InstrItins, Fn, TII);
-  AntiDepBreaker *ADB = NULL;
-  // Dependency breaking also breaks clusterization
-  // (AntiDepBreaker *)new CriticalAntiDepBreaker(Fn);
+  MachineLoopInfo &MLI = getAnalysis<MachineLoopInfo>();
+  MachineDominatorTree &MDT = getAnalysis<MachineDominatorTree>();
+  AliasAnalysis *AA = &getAnalysis<AliasAnalysis>();
+  TargetSubtarget::AntiDepBreakMode AntiDepMode = TargetSubtarget::ANTIDEP_NONE;
+  SmallVector<TargetRegisterClass*, 4> CriticalPathRCs;
 
-  ScheduleTDList Scheduler(Fn, MLI, MDT, HR, ADB, AA);
-  HR->setScheduler(&Scheduler);
+  ScheduleTDList Scheduler(Fn, MLI, MDT, AA, AntiDepMode, CriticalPathRCs);
+  HazardRecognizer *HR = (HazardRecognizer *)Scheduler.HazardRec;
+  HR->setSched(&Scheduler);
+
+  const TargetInstrInfo *TII = Fn.getTarget().getInstrInfo();
 
   // Loop over all of the basic blocks
   for (MachineFunction::iterator MBB = Fn.begin(), MBBe = Fn.end();
@@ -390,8 +407,6 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
     // Update register kills
     Scheduler.FixupKills(MBB);
   }
-
-  delete HR;
 
   return true;
 }

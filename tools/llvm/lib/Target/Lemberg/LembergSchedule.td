@@ -100,6 +100,7 @@ def LembergItineraries : ProcessorItineraries<
 	[SLOT0, SLOT1, SLOT2, SLOT3,
 	 ALU0, ALU1, ALU2, ALU3, MEMU, JMPU,
 	 FPU_DEC, FPU_EX1, FPU_EX2, FPU_EX3, FPU_EX4, FPU_EX5, FPU_EX6, FPU_EX7, FPU_WB],
+	[],
 	[// Generic itineraries
 	 InstrItinData<IIAlu,    [InstrStage<1, [SLOT0, SLOT1, SLOT2, SLOT3], 0>,
 							  InstrStage<1, [ALU0, ALU1, ALU2, ALU3]>]>,

@@ -8,6 +8,8 @@ add_llvm_library(LLVMMC
   MCCodeEmitter.cpp
   MCContext.cpp
   MCDisassembler.cpp
+  MCELF.cpp
+  MCELFObjectTargetWriter.cpp
   MCELFStreamer.cpp
   MCExpr.cpp
   MCInst.cpp
@@ -16,9 +18,11 @@ add_llvm_library(LLVMMC
   MCDwarf.cpp
   MCLoggingStreamer.cpp
   MCMachOStreamer.cpp
+  MCMachObjectTargetWriter.cpp
   MCNullStreamer.cpp
   MCObjectStreamer.cpp
   MCObjectWriter.cpp
+  MCPureStreamer.cpp
   MCSection.cpp
   MCSectionCOFF.cpp
   MCSectionELF.cpp
@@ -31,3 +35,6 @@ add_llvm_library(LLVMMC
   WinCOFFObjectWriter.cpp
   TargetAsmBackend.cpp
   )
+
+add_subdirectory(MCParser)
+add_subdirectory(MCDisassembler)

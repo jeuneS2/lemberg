@@ -17,7 +17,6 @@
 #include "ARMAddressingModes.h"
 #include "ARMGenInstrInfo.inc"
 #include "ARMMachineFunctionInfo.h"
-#include "Thumb2HazardRecognizer.h"
 #include "Thumb2InstrInfo.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -28,15 +27,10 @@
 
 using namespace llvm;
 
-static cl::opt<unsigned>
-IfCvtLimit("thumb2-ifcvt-limit", cl::Hidden,
-           cl::desc("Thumb2 if-conversion limit (default 3)"),
-           cl::init(3));
-
-static cl::opt<unsigned>
-IfCvtDiamondLimit("thumb2-ifcvt-diamond-limit", cl::Hidden,
-                  cl::desc("Thumb2 diamond if-conversion limit (default 3)"),
-                  cl::init(3));
+static cl::opt<bool>
+OldT2IfCvt("old-thumb2-ifcvt", cl::Hidden,
+           cl::desc("Use old-style Thumb2 if-conversion heuristics"),
+           cl::init(false));
 
 Thumb2InstrInfo::Thumb2InstrInfo(const ARMSubtarget &STI)
   : ARMBaseInstrInfo(STI), RI(*this, STI) {
@@ -101,23 +95,14 @@ Thumb2InstrInfo::ReplaceTailWithBranchTo(MachineBasicBlock::iterator Tail,
 bool
 Thumb2InstrInfo::isLegalToSplitMBBAt(MachineBasicBlock &MBB,
                                      MachineBasicBlock::iterator MBBI) const {
+  while (MBBI->isDebugValue()) {
+    ++MBBI;
+    if (MBBI == MBB.end())
+      return false;
+  }
+
   unsigned PredReg = 0;
   return llvm::getITInstrPredicate(MBBI, PredReg) == ARMCC::AL;
-}
-
-bool Thumb2InstrInfo::isProfitableToIfCvt(MachineBasicBlock &MBB,
-                                          unsigned NumInstrs) const {
-  return NumInstrs && NumInstrs <= IfCvtLimit;
-}
-  
-bool Thumb2InstrInfo::
-isProfitableToIfCvt(MachineBasicBlock &TMBB, unsigned NumT,
-                    MachineBasicBlock &FMBB, unsigned NumF) const {
-  // FIXME: Catch optimization such as:
-  //        r0 = movne
-  //        r0 = moveq
-  return NumT && NumF &&
-    NumT <= (IfCvtDiamondLimit) && NumF <= (IfCvtDiamondLimit);
 }
 
 void Thumb2InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
@@ -155,8 +140,9 @@ storeRegToStackSlot(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
     MachineFunction &MF = *MBB.getParent();
     MachineFrameInfo &MFI = *MF.getFrameInfo();
     MachineMemOperand *MMO =
-      MF.getMachineMemOperand(PseudoSourceValue::getFixedStack(FI),
-                              MachineMemOperand::MOStore, 0,
+      MF.getMachineMemOperand(
+                      MachinePointerInfo(PseudoSourceValue::getFixedStack(FI)),
+                              MachineMemOperand::MOStore,
                               MFI.getObjectSize(FI),
                               MFI.getObjectAlignment(FI));
     AddDefaultPred(BuildMI(MBB, I, DL, get(ARM::t2STRi12))
@@ -181,8 +167,9 @@ loadRegFromStackSlot(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
     MachineFunction &MF = *MBB.getParent();
     MachineFrameInfo &MFI = *MF.getFrameInfo();
     MachineMemOperand *MMO =
-      MF.getMachineMemOperand(PseudoSourceValue::getFixedStack(FI),
-                              MachineMemOperand::MOLoad, 0,
+      MF.getMachineMemOperand(
+                      MachinePointerInfo(PseudoSourceValue::getFixedStack(FI)),
+                              MachineMemOperand::MOLoad,
                               MFI.getObjectSize(FI),
                               MFI.getObjectAlignment(FI));
     AddDefaultPred(BuildMI(MBB, I, DL, get(ARM::t2LDRi12), DestReg)
@@ -193,16 +180,11 @@ loadRegFromStackSlot(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
   ARMBaseInstrInfo::loadRegFromStackSlot(MBB, I, DestReg, FI, RC, TRI);
 }
 
-ScheduleHazardRecognizer *Thumb2InstrInfo::
-CreateTargetPostRAHazardRecognizer(const InstrItineraryData &II) const {
-  return (ScheduleHazardRecognizer *)new Thumb2HazardRecognizer(II);
-}
-
 void llvm::emitT2RegPlusImmediate(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator &MBBI, DebugLoc dl,
                                unsigned DestReg, unsigned BaseReg, int NumBytes,
                                ARMCC::CondCodes Pred, unsigned PredReg,
-                               const ARMBaseInstrInfo &TII) {
+                               const ARMBaseInstrInfo &TII, unsigned MIFlags) {
   bool isSub = NumBytes < 0;
   if (isSub) NumBytes = -NumBytes;
 
@@ -216,14 +198,14 @@ void llvm::emitT2RegPlusImmediate(MachineBasicBlock &MBB,
       // Use a movw to materialize the 16-bit constant.
       BuildMI(MBB, MBBI, dl, TII.get(ARM::t2MOVi16), DestReg)
         .addImm(NumBytes)
-        .addImm((unsigned)Pred).addReg(PredReg);
+        .addImm((unsigned)Pred).addReg(PredReg).setMIFlags(MIFlags);
       Fits = true;
     } else if ((NumBytes & 0xffff) == 0) {
       // Use a movt to materialize the 32-bit constant.
       BuildMI(MBB, MBBI, dl, TII.get(ARM::t2MOVTi16), DestReg)
         .addReg(DestReg)
         .addImm(NumBytes >> 16)
-        .addImm((unsigned)Pred).addReg(PredReg);
+        .addImm((unsigned)Pred).addReg(PredReg).setMIFlags(MIFlags);
       Fits = true;
     }
 
@@ -232,12 +214,14 @@ void llvm::emitT2RegPlusImmediate(MachineBasicBlock &MBB,
         BuildMI(MBB, MBBI, dl, TII.get(ARM::t2SUBrr), DestReg)
           .addReg(BaseReg, RegState::Kill)
           .addReg(DestReg, RegState::Kill)
-          .addImm((unsigned)Pred).addReg(PredReg).addReg(0);
+          .addImm((unsigned)Pred).addReg(PredReg).addReg(0)
+          .setMIFlags(MIFlags);
       } else {
         BuildMI(MBB, MBBI, dl, TII.get(ARM::t2ADDrr), DestReg)
           .addReg(DestReg, RegState::Kill)
           .addReg(BaseReg, RegState::Kill)
-        .addImm((unsigned)Pred).addReg(PredReg).addReg(0);
+          .addImm((unsigned)Pred).addReg(PredReg).addReg(0)
+          .setMIFlags(MIFlags);
       }
       return;
     }
@@ -248,7 +232,8 @@ void llvm::emitT2RegPlusImmediate(MachineBasicBlock &MBB,
     unsigned Opc = 0;
     if (DestReg == ARM::SP && BaseReg != ARM::SP) {
       // mov sp, rn. Note t2MOVr cannot be used.
-      BuildMI(MBB, MBBI, dl, TII.get(ARM::tMOVgpr2gpr),DestReg).addReg(BaseReg);
+      BuildMI(MBB, MBBI, dl, TII.get(ARM::tMOVgpr2gpr),DestReg)
+        .addReg(BaseReg).setMIFlags(MIFlags);
       BaseReg = ARM::SP;
       continue;
     }
@@ -261,7 +246,7 @@ void llvm::emitT2RegPlusImmediate(MachineBasicBlock &MBB,
         Opc = isSub ? ARM::tSUBspi : ARM::tADDspi;
         // FIXME: Fix Thumb1 immediate encoding.
         BuildMI(MBB, MBBI, dl, TII.get(Opc), DestReg)
-          .addReg(BaseReg).addImm(ThisVal/4);
+          .addReg(BaseReg).addImm(ThisVal/4).setMIFlags(MIFlags);
         NumBytes = 0;
         continue;
       }
@@ -301,7 +286,7 @@ void llvm::emitT2RegPlusImmediate(MachineBasicBlock &MBB,
     MachineInstrBuilder MIB =
       AddDefaultPred(BuildMI(MBB, MBBI, dl, TII.get(Opc), DestReg)
                      .addReg(BaseReg, RegState::Kill)
-                     .addImm(ThisVal));
+                     .addImm(ThisVal)).setMIFlags(MIFlags);
     if (HasCCOut)
       AddDefaultCC(MIB);
 

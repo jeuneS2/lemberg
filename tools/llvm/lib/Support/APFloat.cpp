@@ -175,7 +175,7 @@ totalExponent(StringRef::iterator p, StringRef::iterator end,
 {
   int unsignedExponent;
   bool negative, overflow;
-  int exponent;
+  int exponent = 0;
 
   assert(p != end && "Exponent has no digits");
 
@@ -194,11 +194,11 @@ totalExponent(StringRef::iterator p, StringRef::iterator end,
     assert(value < 10U && "Invalid character in exponent");
 
     unsignedExponent = unsignedExponent * 10 + value;
-    if (unsignedExponent > 65535)
+    if (unsignedExponent > 32767)
       overflow = true;
   }
 
-  if (exponentAdjustment > 65535 || exponentAdjustment < -65536)
+  if (exponentAdjustment > 32767 || exponentAdjustment < -32768)
     overflow = true;
 
   if (!overflow) {
@@ -206,12 +206,12 @@ totalExponent(StringRef::iterator p, StringRef::iterator end,
     if (negative)
       exponent = -exponent;
     exponent += exponentAdjustment;
-    if (exponent > 65535 || exponent < -65536)
+    if (exponent > 32767 || exponent < -32768)
       overflow = true;
   }
 
   if (overflow)
-    exponent = negative ? -65536: 65535;
+    exponent = negative ? -32768: 32767;
 
   return exponent;
 }
@@ -726,7 +726,7 @@ APFloat::bitwiseIsEqual(const APFloat &rhs) const {
 }
 
 APFloat::APFloat(const fltSemantics &ourSemantics, integerPart value)
-{
+  : exponent2(0), sign2(0) {
   assertArithmeticOK(ourSemantics);
   initialize(&ourSemantics);
   sign = 0;
@@ -736,14 +736,15 @@ APFloat::APFloat(const fltSemantics &ourSemantics, integerPart value)
   normalize(rmNearestTiesToEven, lfExactlyZero);
 }
 
-APFloat::APFloat(const fltSemantics &ourSemantics) {
+APFloat::APFloat(const fltSemantics &ourSemantics) : exponent2(0), sign2(0) {
   assertArithmeticOK(ourSemantics);
   initialize(&ourSemantics);
   category = fcZero;
   sign = false;
 }
 
-APFloat::APFloat(const fltSemantics &ourSemantics, uninitializedTag tag) {
+APFloat::APFloat(const fltSemantics &ourSemantics, uninitializedTag tag)
+  : exponent2(0), sign2(0) {
   assertArithmeticOK(ourSemantics);
   // Allocates storage if necessary but does not initialize it.
   initialize(&ourSemantics);
@@ -751,7 +752,7 @@ APFloat::APFloat(const fltSemantics &ourSemantics, uninitializedTag tag) {
 
 APFloat::APFloat(const fltSemantics &ourSemantics,
                  fltCategory ourCategory, bool negative)
-{
+  : exponent2(0), sign2(0) {
   assertArithmeticOK(ourSemantics);
   initialize(&ourSemantics);
   category = ourCategory;
@@ -763,14 +764,13 @@ APFloat::APFloat(const fltSemantics &ourSemantics,
 }
 
 APFloat::APFloat(const fltSemantics &ourSemantics, StringRef text)
-{
+  : exponent2(0), sign2(0) {
   assertArithmeticOK(ourSemantics);
   initialize(&ourSemantics);
   convertFromString(text, rmNearestTiesToEven);
 }
 
-APFloat::APFloat(const APFloat &rhs)
-{
+APFloat::APFloat(const APFloat &rhs) : exponent2(0), sign2(0) {
   initialize(rhs.semantics);
   assign(rhs);
 }
@@ -3197,6 +3197,12 @@ APFloat::initFromAPInt(const APInt& api, bool isIEEE)
     llvm_unreachable(0);
 }
 
+APFloat
+APFloat::getAllOnesValue(unsigned BitWidth, bool isIEEE)
+{
+  return APFloat(APInt::getAllOnesValue(BitWidth), isIEEE);
+}
+
 APFloat APFloat::getLargest(const fltSemantics &Sem, bool Negative) {
   APFloat Val(Sem, fcNormal, Negative);
 
@@ -3251,21 +3257,16 @@ APFloat APFloat::getSmallestNormalized(const fltSemantics &Sem, bool Negative) {
   return Val;
 }
 
-APFloat::APFloat(const APInt& api, bool isIEEE)
-{
+APFloat::APFloat(const APInt& api, bool isIEEE) : exponent2(0), sign2(0) {
   initFromAPInt(api, isIEEE);
 }
 
-APFloat::APFloat(float f)
-{
-  APInt api = APInt(32, 0);
-  initFromAPInt(api.floatToBits(f));
+APFloat::APFloat(float f) : exponent2(0), sign2(0) {
+  initFromAPInt(APInt::floatToBits(f));
 }
 
-APFloat::APFloat(double d)
-{
-  APInt api = APInt(64, 0);
-  initFromAPInt(api.doubleToBits(d));
+APFloat::APFloat(double d) : exponent2(0), sign2(0) {
+  initFromAPInt(APInt::doubleToBits(d));
 }
 
 namespace {
@@ -3312,7 +3313,7 @@ namespace {
     // Truncate the significand down to its active bit count, but
     // don't try to drop below 32.
     unsigned newPrecision = std::max(32U, significand.getActiveBits());
-    significand.trunc(newPrecision);
+    significand = significand.trunc(newPrecision);
   }
 
 
@@ -3417,7 +3418,7 @@ void APFloat::toString(SmallVectorImpl<char> &Str,
     // Nothing to do.
   } else if (exp > 0) {
     // Just shift left.
-    significand.zext(semantics->precision + exp);
+    significand = significand.zext(semantics->precision + exp);
     significand <<= exp;
     exp = 0;
   } else { /* exp < 0 */
@@ -3436,7 +3437,7 @@ void APFloat::toString(SmallVectorImpl<char> &Str,
 
     // Multiply significand by 5^e.
     //   N * 5^0101 == N * 5^(1*1) * 5^(0*2) * 5^(1*4) * 5^(0*8)
-    significand.zext(precision);
+    significand = significand.zext(precision);
     APInt five_to_the_i(precision, 5);
     while (true) {
       if (texp & 1) significand *= five_to_the_i;

@@ -231,7 +231,7 @@ unsigned Pinner::getClassForPattern(LembergFU::FuncUnit P [], unsigned L) {
 
 	const LembergSubtarget *LST = ((LembergTargetMachine &)TM).getSubtargetImpl();
 	const InstrItineraryData &IID = LST->getInstrItins();
-	const InstrItinerary *IITab = IID.Itineratries;
+	const InstrItinerary *IITab = IID.Itineraries;
 	const InstrStage *IIStages = IID.Stages;
 
 	for (unsigned c = 0; !IID.isEndMarker(c); ++c) {
@@ -256,7 +256,7 @@ unsigned Pinner::getClassForPattern(LembergFU::FuncUnit P [], unsigned L) {
 bool Pinner::compatibleSchedClass(unsigned A, unsigned B) {
 	const LembergSubtarget *LST = ((LembergTargetMachine &)TM).getSubtargetImpl();
 	const InstrItineraryData &IID = LST->getInstrItins();
-	const InstrItinerary *IITab = IID.Itineratries;
+	const InstrItinerary *IITab = IID.Itineraries;
 	const InstrStage *IIStages = IID.Stages;
 
 	// Need to have same length
@@ -313,8 +313,9 @@ int Pinner::getCluster(MachineRegisterInfo *MRI, MachineInstr &MI) {
 
 void Pinner::pinToCluster(MachineInstr &MI, int cluster) {
 
-	// Ignore implicitly created no-op
-	if (MI.getOpcode() == TargetOpcode::KILL) {
+	// Ignore implicitly created no-ops
+	if (MI.getOpcode() == TargetOpcode::KILL
+		|| MI.getOpcode() == TargetOpcode::IMPLICIT_DEF) {
 		return;
 	}
 
@@ -345,6 +346,7 @@ void Pinner::pinToCluster(MachineInstr &MI, int cluster) {
 	} else if (compatibleSchedClass(SchedClass, Fpu7SchedClasses[cluster])) {
 		NTID->SchedClass = Fpu7SchedClasses[cluster];
 	} else {
+		MI.dump();
 		llvm_unreachable("Cannot find compatible schedule class for pinning");
 	}
 	
