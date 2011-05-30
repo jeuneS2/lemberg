@@ -5,10 +5,10 @@
 #include <_ansi.h>
 #include <_syslist.h>
 #include <errno.h>
-#undef errno
-extern int errno;
 #include <sys/time.h>
 #include <sys/resource.h>
+#undef errno
+extern int errno;
 
 #include "ioconsts.h"
 
@@ -17,7 +17,7 @@ _DEFUN (getrusage, (who, usage),
         int who _AND
 		struct rusage *usage)
 {
-	// We could read the timer here
+	// Everything is accounted to the user time
 	usage->ru_utime.tv_usec = TIMER_USECS;
 	usage->ru_utime.tv_sec  = TIMER_SECS;
 	usage->ru_stime.tv_usec = 0;
