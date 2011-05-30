@@ -1,9 +1,10 @@
 include /usr/local/lemberg/etc/Makefile.rules
 
-CFLAGS=-Os
+CFLAGS=-Os -ansi -pedantic -Wall
 LLVM_LDFLAGS=
 LIBLLSYMS=
-LLCFLAGS=-O2
+OPTFLAGS=-O2
+LLCFLAGS=-O2 -disable-machine-licm -code-model=small
 
 all: bootrom.vhd sim_bootrom.vhd
 

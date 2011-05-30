@@ -5,117 +5,135 @@
 const char * load_msg = "\nLOAD\n";
 const char * boot_msg = "BOOT\n";
 const char * exit_msg = "\nEXIT ";
+const char * fail_msg = "FAIL @";
+
+#define WAIT_READ() while ((UART_STATUS & 0x02) == 0)
+#define WAIT_WRITE() while ((UART_STATUS & 0x01) == 0)
+
+static void printstr(const char *str);
+static void printint(unsigned val);
+static unsigned readint(void);
+
+#define PRINTSTR(STR) (((void (*)(const char *))(unsigned)&BOOTROM[(unsigned)printstr])((const char *)&BOOTROM[(unsigned)STR]))
+#define PRINTINT(VAL) (((void (*)(unsigned))(unsigned)&BOOTROM[(unsigned)printint])(VAL))
+#define READINT() (((unsigned (*)(void))(unsigned)&BOOTROM[(unsigned)readint])())
 
 __attribute__((noreturn))
 int main(void)
 {
-	int i;
-	const char *p;
+	unsigned i;
+	unsigned char c;
+	unsigned w;
 
-	int length;
-	int m;
+	unsigned length;
+	unsigned mainaddr;
 	int (* mainfun)(void);
 	volatile unsigned char *prog_dest;
 
+	int retval;
+
  loop:
-	length = 0;
-	m = 0;
+	mainaddr = 0;
 	mainfun = 0;
 	prog_dest = 0;
+	retval = 0;
 
 	/* send life sign */
-	p = &BOOTROM[(unsigned)load_msg];
-	for (; *p != '\0'; p++)
-		{
-			/* wait for UART to be ready */
-			while ((UART_STATUS & 0x01) == 0); 
-
-			UART_DATA = *p;
-		} 
+	PRINTSTR(load_msg);
 
 	/* receive length of program code */
-	for (i = 0; i < 4; i++)
-		{
-			unsigned char c;
-
-			/* wait for UART to be ready */
-			while ((UART_STATUS & 0x02) == 0); 
-
-			/* shift received data into length */
-			length <<= 8;
-			c = UART_DATA;
-			length |= c;
-		}
-
+	length = READINT();
 	/* receive address of main function */
-	for (i = 0; i < 4; i++)
-		{
-			unsigned char c;
+	mainaddr = READINT();
 
-			/* wait for UART to be ready */
-			while ((UART_STATUS & 0x02) == 0); 
-
-			/* shift received data into pointer to main function */
-			m <<= 8;
-			c = UART_DATA;
-			m |= c;
-		}
-
-	mainfun = (int (*)(void))m;
+	mainfun = (int (*)(void))mainaddr;
 
 	/* receive actual program data */
 	for (i = 0; i < length; i++)
 		{
-			unsigned char c;
-
 			/* wait for UART to be ready */
 			while ((UART_STATUS & 0x02) == 0); 
 
 			c = UART_DATA;
-			*prog_dest++ = c;
+			*prog_dest = c;
+			prog_dest++;
+
+			w >>= 8;
+			w |= (c << 24);
+			/* read back data from RAM */
+			if ((i & 0x3) == 3 && w != ((unsigned *)prog_dest)[-1]) {
+				goto fail;
+			}
+
 		}
 
 	/* send life sign */
-	p = &BOOTROM[(unsigned)boot_msg];
-	for (; *p != '\0'; p++)
-		{
-			/* wait for UART to be ready */
-			while ((UART_STATUS & 0x01) == 0); 
-
-			UART_DATA = *p;
-		} 
+	PRINTSTR(boot_msg);
 
 	/* call main() */
-	m = mainfun();
+	retval = mainfun();
 
 	/* say goodbye */
-	p = &BOOTROM[(unsigned)exit_msg];
-	for (; *p != '\0'; p++)
-		{
-			/* wait for UART to be ready */
-			while ((UART_STATUS & 0x01) == 0);
-
-			UART_DATA = *p;
-		}
+	PRINTSTR(exit_msg);
 	/* print status */
-	for (i = 0; i < 8; i++)
-		{
-			int d;
+	PRINTINT(retval);
 
-			/* wait for UART to be ready */
-			while ((UART_STATUS & 0x01) == 0); 
+	goto restart;
 
-			d = (m >> (4*i)) & 0xf;
-			if (d < 0xa) d+='0'; else d+='a';
+ fail:
+	/* fail miserably */
+	PRINTSTR(fail_msg);
+	/* print status */
+	PRINTINT((unsigned)prog_dest);
+	PRINTINT(((unsigned *)prog_dest)[-1]);
+	PRINTINT(w);
 
-			UART_DATA = d;
-		}
-
-	/* wait for UART to be ready */
-	while ((UART_STATUS & 0x01) == 0); 
-
+ restart:
+	WAIT_WRITE();
 	UART_DATA = '\n';
 
-	/* start over again */
-	goto loop;
+	/* try again */
+	goto loop;	
+}
+
+__attribute((noinline))
+static void printstr(const char *str)
+{
+	const char *p;
+	for (p = str; *p != '\0'; p++)
+		{
+			WAIT_WRITE();
+			UART_DATA = *p;
+		}
+}
+
+__attribute((noinline))
+static void printint(unsigned val)
+{
+	unsigned i;
+	for (i = 8; i > 0; --i)
+		{
+			int d = (val >> (4*(i-1))) & 0xf;
+			if (d < 0xa) d+='0'; else d+='a'-10;
+
+			WAIT_WRITE();
+			UART_DATA = d;
+		}
+}
+
+__attribute((noinline))
+static unsigned readint(void)
+{
+	unsigned i;
+	unsigned char c;
+	unsigned retval = 0;
+	for (i = 0; i < 4; i++)
+		{
+			WAIT_READ();
+			/* shift received char into word */
+			retval <<= 8;
+			c = UART_DATA;
+			retval |= c;
+		}
+	return retval;
 }
