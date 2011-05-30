@@ -28,6 +28,7 @@ namespace llvm {
     long Offset;		 
     MachineBasicBlock::iterator Begin;
     MachineBasicBlock::iterator Killer;
+    unsigned Dist;
   };
 
   struct LembergRegisterInfo : public LembergGenRegisterInfo {

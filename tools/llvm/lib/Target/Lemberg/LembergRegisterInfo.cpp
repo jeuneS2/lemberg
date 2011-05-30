@@ -88,6 +88,7 @@ saveScavengerRegister(MachineBasicBlock &MBB,
 					  MachineBasicBlock::iterator I,
 					  MachineBasicBlock::iterator &UseMI,
 					  const TargetRegisterClass *RC, unsigned Reg) const {
+
   // Adjust UseMI so we do not restore scavenger register between a load and a ldx
   if ((UseMI->getDesc().getOpcode() == Lemberg::LDXa)
 	  || (UseMI->getDesc().getOpcode() == Lemberg::LDXi)) {
@@ -105,13 +106,17 @@ BuildLargeFrameOffset (MachineFunction &MF,
 
 	assert(isInt<22>(Offset) && "Offset too big for loading");
 
+	// Quit after a few instructions as not to confuse the register scavenger
+	const unsigned MaxLookup = 0;
+
 	// Look if we already built this offset before
 	if (Offset == LastLargeFrame->Offset
 		&& MBB.begin() == LastLargeFrame->Begin
-		&& LastLargeFrame->Register != 0) {
-		// Quit after a few instructions as not to confuse the register scavenger
-		unsigned MaxLookup = 4;
-		for (MachineBasicBlock::iterator II = MBBI, IE = MBB.begin(); MaxLookup-- > 0; --II) {
+		&& LastLargeFrame->Register != 0
+		&& LastLargeFrame->Dist < MaxLookup) {
+
+		for (MachineBasicBlock::iterator II = MBBI, IE = MBB.begin();
+			 LastLargeFrame->Dist++ < MaxLookup; --II) {
 			// Do not search beyond definitions, kills, and calls
 			if (II != LastLargeFrame->Killer
 				&& (II->modifiesRegister(LastLargeFrame->Register, this)
@@ -143,6 +148,7 @@ BuildLargeFrameOffset (MachineFunction &MF,
 	LastLargeFrame->Register = ScratchReg;
 	LastLargeFrame->Offset = Offset;
 	LastLargeFrame->Begin = MBB.begin();
+	LastLargeFrame->Dist = 0;
 
 	if (isUInt<5>(Offset >> 2) && ((Offset & 0x03) == 0)) {
 		BuildMI(MBB, MBBI, DL, TII.get(Lemberg::S2ADDaia), ScratchReg)
@@ -150,27 +156,28 @@ BuildLargeFrameOffset (MachineFunction &MF,
 			.addReg(getFrameRegister(MF))
 			.addImm(Offset >> 2);		
 	} else {
+		unsigned ImmReg = getEmergencyRegister();
 		if (isUInt<11>(Offset)) {
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ScratchReg)
+			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ImmReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset);
 		} else if (isInt<11>(Offset)) {
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADimm11), ScratchReg)
+			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADimm11), ImmReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset);
 		} else {
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ScratchReg)
+			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ImmReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset & 0x7ff);
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADimm11mi), ScratchReg)
+			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADimm11mi), ImmReg)
 				.addImm(-1).addReg(0)
-				.addReg(ScratchReg)
+				.addReg(ImmReg)
 				.addImm((Offset >> 11) & 0x7ff);
 		}
 		BuildMI(MBB, MBBI, DL, TII.get(Lemberg::ADDaaa), ScratchReg)
 			.addImm(-1).addReg(0)
 			.addReg(getFrameRegister(MF))
-			.addReg(ScratchReg);
+			.addReg(ImmReg);
 	}
 
 	return ScratchReg;
