@@ -167,8 +167,8 @@ begin  -- behavior
 										   +unsigned(op(i).index));
 
 			-- addr+index must not cross memory area
-			addrvec(i)(ADDR_WIDTH-1+2 downto ADDR_WIDTH-AREAMUX_BITS+2) :=
-				op(i).address(ADDR_WIDTH-1+2 downto ADDR_WIDTH-AREAMUX_BITS+2);
+			-- addrvec(i)(ADDR_WIDTH-1+2 downto ADDR_WIDTH-AREAMUX_BITS+2) :=
+			--		op(i).address(ADDR_WIDTH-1+2 downto ADDR_WIDTH-AREAMUX_BITS+2);
 
 		end loop;  -- i
 
