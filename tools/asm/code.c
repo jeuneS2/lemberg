@@ -214,17 +214,19 @@ static unsigned long conv_format_S(struct asmop op)
 static unsigned long conv_format_J(struct asmop op)
 {
 	unsigned int target;
-	if (op.fmt.J.imm)
+	if (op.fmt.J.imm) {
 		target = expr_evaluate(op.fmt.J.target.offset);
-	else
-		target = op.fmt.J.target.reg << 10;
 
-	/* special handling to ease identification */
-	if (!(fits_bits(target, 15) && fits_bits(-target, 15))) {
-		fprintf(stderr, "error: Jump offset too large: ");
-		fprintf(stderr, "%08x / %s\n",
-				target, op.fmt.J.target.offset.strval);
-		exit(EXIT_FAILURE);
+		/* special handling to ease identification */
+		if (!(fits_bits(target, 15) && fits_bits(-target, 15))) {
+			fprintf(stderr, "error: Jump offset too large: ");
+			fprintf(stderr, "%08x / %s\n",
+					target, op.fmt.J.target.offset.strval);
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		check_bits(op.fmt.J.target.reg, 5);
+		target = op.fmt.J.target.reg << 10;
 	}
 
 	check_bits(op.op, 6);
