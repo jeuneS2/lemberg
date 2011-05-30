@@ -30,7 +30,6 @@ entity pll is
 		locked  : out std_logic);
 end pll;
 
-
 architecture sim of pll is
 begin
 	c0 <= inclk0;

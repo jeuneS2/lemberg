@@ -30,14 +30,8 @@
 --
 --	RAM: 32 bit word
 --
---
---	2005-11-22	first version
---	2007-03-17	changed SimpCon to records
---	2008-05-29	nwe on pos edge, additional wait state for write
---	2010-06-25  adapted from sc_sram32.vhd for synchronous SRAM
---
 
-Library IEEE;
+library IEEE;
 use IEEE.std_logic_1164.all;
 use ieee.numeric_std.all;
 
@@ -45,11 +39,15 @@ use work.mem_pack.all;
 use work.pin_pack.all;
 
 entity sc_mem_if is
-generic (ram_ws : integer; addr_bits : integer);
+generic (ram_ws_rd, ram_ws_wr : integer; addr_bits : integer);
 
 port (
 
 	clk, reset	: in std_logic;
+
+-- external clock, from which the clock for the RAM is derived
+	
+	clk_pin	: in std_logic;
 
 --
 --	SimpCon memory interface
@@ -79,20 +77,15 @@ architecture rtl of sc_mem_if is
 	signal wait_state	: unsigned(3 downto 0);
 	signal cnt			: unsigned(1 downto 0);
 
-	signal cs           : std_logic;
 	signal dout_ena		: std_logic;
 	signal rd_data_ena	: std_logic;
 	
-	signal ram_ws_wr	: integer;
-
 	signal ram_dout     : std_logic_vector(31 downto 0);
 	signal ram_din      : std_logic_vector(31 downto 0);
 	signal ram_din_reg  : std_logic_vector(31 downto 0);
 	
 begin
 	
-	ram_ws_wr <= ram_ws; -- no additional wait state for SSRAM
-
 	sc_mem_in.rdy_cnt <= cnt;
 
 --
@@ -121,8 +114,10 @@ begin
 	end if;
 end process;
 
--- inverted clock to have some setup time
-ram_out.clk <= not clk;
+pll: entity work.ssram_pll
+	port map (
+		inclk0 => clk_pin,
+		c0	   => ram_out.clk);
 
 process(clk, reset)
 begin
@@ -180,27 +175,28 @@ end process;
 
 --
 --	state machine register
---	output register
+--  output logic
 --
 process(clk, reset)
 
 begin
 	if (reset='0') then
+		
 		state <= idl;
+
 		dout_ena <= '0';
-		cs <= '0';
-		ram_out.nsc <= '1';
+		ram_out.nadsc <= '1';
 		ram_out.noe <= '1';
 		ram_out.nwe <= '1';
 		ram_out.nbw <= (others => '1');
 		rd_data_ena <= '0';
 
 	elsif rising_edge(clk) then
-
+		
 		state <= next_state;
+		
 		dout_ena <= '0';
-		cs <= '0';
-		ram_out.nsc <= '1';
+		ram_out.nadsc <= '1';
 		ram_out.noe <= '1';
 		ram_out.nwe <= '1';
 		ram_out.nbw <= (others => '1');
@@ -210,33 +206,30 @@ begin
 
 			when idl =>
 
-			-- the wait state
+				-- the wait state
 			when rd1 =>
-				cs <= '1';
-				ram_out.nsc <= '0';
+				ram_out.nadsc <= '0';
 				ram_out.noe <= '0';
 
-			-- last read state
+				-- last read state
 			when rd2 =>
 				ram_out.noe <= '0';
 				if wait_state=2 then
 					rd_data_ena <= '1';					
 				end if;
 				
-			-- write address/data state
+				-- write address/data state
 			when wr1 =>
-				cs <= '1';
-				ram_out.nsc <= '0';
+				ram_out.nadsc <= '0';
 				ram_out.nwe <= '0';
 				ram_out.nbw <= not sc_mem_out.byte_ena;
 				dout_ena <= '1';
-			
-			-- write enable state	
+				
+				-- write enable state	
 			when wr2 =>
-				dout_ena <= '1';
-
+				
 		end case;
-					
+		
 	end if;
 end process;
 
@@ -264,9 +257,9 @@ begin
 		end if;
 
 		if sc_mem_out.rd='1' then
-			wait_state <= to_unsigned(ram_ws+1, 4);
-			if ram_ws<3 then
-				cnt <= to_unsigned(ram_ws+1, 2);
+			wait_state <= to_unsigned(ram_ws_rd+1, 4);
+			if ram_ws_rd<3 then
+				cnt <= to_unsigned(ram_ws_rd+1, 2);
 			else
 				cnt <= "11";
 			end if;
@@ -296,9 +289,9 @@ end process;
 ram_din <= ram_inout.d;
 
 ram_out.ngw   <= '1';
-ram_out.nce1  <= not cs;
-ram_out.ce2   <= cs;
-ram_out.nce3  <= not cs;
+ram_out.nce1  <= '0';
+ram_out.ce2   <= '1';
+ram_out.nce3  <= '0';
 ram_out.nadsp <= '1';
 ram_out.nadv  <= '1';
 

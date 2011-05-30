@@ -128,7 +128,7 @@ set_global_assignment -name POWER_VCD_FILTER_GLITCHES OFF
 set_global_assignment -name POWER_REPORT_SIGNAL_ACTIVITY ON
 set_global_assignment -name POWER_REPORT_POWER_DISSIPATION ON
 set_global_assignment -name EDA_TEST_BENCH_ENABLE_STATUS TEST_BENCH_MODE -section_id eda_simulation
-set_global_assignment -name EDA_NATIVELINK_SIMULATION_TEST_BENCH cpu_rtl_tb -section_id eda_simulation
+set_global_assignment -name EDA_NATIVELINK_SIMULATION_TEST_BENCH cpu_gate_tb -section_id eda_simulation
 set_global_assignment -name OPTIMIZE_HOLD_TIMING "ALL PATHS"
 set_global_assignment -name AUTO_RESOURCE_SHARING ON
 set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
@@ -198,6 +198,7 @@ set_location_assignment PIN_AF8 -to sram_pin_out.addr[1]
 set_location_assignment PIN_AG8 -to sram_pin_out.addr[0]
 set_location_assignment PIN_AG19 -to sram_pin_out.ce2
 set_location_assignment PIN_AD7 -to sram_pin_out.clk
+set_location_assignment PIN_AG17 -to sram_pin_out.nadsc
 set_location_assignment PIN_AC18 -to sram_pin_out.nadsp
 set_location_assignment PIN_AD16 -to sram_pin_out.nadv
 set_location_assignment PIN_AH20 -to sram_pin_out.nbw[3]
@@ -208,7 +209,6 @@ set_location_assignment PIN_AH19 -to sram_pin_out.nce1
 set_location_assignment PIN_AD22 -to sram_pin_out.nce3
 set_location_assignment PIN_AG18 -to sram_pin_out.ngw
 set_location_assignment PIN_AD18 -to sram_pin_out.noe
-set_location_assignment PIN_AG17 -to sram_pin_out.nsc
 set_location_assignment PIN_AF18 -to sram_pin_out.nwe
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sram_pin_out.*
 set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to "sc_mem_if:sc_mem_if|dout_ena"
@@ -219,14 +219,6 @@ set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME cpu_tb -section_id cpu_ga
 set_global_assignment -name EDA_TEST_BENCH_NAME cpu_rtl_tb -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME cpu -section_id cpu_rtl_tb
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME cpu_tb -section_id cpu_rtl_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/gen_utils.vhd -section_id cpu_gate_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/conversions.vhd -section_id cpu_gate_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/sim_ssram_512x36.vhd -section_id cpu_gate_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/cpu_gate_tb.vhd -section_id cpu_gate_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/gen_utils.vhd -section_id cpu_rtl_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/conversions.vhd -section_id cpu_rtl_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/sim_ssram_512x36.vhd -section_id cpu_rtl_tb
-set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/cpu_tb.vhd -section_id cpu_rtl_tb
 set_global_assignment -name USE_CONFIGURATION_DEVICE ON
 set_global_assignment -name GENERATE_SVF_FILE ON
 set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
@@ -273,6 +265,7 @@ set_global_assignment -name VHDL_FILE ../src/fpu/mac.vhd
 set_global_assignment -name VHDL_FILE ../src/fpu/fpu.vhd
 set_global_assignment -name VHDL_FILE ../src/core.vhd
 set_global_assignment -name VHDL_FILE ../src/iomux.vhd
+set_global_assignment -name VHDL_FILE ../src/io/ssram_pll.vhd
 set_global_assignment -name VHDL_FILE ../src/io/sc_ssram32.vhd
 set_global_assignment -name VHDL_FILE ../src/io/sc_sysinfo.vhd
 set_global_assignment -name VHDL_FILE ../src/io/sc_timer.vhd
@@ -282,4 +275,12 @@ set_global_assignment -name VHDL_FILE ../bootrom/bootrom.vhd
 set_global_assignment -name VHDL_FILE ../src/io/sc_io.vhd
 set_global_assignment -name VHDL_FILE ../src/pll.vhd
 set_global_assignment -name VHDL_FILE ../src/cpu.vhd
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/gen_utils.vhd -section_id cpu_gate_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/conversions.vhd -section_id cpu_gate_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/sim_ssram_512x36.vhd -section_id cpu_gate_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/cpu_gate_tb.vhd -section_id cpu_gate_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/gen_utils.vhd -section_id cpu_rtl_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/conversions.vhd -section_id cpu_rtl_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/sim_ssram_512x36.vhd -section_id cpu_rtl_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/cpu_tb.vhd -section_id cpu_rtl_tb
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

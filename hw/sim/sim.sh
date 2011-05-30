@@ -45,6 +45,7 @@ vcom $OPTIONS ../src/fpu/mac.vhd
 vcom $OPTIONS ../src/fpu/fpu.vhd
 vcom $OPTIONS ../src/core.vhd
 vcom $OPTIONS ../src/iomux.vhd
+vcom $OPTIONS sim_ssram_pll.vhd
 vcom $OPTIONS ../src/io/sc_ssram32.vhd
 vcom $OPTIONS ../src/io/sc_sysinfo.vhd
 vcom $OPTIONS ../src/io/sc_timer.vhd

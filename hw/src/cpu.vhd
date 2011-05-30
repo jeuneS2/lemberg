@@ -80,11 +80,13 @@ begin  -- behavior
 	
 	sc_mem_if: entity work.sc_mem_if
 		generic map (
-			ram_ws	    => 2,
+			ram_ws_rd   => 2,
+			ram_ws_wr   => 0,
 			addr_bits   => SRAM_ADDR_WIDTH)
 		port map (
 			clk         => clk,
 			reset       => reset,
+			clk_pin     => clk_pin,
 			sc_mem_out  => sram_out,
 			sc_mem_in   => sram_in,
 			ram_out     => sram_pin_out,
