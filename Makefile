@@ -4,6 +4,8 @@ PROJECT_NAME=helloworld
 SERDEV=/dev/ttyS0
 FPGACABLE="UsbBlaster ftdi 9fb:6001"
 
+# RAW=RAW
+
 all: doc tools
 
 # Configuration
@@ -70,11 +72,12 @@ sim: proj
 	${MAKE} -C hw/sim sim
 
 # Run program in FPGA
-fpga: proj
-	stty -F ${SERDEV} 115200 cstopb raw -echo
+fpga: tty proj
 	./fpga_config.sh ${FPGACABLE} hw/quartus/lemberg.svf && \
-	cat ${PROJECT_DIR}/${PROJECT_NAME}.bin > ${SERDEV} &
-	cat ${SERDEV}
+	./fpga_exec.sh ${SERDEV} ${PROJECT_DIR}/${PROJECT_NAME}.bin ${RAW}
+
+tty:
+	stty -F ${SERDEV} 115200 cstopb raw -echo
 
 # Documentation
 doc:
