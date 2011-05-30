@@ -157,7 +157,7 @@ void ScheduleTDList::BuildSchedGraph(AliasAnalysis *AA) {
 			// Pick a suitable latency
 			unsigned MemLatency = 1;
 			if (!isStackAccess(SU.getInstr())) {
-				MemLatency = SU.getInstr()->getDesc().mayStore() ? 2 : 2;
+				MemLatency = SU.getInstr()->getDesc().mayStore() ? 1 : 3;
 			} else {
 			 	MemLatency = SU.getInstr()->getDesc().mayStore() ? 1 : 2;
 			}
@@ -367,8 +367,9 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
     unsigned Count = MBB->size(), CurrentCount = Count;
     for (MachineBasicBlock::iterator I = Current; I != MBB->begin(); ) {
       MachineInstr *MI = prior(I);
-	  // No need to schedule kills
-	  if (MI->getOpcode() == TargetOpcode::KILL) {
+	  // No need to schedule kills or implicit defs
+	  if (MI->getOpcode() == TargetOpcode::KILL
+		  || MI->getOpcode() == TargetOpcode::IMPLICIT_DEF) {
 		  MI->eraseFromParent();
 		  --Count;
 		  continue;
