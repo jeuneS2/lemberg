@@ -1,6 +1,6 @@
 PREFIX=/usr/local/lemberg
 
-LIBLLSYMS=__divdf3,__divsf3,__divdi3,__divsi3,__moddi3,__modsi3,__udivdi3,__udivsi3,__umoddi3,__umodsi3,__ashldi3,__ashrdi3,__lshrdi3,__muldi3
+LIBLLSYMS=__divdf3,__divsf3,__divdi3,__divsi3,__moddi3,__modsi3,__udivdi3,__udivsi3,__umoddi3,__umodsi3,__ashldi3,__ashrdi3,__lshrdi3,__muldi3,memset,memmove,memcpy
 
 LLVM_LD=llvm-ld -b $@ $^ ${LLVM_LDFLAGS} \
 	-L /usr/local/lemberg/lib -lc -lm -llemberg -lnosys \
@@ -9,7 +9,10 @@ LLVM_LD=llvm-ld -b $@ $^ ${LLVM_LDFLAGS} \
 %.bc : %.c
 	llvm-gcc ${CFLAGS} --emit-llvm -c -I ${PREFIX}/include -o $@ $<
 
-%.s : %.linked.bc
+%.opt.bc : %.linked.bc
+	opt -disable-simplify-libcalls ${OPTFLAGS} -o $@ $<
+
+%.s : %.opt.bc
 	llc -march=lemberg ${LLCFLAGS} -o $@ $<
 
 %.dat : %.s
