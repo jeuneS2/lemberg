@@ -306,13 +306,13 @@ def LG0 : RegisterClass<"Lemberg", [i32], 32,
   // Return Values and Arguments
   [R0, R1, R2, R3,
   // Not preserved across procedure calls
-  R4, R5, R6, R7, R8, R9,
   R0_16, R0_17, R0_18, R0_19,
   R0_20, R0_21, R0_22,
+  R4, R5, R6, R7, R8, R9,
   // Callee saved
-  R10, R11, R12, R13, R14,
   R0_23, R0_24, R0_25, R0_26,
   R0_27, R0_28, R0_29, R0_30,
+  R10, R11, R12, R13, R14,
   // Reserved
   R15, R0_31 ] >
 {
@@ -332,13 +332,13 @@ def LG1 : RegisterClass<"Lemberg", [i32], 32,
   // Return Values and Arguments
   [R0, R1, R2, R3,
   // Not preserved across procedure calls
-  R4, R5, R6, R7, R8, R9,
   R1_16, R1_17, R1_18, R1_19,
   R1_20, R1_21, R1_22,
+  R4, R5, R6, R7, R8, R9,
   // Callee saved
-  R10, R11, R12, R13, R14,
   R1_23, R1_24, R1_25, R1_26,
   R1_27, R1_28, R1_29, R1_30,
+  R10, R11, R12, R13, R14,
   // Reserved
   R15, R1_31 ] >
 {
@@ -358,13 +358,13 @@ def LG2 : RegisterClass<"Lemberg", [i32], 32,
   // Return Values and Arguments
   [R0, R1, R2, R3,
   // Not preserved across procedure calls
-  R4, R5, R6, R7, R8, R9,
   R2_16, R2_17, R2_18, R2_19,
   R2_20, R2_21, R2_22,
+  R4, R5, R6, R7, R8, R9,
   // Callee saved
-  R10, R11, R12, R13, R14,
   R2_23, R2_24, R2_25, R2_26,
   R2_27, R2_28, R2_29, R2_30,
+  R10, R11, R12, R13, R14,
   // Reserved
   R15, R2_31 ] >
 {
@@ -384,13 +384,13 @@ def LG3 : RegisterClass<"Lemberg", [i32], 32,
   // Return Values and Arguments
   [R0, R1, R2, R3,
   // Not preserved across procedure calls
-  R4, R5, R6, R7, R8, R9,
   R3_16, R3_17, R3_18, R3_19,
   R3_20, R3_21, R3_22,
+  R4, R5, R6, R7, R8, R9,
   // Callee saved
-  R10, R11, R12, R13, R14,
   R3_23, R3_24, R3_25, R3_26,
   R3_27, R3_28, R3_29, R3_30,
+  R10, R11, R12, R13, R14,
   // Reserved
   R15, R3_31 ] >
 {
