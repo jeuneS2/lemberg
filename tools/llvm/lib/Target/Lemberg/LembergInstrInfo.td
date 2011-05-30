@@ -781,6 +781,16 @@ def NXORCC: F1<(outs C:$dst), (ins pred:$p, C:$src1, C:$src2),
 			   [(set C:$dst, (notcc (xor C:$src1, C:$src2)))],
 			   IIAlu>;
 
+// Alternative representations of XOR
+def : Pat<(add C:$src1, C:$src2),
+		  (XORCC C:$src1, C:$src2)>;
+def : Pat<(notcc (add C:$src1, C:$src2)),
+		  (NXORCC C:$src1, C:$src2)>;
+def : Pat<(setne C:$src1, C:$src2),
+		  (XORCC C:$src1, C:$src2)>;
+def : Pat<(notcc (setne C:$src1, C:$src2)),
+		  (NXORCC C:$src1, C:$src2)>;
+
 // Boolean constants
 def TRUECC: F1<(outs C:$dst), (ins pred:$p),
 				"$p comb\tor $dst, !$dst -> $dst",
