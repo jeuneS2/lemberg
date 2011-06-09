@@ -326,6 +326,10 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 
   assert(LD->getOffset().getOpcode() == ISD::UNDEF && "Assumed undefined offset");
 
+  const Type *Ty = LD->getMemoryVT().getTypeForEVT(*DAG.getContext());
+  unsigned ABIAlignment = getTargetData()->getABITypeAlignment(Ty);
+  assert(LD->getAlignment() >= ABIAlignment && "Unaligned load detected");
+
   unsigned MemReg = Lemberg::MEM;
   SDValue WordOffset = DAG.getConstant(0, MVT::i32);
   if (ExtType == ISD::EXTLOAD
@@ -446,7 +450,11 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 	  isStackStore = true;
 
   assert(ST->getOffset().getOpcode() == ISD::UNDEF && "Assumed undefined offset");
-  
+
+  const Type *Ty = ST->getMemoryVT().getTypeForEVT(*DAG.getContext());
+  unsigned ABIAlignment = getTargetData()->getABITypeAlignment(Ty);
+  assert(ST->getAlignment() >= ABIAlignment && "Unaligned store detected");
+ 
   // Create node for store
   if (ST->getMemoryVT() != MVT::f64) {
 	  // Normal store
