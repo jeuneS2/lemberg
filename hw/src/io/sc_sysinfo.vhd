@@ -22,6 +22,7 @@ use ieee.numeric_std.all;
 
 use work.core_pack.all;
 use work.io_pack.all;
+use work.mem_pack.all;
 use work.fpu_pack.all;
 
 entity sc_sysinfo is
@@ -31,26 +32,35 @@ entity sc_sysinfo is
 		clk_freq : integer);
 
 	port (
-		clk : in std_logic;
-		address : in  std_logic_vector(addr_width-1 downto 0);
-		rd      : in  std_logic;
-		rd_data : out std_logic_vector(DATA_WIDTH-1 downto 0);
-		rdy_cnt : out unsigned(1 downto 0)
+		clk, reset : in  std_logic;
+		address    : in  std_logic_vector(addr_width-1 downto 0);
+		wr_data    : in  std_logic_vector(DATA_WIDTH-1 downto 0);
+		rd         : in  std_logic;
+		wr         : in  std_logic;
+		rd_data    : out std_logic_vector(DATA_WIDTH-1 downto 0);
+		rdy_cnt    : out unsigned(1 downto 0);
+		int_reset  : out std_logic
 		);	
 
 end sc_sysinfo;
 
 architecture rtl of sc_sysinfo is
 
+	signal rdy_reg : unsigned(RDY_CNT_WIDTH-1 downto 0);
+	
 begin  -- rtl
 
 	assert addr_width = 4 report "Wrong address width" severity failure;
 
-	rdy_cnt <= "00";
+	rdy_cnt <= rdy_reg;
 	
-	sync: process (clk)
+	sync: process (clk, reset)
 	begin  -- process sync
-		if clk'event and clk = '1' then  -- rising clock edge
+		if reset = '0' then
+			int_reset <= '1';
+			rdy_reg <= "00";
+		elsif clk'event and clk = '1' then  -- rising clock edge
+			int_reset <= '1';
 			if rd = '1' then
 				case address(3 downto 0) is
 					when "0000" =>
@@ -82,7 +92,19 @@ begin  -- rtl
 					when "1011" =>
 						rd_data <= std_logic_vector(to_unsigned(STACK_ADDR_WIDTH, DATA_WIDTH));
 						
-					when others => rd_data <= (others => '0');
+					when "1111" => -- halt
+						rd_data <= (others => '0');
+						rdy_reg   <= "11";
+
+					when others =>
+						rd_data <= (others => '0');
+				end case;
+			end if;
+			if wr = '1' then
+				case address(3 downto 0) is
+					when "1111" =>
+						int_reset <= '0';  -- reset						
+					when others => null;
 				end case;
 			end if;
 		end if;

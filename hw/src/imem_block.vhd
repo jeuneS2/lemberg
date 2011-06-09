@@ -25,6 +25,7 @@ use work.core_pack.all;
 entity imem_block is
 	port (
 		clk			: in  std_logic;
+		reset		: in  std_logic;
 		rden        : in  std_logic;
 		rdaddress	: in  std_logic_vector(PC_WIDTH-6 downto 0);
 		q			: out std_logic_vector(FETCH_WIDTH-1 downto 0);
@@ -78,9 +79,11 @@ begin
 		end if;
 	end process;
 
-	rd: process (clk)
+	rd: process (clk, reset)
 	begin
-		if rising_edge(clk) then
+		if reset = '0' then
+			rdaddress_reg <= (others => '0');
+		elsif rising_edge(clk) then
 			if rden = '1' then
 				rdaddress_reg <= rdaddress;
 			end if;

@@ -29,6 +29,7 @@ entity sc_io is
 	
 	port (
 		clk, reset : in	   std_logic;
+		int_reset  : out   std_logic;
 		cpu_out	   : in	   sc_out_type;
 		cpu_in	   : out   sc_in_type;
 		io_out     : out   io_pin_out_type;
@@ -71,11 +72,15 @@ begin  -- rtl
 			addr_width => SYSINFO_ADDR_WIDTH,
 			clk_freq   => CLOCK_FREQ)
 		port map (
-			clk		=> clk,
-			address => sysinfo_out.address(SYSINFO_ADDR_WIDTH-1 downto 0),
-			rd		=> sysinfo_out.rd,
-			rd_data => sysinfo_in.rd_data,
-			rdy_cnt => sysinfo_in.rdy_cnt);
+			clk		  => clk,
+			reset     => reset,
+			address   => sysinfo_out.address(SYSINFO_ADDR_WIDTH-1 downto 0),
+			wr_data   => sysinfo_out.wr_data,
+			rd		  => sysinfo_out.rd,
+			wr		  => sysinfo_out.wr,
+			rd_data   => sysinfo_in.rd_data,
+			rdy_cnt   => sysinfo_in.rdy_cnt,
+			int_reset => int_reset);
 
 	sc_timer: entity work.sc_timer
 		generic map (
@@ -133,7 +138,9 @@ begin  -- rtl
 		end if;
 	end process sync;
 
-	async: process (cpu_out, bootrom_in, uart_in, cntmux_reg, datamux_reg)
+	async: process (cpu_out,
+					sysinfo_in, timer_in, bootrom_in, uart_in,
+					cntmux_reg, datamux_reg)
 	begin  -- process async
 
 		sysinfo_out <= cpu_out;

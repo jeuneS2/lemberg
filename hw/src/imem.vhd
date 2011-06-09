@@ -48,6 +48,7 @@ begin
 	ram_block0: entity work.imem_block
 		port map (
 			clk		  => clk,
+			reset     => reset,
 			rden      => ena,
 			rdaddress => rdaddr1(PC_WIDTH-1 downto 5),
 			q   	  => q0,
@@ -58,6 +59,7 @@ begin
 	ram_block1: entity work.imem_block
 		port map (
 			clk		  => clk,
+			reset     => reset,
 			rden      => ena,
 			rdaddress => rdaddr0(PC_WIDTH-1 downto 5),
 			q   	  => q1,

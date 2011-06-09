@@ -41,11 +41,12 @@ end cpu;
 architecture behavior of cpu is
 
 	signal clk         : std_logic;
+	signal int_reset   : std_logic;
 	signal pll_locked  : std_logic;
 	
 	signal res_cnt     : unsigned(2 downto 0) := "111";
 	signal reset       : std_logic;
-
+	
 	signal sc_out      : sc_out_type;
 	signal sc_in       : sc_in_type;
 
@@ -94,12 +95,13 @@ begin  -- behavior
 
 	sc_io: entity work.sc_io
 		port map (
-			clk		 => clk,
-			reset	 => reset,
-			cpu_out  => io_out,
-			cpu_in 	 => io_in,
-			io_out   => io_pin_out,
-			io_in    => io_pin_in);
+			clk		  => clk,
+			reset	  => reset,
+			int_reset => int_reset,
+			cpu_out   => io_out,
+			cpu_in 	  => io_in,
+			io_out    => io_pin_out,
+			io_in     => io_pin_in);
 		
 	pll: entity work.pll
 		port map (
@@ -111,7 +113,6 @@ begin  -- behavior
 	sync: process (clk)
 	begin  -- process sync
 		if clk'event and clk = '1' then  -- rising clock edge
-
 			if res_cnt = "000" then
 				reset <= '1';
 			else
@@ -121,7 +122,7 @@ begin  -- behavior
 				end if;
 			end if;
 
-			if pll_locked = '0' then
+			if (int_reset = '0') or (pll_locked = '0') then
 				res_cnt <= "111";
 			end if;
 		end if;
