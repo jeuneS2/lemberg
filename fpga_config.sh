@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 jtag <<EOF
 bsdl path /usr/share/urjtag/bsdl/
