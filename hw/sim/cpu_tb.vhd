@@ -69,7 +69,7 @@ begin  -- sim
 			thold_ADVNeg_CLK => 0.4 ns,
 			thold_ADSCNeg_CLK => 0.4 ns,
 			thold_CE2_CLK => 0.4 ns,
-			thold_BWANeg_CLK => 0.4 ns
+			thold_BWANeg_CLK => 0.4 ns,
 
 			tipd_A0 => (3 ns, 3 ns),
 			tipd_A1 => (3 ns, 3 ns),
