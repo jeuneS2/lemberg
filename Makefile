@@ -20,13 +20,13 @@ configure-llvm:
 	cd tools/llvm; ./configure --target=lemberg --enable-assertions
 
 # Building
-tools: asm lllib libc llvm
+tools: asm libll libc llvm
 
 asm:
 	${MAKE} -C tools/asm all
 
-lllib:
-	${MAKE} -C tools/lllib all
+libll:
+	${MAKE} -C tools/libll all
 
 libc:
 	${MAKE} -C tools/libc/src all
@@ -40,13 +40,13 @@ etc:
 # Installation
 install: install-tools
 
-install-tools: install-asm install-lllib install-libc install-llvm install-etc
+install-tools: install-asm install-libll install-libc install-llvm install-etc
 
 install-asm:
 	${MAKE} -C tools/asm install
 
-install-lllib:
-	${MAKE} -C tools/lllib install
+install-libll:
+	${MAKE} -C tools/libll install
 
 install-libc:
 	${MAKE} -C tools/libc/src install
