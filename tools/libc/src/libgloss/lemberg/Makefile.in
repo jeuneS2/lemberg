@@ -46,17 +46,14 @@ OBJCOPY = `if [ -f ${objroot}/../binutils/objcopy ] ; \
 	else t='$(program_transform_name)'; echo objcopy | sed -e $$t ; fi`
 
 BSP = liblemberg.a
-BSP_OBJS = read.o write.o close.o isatty.o getrusage.o gettod.o times.o
+BSP_OBJS = read.o write.o close.o isatty.o getrusage.o gettod.o times.o exit.o
 
 # Host specific makefile fragment comes in here.
 @host_makefile_frag@
 
 INCLUDES += -I$(srcdir)/include
-#
-# build a test program for each target board. Just trying to get
-# it to link is a good test, so we ignore all the errors for now.
-#
-all: ${BSP}
+
+all: $(BSP)
 
 $(BSP): $(BSP_OBJS)
 	$(AR) $(ARFLAGS) $@ $?
@@ -72,9 +69,6 @@ distclean maintainer-clean realclean: clean
 install:
 	@for file in $(BSP); do \
 	  $(INSTALL_DATA) $${file} $(DESTDIR)$(tooldir)/lib${MULTISUBDIR}; \
-	done
-	@for script in ${SCRIPTS}; do\
-	  $(INSTALL_DATA) ${srcdir}/$${script}.ld $(DESTDIR)$(tooldir)/lib${MULTISUBDIR}/$${script}.ld; \
 	done
 
 doc:
