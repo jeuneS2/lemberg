@@ -144,7 +144,7 @@ architecture behavior of alu is
 					when "01" =>
 						result(2*BYTE_WIDTH-1 downto BYTE_WIDTH) := (others => '0');
 					when "10" =>
-						result(3*BYTE_WIDTH-1 downto 2*BYTE_WIDTH) :=(others => '0');
+						result(3*BYTE_WIDTH-1 downto 2*BYTE_WIDTH) := (others => '0');
 					when "11" =>
 						result(DATA_WIDTH-1 downto 3*BYTE_WIDTH) := (others => '0');
 					when others => null;
@@ -296,13 +296,18 @@ begin  -- behavior
 				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
 				fl_out <= (others => '0');
 				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
-					<= sub_tmp(DATA_WIDTH-1);
+					<= (op.rddata0(DATA_WIDTH-1) and not op.rddata1(DATA_WIDTH-1))
+					or (sub_tmp(DATA_WIDTH-1)
+						and (op.rddata0(DATA_WIDTH-1) xnor op.rddata1(DATA_WIDTH-1)));
 			when ALU_CMPLE =>
 				fl_wren <= (others => '0');
 				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
 				fl_out <= (others => '0');
 				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
-					<= sub_tmp(DATA_WIDTH-1) or eq_tmp;
+					<= (op.rddata0(DATA_WIDTH-1) and not op.rddata1(DATA_WIDTH-1))
+					or (sub_tmp(DATA_WIDTH-1)
+						and (op.rddata0(DATA_WIDTH-1) xnor op.rddata1(DATA_WIDTH-1)))
+					or eq_tmp;
 			when ALU_CMPULT =>
 				fl_wren <= (others => '0');
 				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
