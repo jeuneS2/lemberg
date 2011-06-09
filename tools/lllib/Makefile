@@ -3,6 +3,7 @@ all: libll.a
 PREFIX=/usr/local/lemberg
 
 CC = llvm-gcc -emit-llvm -O3
+AS = llvm-as
 
 OBJS = divsi3.o modsi3.o udivsi3.o umodsi3.o \
 	clzsi2.o \
@@ -14,14 +15,15 @@ OBJS = divsi3.o modsi3.o udivsi3.o umodsi3.o \
 	floatsisf.o floatsidf.o \
 	fixsfsi.o fixdfsi.o
 
+all: libll.a libllsyms.o
+
 libll.a: ${OBJS}
 	llvm-ar r libll.a ${OBJS}
 
-install: libll.a ${OBJS}
+install: libll.a libllsyms.o
 	install -d ${PREFIX}/lib/
 	install -m 0644 libll.a ${PREFIX}/lib/
-	install -d ${PREFIX}/lib/libll/
-	install -m 0644 ${OBJS} ${PREFIX}/lib/libll/
+	install -m 0644 libllsyms.o ${PREFIX}/lib/
 
 clean:
 	rm -f -- libll.a *.o *~

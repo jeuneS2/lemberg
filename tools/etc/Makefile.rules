@@ -2,9 +2,10 @@ PREFIX=/usr/local/lemberg
 
 LIBLLSYMS=__divdf3,__divsf3,__divdi3,__divsi3,__moddi3,__modsi3,__udivdi3,__udivsi3,__umoddi3,__umodsi3,__ashldi3,__ashrdi3,__lshrdi3,__muldi3,memset,memmove,memcpy
 
-LLVM_LD=llvm-ld -b $@ $^ ${LLVM_LDFLAGS} \
-	-L /usr/local/lemberg/lib -lc -lm -llemberg -lnosys \
-	${PREFIX}/lib/libll/*.o -internalize-public-api-list=${LIBLLSYMS},main
+LLVM_LD=llvm-ld -b $@ $^ \
+	${PREFIX}/lib/libllsyms.o ${LLVM_LDFLAGS} \
+	-L ${PREFIX}/lib -lc -lm -llemberg -lnosys -lll \
+	-internalize-public-api-list=${LIBLLSYMS},main
 
 %.bc : %.c
 	llvm-gcc ${CFLAGS} --emit-llvm -c -I ${PREFIX}/include -o $@ $<
