@@ -673,40 +673,56 @@ def : Pat <(LembergStore32 imm5:$val, (LembergWrapper tglobaladdr:$addr)),
 	Requires<[SmallCode]>;
 
 // Nifty mask/shift operations
-def : Pat<(sext_inreg A:$src, i8),
-		  (MASKaia A:$src, (i32 8))>;
-
-def : Pat<(sext_inreg (srl A:$src, (i32 8)), i8),
-		  (MASKaia A:$src, (i32 9))>;
-def : Pat<(sext_inreg (srl A:$src, (i32 16)), i8),
-		  (MASKaia A:$src, (i32 10))>;
-
 def : Pat<(and A:$src, (i32 0xff)),
 		  (MASKaia A:$src, (i32 0))>;
-
 def : Pat<(and (srl A:$src, (i32 8)), (i32 0xff)),
 		  (MASKaia A:$src, (i32 1))>;
 def : Pat<(and (srl A:$src, (i32 16)), (i32 0xff)),
 		  (MASKaia A:$src, (i32 2))>;
+def : Pat<(and (srl A:$src, (i32 24)), (i32 0xff)),
+		  (MASKaia A:$src, (i32 3))>;
+
+def : Pat<(and A:$src, (i32 0xffff)),
+		  (MASKaia A:$src, (i32 4))>;
+def : Pat<(and (srl A:$src, (i32 16)), (i32 0xffff)),
+		  (MASKaia A:$src, (i32 6))>;
+
+def : Pat<(sext_inreg A:$src, i8),
+		  (MASKaia A:$src, (i32 8))>;
+def : Pat<(sext_inreg (srl A:$src, (i32 8)), i8),
+		  (MASKaia A:$src, (i32 9))>;
+def : Pat<(sext_inreg (srl A:$src, (i32 16)), i8),
+		  (MASKaia A:$src, (i32 10))>;
+def : Pat<(sext_inreg (srl A:$src, (i32 24)), i8),
+		  (MASKaia A:$src, (i32 11))>;
+
+def : Pat<(sext_inreg A:$src, i16),
+		  (MASKaia A:$src, (i32 12))>;
+def : Pat<(sext_inreg (srl A:$src, (i32 16)), i16),
+		  (MASKaia A:$src, (i32 14))>;
+
 
 def : Pat<(shl (and A:$src, (i32 0xff)), (i32 8)),
 		  (MASKaia A:$src, (i32 17))>;
 def : Pat<(shl (and A:$src, (i32 0xff)), (i32 16)),
 		  (MASKaia A:$src, (i32 18))>;
+def : Pat<(shl (and A:$src, (i32 0xff)), (i32 24)),
+		  (MASKaia A:$src, (i32 19))>;
 
-def : Pat<(and A:$src, (i32 0x0000ff00)),
+def : Pat<(shl (and A:$src, (i32 0xffff)), (i32 16)),
+		  (MASKaia A:$src, (i32 22))>;
+
+def : Pat<(and A:$src, (i32 0xffffff00)),
+		  (MASKaia A:$src, (i32 24))>;
+def : Pat<(and A:$src, (i32 0xffff00ff)),
 		  (MASKaia A:$src, (i32 25))>;
-def : Pat<(and A:$src, (i32 0x00ff0000)),
+def : Pat<(and A:$src, (i32 0xff00ffff)),
 		  (MASKaia A:$src, (i32 26))>;
-
-def : Pat<(sext_inreg A:$src, i16),
-		  (MASKaia A:$src, (i32 12))>;
-
-def : Pat<(and A:$src, (i32 0x0000ffff)),
-		  (MASKaia A:$src, (i32 4))>;
+def : Pat<(and A:$src, (i32 0x00ffffff)),
+		  (MASKaia A:$src, (i32 27))>;
 
 def : Pat<(and A:$src, (i32 0xffff0000)),
-		  (MASKaia A:$src, (i32 28))>;
+		  (MASKaia A:$src, (i32 30))>;
 
 let Constraints = "$src2 = $dst" in {
     // Conditional move
