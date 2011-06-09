@@ -5,9 +5,13 @@ bootrom_start:
 		nop 3
 		;;
 exit:
-#0:		br exit
+#0:		ldi -4 -> r0
 		;;
-		nop 2
+#0:		ldm.b r0, 0
+		;;
+#0:		ldx $mem, 0 -> r0
+		;;
+		nop 15
 		;;
 		.align 4
 bootrom_end:

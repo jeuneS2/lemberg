@@ -18,6 +18,10 @@ static unsigned readint(void);
 #define PRINTINT(VAL) (((void (*)(unsigned))(unsigned)&BOOTROM[(unsigned)printint])(VAL))
 #define READINT() (((unsigned (*)(void))(unsigned)&BOOTROM[(unsigned)readint])())
 
+#define RESET_PORT (*((volatile unsigned int *)-4))
+static void reset(void);
+#define RESET() (((void (*)(void))(unsigned)&BOOTROM[(unsigned)reset])())
+
 __attribute__((noreturn))
 int main(void)
 {
@@ -32,7 +36,7 @@ int main(void)
 
 	int retval;
 
- loop:
+/* loop: */
 	mainaddr = 0;
 	mainfun = 0;
 	prog_dest = 0;
@@ -73,6 +77,7 @@ int main(void)
 	/* call main() */
 	retval = mainfun();
 
+ exit:
 	/* say goodbye */
 	PRINTSTR(exit_msg);
 	/* print status */
@@ -93,10 +98,13 @@ int main(void)
 	UART_DATA = '\n';
 
 	/* try again */
-	goto loop;	
+	/* goto loop; */
+	RESET();
+
+	goto exit; /* trick llvm into not keeping values alive across mainfun */
 }
 
-__attribute((noinline))
+__attribute__((noinline))
 static void printstr(const char *str)
 {
 	const char *p;
@@ -107,7 +115,7 @@ static void printstr(const char *str)
 		}
 }
 
-__attribute((noinline))
+__attribute__((noinline))
 static void printint(unsigned val)
 {
 	unsigned i;
@@ -121,7 +129,7 @@ static void printint(unsigned val)
 		}
 }
 
-__attribute((noinline))
+__attribute__((noinline))
 static unsigned readint(void)
 {
 	unsigned i;
@@ -136,4 +144,18 @@ static unsigned readint(void)
 			retval |= c;
 		}
 	return retval;
+}
+
+__attribute__((noinline))
+__attribute__((noreturn))
+static void reset(void)
+{
+	volatile unsigned i;
+	for (i = 0; i < 0x8000; i++)
+		{
+			/* NOP */
+		}
+	RESET_PORT = 0;
+
+	for(;;);
 }
