@@ -268,11 +268,11 @@ begin  -- behavior
 			when ALU_CARR =>
 				wren <= valid;
 				wrdata <= (others => '0');
-				wrdata(0) <= add_tmp(DATA_WIDTH_BITS);
+				wrdata(0) <= add_tmp(DATA_WIDTH);
 			when ALU_BORR =>
 				wren <= valid;
 				wrdata <= (others => '0');
-				wrdata(0) <= sub_tmp(DATA_WIDTH_BITS);
+				wrdata(0) <= sub_tmp(DATA_WIDTH);
 			when ALU_MASK =>
 				wren <= valid;
 				wrdata <= mask(op.rddata0, op.rddata1(4 downto 2), op.rddata1(1 downto 0));
