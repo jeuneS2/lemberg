@@ -69,6 +69,10 @@ namespace llvm {
 
     int getDwarfRegNum(unsigned RegNum, bool isEH) const;
 
+	const TargetRegisterClass * getMatchingSuperRegClass(const TargetRegisterClass *A,
+														 const TargetRegisterClass *B,
+														 unsigned SubIdx) const;
+
   private:
 	 unsigned BuildLargeFrameOffset(MachineFunction &MF,
 									MachineBasicBlock &MBB,

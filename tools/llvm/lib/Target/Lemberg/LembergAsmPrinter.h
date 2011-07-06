@@ -39,6 +39,8 @@ class LLVM_LIBRARY_VISIBILITY LembergAsmPrinter : public AsmPrinter {
     virtual void EmitFunctionBodyEnd();
 
     virtual bool isBlockOnlyReachableByFallthrough(const MachineBasicBlock *MBB) const;
+
+	virtual MCSymbol *GetBlockAddressSymbol(const BlockAddress *BA) const;
 };
 } // end namespace llvm
 

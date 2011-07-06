@@ -51,7 +51,7 @@ void LembergInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 		Lemberg::ARegClass.contains(SrcReg)) {
 		BuildMI(MBB, I, DL, get(Lemberg::MOVEaa), DestReg)
 			.addImm(-1).addReg(0)
-			.addReg(SrcReg);
+			.addReg(SrcReg, getKillRegState(KillSrc));
 		return;
 	}
 
@@ -60,28 +60,28 @@ void LembergInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 		Lemberg::FRegClass.contains(SrcReg)) {
 		BuildMI(MBB, I, DL, get(Lemberg::FMOV), DestReg)
 			.addImm(-1).addReg(0)
-			.addReg(SrcReg);
+			.addReg(SrcReg, getKillRegState(KillSrc));
 		return;
 	}
 	if (Lemberg::DRegClass.contains(DestReg) &&
 		Lemberg::DRegClass.contains(SrcReg)) {
 		BuildMI(MBB, I, DL, get(Lemberg::DMOV), DestReg)
 			.addImm(-1).addReg(0)
-			.addReg(SrcReg);
+			.addReg(SrcReg, getKillRegState(KillSrc));
 		return;
 	}
 	if (Lemberg::ARegClass.contains(DestReg) &&
 		Lemberg::FRegClass.contains(SrcReg)) {
 		BuildMI(MBB, I, DL, get(Lemberg::MOVEfa), DestReg)
 			.addImm(-1).addReg(0)
-			.addReg(SrcReg);
+			.addReg(SrcReg, getKillRegState(KillSrc));
 		return;
 	}
 	if (Lemberg::FRegClass.contains(DestReg) &&
 		Lemberg::ARegClass.contains(SrcReg)) {
 		BuildMI(MBB, I, DL, get(Lemberg::MOVEaf), DestReg)
 			.addImm(-1).addReg(0)
-			.addReg(SrcReg);
+			.addReg(SrcReg, getKillRegState(KillSrc));
 		return;
 	}
 
@@ -90,7 +90,7 @@ void LembergInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 		Lemberg::CRegClass.contains(SrcReg)) {
 		BuildMI(MBB, I, DL, get(Lemberg::MOVCC), DestReg)
 			.addImm(-1).addReg(0)
-			.addReg(SrcReg);
+			.addReg(SrcReg, getKillRegState(KillSrc));
 		return;
 	}
 
@@ -99,7 +99,7 @@ void LembergInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 		Lemberg::XRegClass.contains(SrcReg)) {
 		BuildMI(MBB, I, DL, get(Lemberg::MOVExa), DestReg)
 			.addImm(-1).addReg(0)
-			.addReg(SrcReg);
+			.addReg(SrcReg, getKillRegState(KillSrc));
 		return;
 	}
 
@@ -107,7 +107,7 @@ void LembergInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 		Lemberg::ARegClass.contains(SrcReg)) {
 		BuildMI(MBB, I, DL, get(Lemberg::MOVEax), DestReg)
 			.addImm(-1).addReg(0)
-			.addReg(SrcReg);
+			.addReg(SrcReg, getKillRegState(KillSrc));
 		return;
 	}
 
@@ -120,7 +120,7 @@ void LembergInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 /// not, return 0.  This predicate must return 0 if the instruction has
 /// any side effects other than storing to the stack slot.
 unsigned LembergInstrInfo::isStoreToStackSlot(const MachineInstr *MI,
-                                               int &FrameIndex) const {
+											  int &FrameIndex) const {
   switch (MI->getOpcode()) {
   default: break;
   case Lemberg::STORE32s_pseudo:
@@ -143,7 +143,7 @@ unsigned LembergInstrInfo::isStoreToStackSlot(const MachineInstr *MI,
 /// not, return 0.  This predicate must return 0 if the instruction has
 /// any side effects other than loading from the stack slot.
 unsigned LembergInstrInfo::isLoadFromStackSlot(const MachineInstr *MI,
-                                                int &FrameIndex) const {
+											   int &FrameIndex) const {
   switch (MI->getOpcode()) {
   default: break;
   case Lemberg::LOAD32s_pseudo:

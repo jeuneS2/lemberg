@@ -295,7 +295,7 @@ namespace llvm {
 
     /// GetBlockAddressSymbol - Return the MCSymbol used to satisfy BlockAddress
     /// uses of the specified basic block.
-    MCSymbol *GetBlockAddressSymbol(const BlockAddress *BA) const;
+	virtual MCSymbol *GetBlockAddressSymbol(const BlockAddress *BA) const;
     MCSymbol *GetBlockAddressSymbol(const BasicBlock *BB) const;
 
     //===------------------------------------------------------------------===//

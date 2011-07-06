@@ -68,6 +68,7 @@ namespace llvm {
 
   private:
     SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+	SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerJumpTable(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerExternalSymbol(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerConstantFP(SDValue Op, SelectionDAG &DAG) const;

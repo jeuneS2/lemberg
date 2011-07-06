@@ -23,7 +23,6 @@ def CC_Lemberg : CallingConv<[
 
   // Split f64
   CCIfType<[f64], CCCustom<"CC_Lemberg_Custom_f64">>,
-  // CCIfType<[f64], CCAssignToStack<8, 4>>,
 
   // Pass on stack otherwise
   CCAssignToStack<4, 4>

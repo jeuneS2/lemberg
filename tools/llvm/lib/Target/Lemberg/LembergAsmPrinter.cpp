@@ -19,8 +19,10 @@
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineInstr.h"
+#include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/Target/Mangler.h"
@@ -63,11 +65,14 @@ void LembergAsmPrinter::printOperand(const MachineInstr *MI, int opNum, raw_ostr
   case MachineOperand::MO_Immediate:
     O << MO.getImm();
     break;
-  case MachineOperand::MO_MachineBasicBlock:
-    O << *MO.getMBB()->getSymbol();
+  case MachineOperand::MO_MachineBasicBlock:	  
+	  O << *MO.getMBB()->getSymbol();
     return;
   case MachineOperand::MO_GlobalAddress:
     O << *Mang->getSymbol(MO.getGlobal());
+    break;
+  case MachineOperand::MO_BlockAddress:
+	  O << *GetBlockAddressSymbol(MO.getBlockAddress());
     break;
   case MachineOperand::MO_ExternalSymbol:
     O << *GetExternalSymbolSymbol(MO.getSymbolName());
@@ -85,7 +90,7 @@ void LembergAsmPrinter::printOperand(const MachineInstr *MI, int opNum, raw_ostr
 }
 
 void LembergAsmPrinter::printMemoryOperand(const MachineInstr *MI, int opNum, raw_ostream &O) {
-	printOperand(MI, opNum+1, O);
+  printOperand(MI, opNum+1, O);
   O << ", ";
   printOperand(MI, opNum, O);
 }
@@ -163,4 +168,27 @@ isBlockOnlyReachableByFallthrough(const MachineBasicBlock *MBB) const {
 
   // Make all basic blocks reachable
   return false;
+}
+
+MCSymbol *LembergAsmPrinter::GetBlockAddressSymbol(const BlockAddress *BA) const {
+
+	// retrieve symbol for function
+	const TargetData *TD = TM.getTargetData();
+	Mangler Mang = Mangler(OutContext, *TD);
+	SmallString<64> NameStr;
+	Mang.getNameWithPrefix(NameStr, BA->getFunction(), false);
+	NameStr += "_start";
+
+	// create basic block offsets relative to function start
+	const MCSymbol *FunSym = OutContext.GetOrCreateSymbol(NameStr.str());
+	const MCExpr *Fun = MCSymbolRefExpr::Create(FunSym, OutContext);
+	const MCSymbol *BBSym = MMI->getAddrLabelSymbol(BA->getBasicBlock());
+	const MCExpr *Value = MCSymbolRefExpr::Create(BBSym, OutContext);
+	const MCExpr *RelAddr = MCBinaryExpr::CreateSub(Value, Fun, OutContext);
+
+	MCSymbol *RelSym = OutContext.CreateTempSymbol();
+	RelSym->setVariableValue(RelAddr);
+
+	// Does not work
+	return RelSym;
 }

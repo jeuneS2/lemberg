@@ -534,11 +534,12 @@ def MULai: F1<(outs Mul:$dst), (ins pred:$p, A:$src1, i32imm:$src2),
               "$p mul\t$src1, $src2 -> $$$dst", 
 			  [(set Mul:$dst, (LembergMul A:$src1, imm5:$src2))],
 			  IIAlu>;
+
 // Avoid spilling for multiplication registers
 def : Pat<(mul A:$src1, A:$src2),
-		  (COPY_TO_REGCLASS (MULaa A:$src1, A:$src2), A)>;
+ 		  (COPY_TO_REGCLASS (MULaa A:$src1, A:$src2), A)>;
 def : Pat<(mul A:$src1, imm5:$src2),
-		  (COPY_TO_REGCLASS (MULai A:$src1, imm5:$src2), A)>;
+ 		  (COPY_TO_REGCLASS (MULai A:$src1, imm5:$src2), A)>;
 
 // Logic operations
 defm AND: OP3<and, "and", uimm5>;
@@ -672,6 +673,10 @@ def : Pat <(LembergStore32 imm5:$val, (LembergWrapper tglobaladdr:$addr)),
 		   (STORE32ap_imm imm5:$val, (LOADga tglobaladdr:$addr))>,
 	Requires<[SmallCode]>;
 
+// load 21 bits for a block address (ok for methods up to 2MB)
+def : Pat<(LembergWrapper tblockaddress:$addr),
+		  (LOADsym10mi (LOADsym11lo tblockaddress:$addr), tblockaddress:$addr)>;
+
 // Nifty mask/shift operations
 def : Pat<(and A:$src, (i32 0xff)),
 		  (MASKaia A:$src, (i32 0))>;
@@ -722,7 +727,7 @@ def : Pat<(and A:$src, (i32 0x00ffffff)),
 		  (MASKaia A:$src, (i32 27))>;
 
 def : Pat<(and A:$src, (i32 0xffff0000)),
-		  (MASKaia A:$src, (i32 30))>;
+		  (MASKaia A:$src, (i32 28))>;
 
 let Constraints = "$src2 = $dst" in {
     // Conditional move
@@ -846,7 +851,6 @@ def ORcond: F1<(outs A:$dst), (ins C:$src1, A:$src2),
 			   IIAlu>;		 
 
 // Single-precision floating-point operations
-let neverHasSideEffects = 1 in
 def FMOV: F1<(outs F:$dst), (ins pred:$p, F:$src),
 			 "$p fop\tfmov\t$src -> $dst",
 			 [], IIFpu0>;
@@ -879,13 +883,12 @@ def FMAC: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2, F:$src3),
  			 IIFpu6>;
 
 // Double-precision floating-point operations
-let neverHasSideEffects = 1 in
 def DMOV: F1<(outs D:$dst), (ins pred:$p, D:$src),
 			 "$p fop\tdmov\t$src -> $dst",
 			 [], IIFpu0>;
 
 def DNEG: F1<(outs D:$dst), (ins pred:$p, D:$src),
-			 "$p fop\tdabs\t$src -> $dst",
+			 "$p fop\tdneg\t$src -> $dst",
 			 [(set D:$dst, (fneg D:$src))],
 			 IIFpu0>;
 def DABS: F1<(outs D:$dst), (ins pred:$p, D:$src),

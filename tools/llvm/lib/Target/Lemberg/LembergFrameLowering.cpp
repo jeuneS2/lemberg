@@ -43,6 +43,8 @@ BuildStackAdd (MachineFunction &MF,
 			   MachineBasicBlock &MBB, MachineBasicBlock::iterator &MBBI,
 			   long Offset) const {
 
+	assert(isInt<22>(Offset) && (Offset & 0x03) == 0 && "Wrong offset for stack add");
+
 	const LembergInstrInfo *TII = TM.getInstrInfo();
 	const LembergRegisterInfo *TRI = TM.getRegisterInfo();
 
@@ -92,15 +94,44 @@ BuildStackLoad(MachineFunction &MF,
 			   MachineBasicBlock &MBB, MachineBasicBlock::iterator &MBBI,
 			   unsigned DestReg, long Offset) const {
 
-	assert(isInt<11>(Offset) && "Offset too big for stack load");
+	assert(isInt<22>(Offset) && (Offset & 0x03) == 0 && "Wrong offset for stack load");
 
 	const LembergInstrInfo *TII = TM.getInstrInfo();
 	const LembergRegisterInfo *TRI = TM.getRegisterInfo();
 
 	DebugLoc DL = MBB.findDebugLoc(MBBI);
-	BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOAD32spi))
-		.addImm(-1).addReg(0)
-		.addReg(TRI->getStackRegister()).addImm(Offset);
+
+	if (isInt<11>(Offset)){
+		BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOAD32spi))
+			.addImm(-1).addReg(0)
+			.addReg(TRI->getStackRegister()).addImm(Offset);
+	} else {
+		unsigned ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+
+		if (isUInt<11>(Offset)){
+			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm11), ScratchReg)
+				.addImm(-1).addReg(0)
+				.addImm(Offset);
+		} else {
+			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm11), ScratchReg)
+				.addImm(-1).addReg(0)
+				.addImm(Offset & 0x7ff);
+			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADimm11mi), ScratchReg)
+				.addImm(-1).addReg(0)
+				.addReg(ScratchReg)
+				.addImm((Offset >> 11) & 0x7ff);
+		}
+		BuildMI(MBB, MBBI, DL,
+				TII->get(Lemberg::ADDaaa), TRI->getStackRegister())
+			.addImm(-1).addReg(0)
+			.addReg(TRI->getStackRegister())
+			.addReg(ScratchReg);
+
+		BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOAD32sp))
+			.addImm(-1).addReg(0)
+			.addReg(ScratchReg, RegState::Kill);
+	}
+
 	BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LDXi), DestReg)
 		.addImm(-1).addReg(0)
 		.addReg(Lemberg::MEM).addImm(0);
@@ -111,18 +142,46 @@ BuildStackStore(MachineFunction &MF,
 				MachineBasicBlock &MBB, MachineBasicBlock::iterator &MBBI,
 				unsigned SrcReg, long Offset) const {
 
-	assert(isUInt<5>(Offset >> 2) && (Offset & 0x03) == 0
-		   && "Wrong offset for stack store");
+	assert(isInt<22>(Offset) && (Offset & 0x03) == 0 && "Wrong offset for stack store");
 
 	const LembergInstrInfo *TII = TM.getInstrInfo();
 	const LembergRegisterInfo *TRI = TM.getRegisterInfo();
 
 	DebugLoc DL = MBB.findDebugLoc(MBBI);
-	BuildMI(MBB, MBBI, DL, TII->get(Lemberg::STORE32spi))
-		.addImm(-1).addReg(0)
-		.addReg(SrcReg)
-		.addReg(TRI->getStackRegister())
-		.addImm(Offset >> 2);
+
+	if (isUInt<5>(Offset >> 2)) {
+		BuildMI(MBB, MBBI, DL, TII->get(Lemberg::STORE32spi))
+			.addImm(-1).addReg(0)
+			.addReg(SrcReg)
+			.addReg(TRI->getStackRegister())
+			.addImm(Offset >> 2);
+	} else {
+		unsigned ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+
+		if (isUInt<11>(Offset)){
+			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm11), ScratchReg)
+				.addImm(-1).addReg(0)
+				.addImm(Offset);
+		} else {
+			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm11), ScratchReg)
+				.addImm(-1).addReg(0)
+				.addImm(Offset & 0x7ff);
+			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADimm11mi), ScratchReg)
+				.addImm(-1).addReg(0)
+				.addReg(ScratchReg)
+				.addImm((Offset >> 11) & 0x7ff);
+		}
+		BuildMI(MBB, MBBI, DL,
+				TII->get(Lemberg::ADDaaa), TRI->getStackRegister())
+			.addImm(-1).addReg(0)
+			.addReg(TRI->getStackRegister())
+			.addReg(ScratchReg);
+
+		BuildMI(MBB, MBBI, DL, TII->get(Lemberg::STORE32sp))
+			.addImm(-1).addReg(0)
+			.addReg(SrcReg)
+			.addReg(ScratchReg, RegState::Kill);
+	}
 }
 
 void LembergFrameLowering::

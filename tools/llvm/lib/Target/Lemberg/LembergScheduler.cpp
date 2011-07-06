@@ -157,7 +157,7 @@ void ScheduleTDList::BuildSchedGraph(AliasAnalysis *AA) {
 			// Pick a suitable latency
 			unsigned MemLatency = 1;
 			if (!isStackAccess(SU.getInstr())) {
-				MemLatency = SU.getInstr()->getDesc().mayStore() ? 1 : 3;
+				MemLatency = SU.getInstr()->getDesc().mayStore() ? 1 : 2;
 			} else {
 			 	MemLatency = SU.getInstr()->getDesc().mayStore() ? 1 : 2;
 			}

@@ -80,6 +80,7 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 
 	// Custom lowering
 	setOperationAction(ISD::GlobalAddress,  MVT::i32, Custom);
+	setOperationAction(ISD::BlockAddress,   MVT::i32, Custom);
 	setOperationAction(ISD::JumpTable,      MVT::i32, Custom);
 	setOperationAction(ISD::ExternalSymbol, MVT::i32, Custom);
 	setOperationAction(ISD::ADDC,  MVT::i32, Custom);
@@ -125,6 +126,7 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	setOperationAction(ISD::CTPOP, MVT::i32, Expand);
 	setOperationAction(ISD::CTLZ, MVT::i32, Expand);
 	setOperationAction(ISD::CTTZ, MVT::i32, Expand);
+	setOperationAction(ISD::ROTR, MVT::i32, Expand);
 	setOperationAction(ISD::SHL_PARTS, MVT::i32, Expand);
 	setOperationAction(ISD::SRA_PARTS, MVT::i32, Expand);
 	setOperationAction(ISD::SRL_PARTS, MVT::i32, Expand);
@@ -145,6 +147,8 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	setOperationAction(ISD::FSIN, MVT::f64, Expand);
 	setOperationAction(ISD::FCOS, MVT::f32, Expand);
 	setOperationAction(ISD::FCOS, MVT::f64, Expand);
+    setOperationAction(ISD::FCOPYSIGN, MVT::f32, Expand);
+    setOperationAction(ISD::FCOPYSIGN, MVT::f64, Expand);
 	setOperationAction(ISD::UINT_TO_FP, MVT::i32, Expand);
 	setOperationAction(ISD::FP_TO_UINT, MVT::i32, Expand);
 
@@ -193,6 +197,8 @@ SDValue LembergTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) con
     llvm_unreachable("Should not custom lower this!");
   case ISD::GlobalAddress: 
 	  return LowerGlobalAddress(Op, DAG);
+  case ISD::BlockAddress: 
+	  return LowerBlockAddress(Op, DAG);
   case ISD::JumpTable:
 	  return LowerJumpTable(Op, DAG);
   case ISD::ExternalSymbol: 
@@ -221,6 +227,14 @@ SDValue LembergTargetLowering::LowerGlobalAddress(SDValue Op, SelectionDAG &DAG)
   const GlobalValue *GV = cast<GlobalAddressSDNode>(Op)->getGlobal();
   return DAG.getNode(LembergISD::Wrapper, DL, MVT::i32,
 					 DAG.getTargetGlobalAddress(GV, DL, MVT::i32));
+}
+
+SDValue LembergTargetLowering::LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const {
+  DebugLoc DL = Op.getDebugLoc();
+
+  const BlockAddress *BA = cast<BlockAddressSDNode>(Op)->getBlockAddress();
+  return DAG.getNode(LembergISD::Wrapper, DL, MVT::i32,
+					 DAG.getBlockAddress(BA, MVT::i32, true));
 }
 
 SDValue LembergTargetLowering::LowerExternalSymbol(SDValue Op, SelectionDAG &DAG) const {
@@ -365,7 +379,10 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 						  Chain, DAG.getRegister(MemReg, MVT::i32), WordOffset, Flag);
 
 	  if (LD->getMemoryVT() == MVT::f32) {
-	   	  SDValue Converted = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Chain);
+		  // SDValue Converted = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Chain);
+	   	  SDValue Converted =
+			  SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, Chain,
+										 DAG.getTargetConstant(Lemberg::FRegClassID, MVT::i32)), 0);
 		  SDValue MergeOps [] = { Converted, Chain.getOperand(0) };
 		  Chain = DAG.getMergeValues(MergeOps, 2, DL);
 	  } else if (isBitLoad) {
@@ -388,7 +405,9 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 							   Chain, DAG.getRegister(MemReg, MVT::i32), WordOffset, Flag);
 	  Chain = Lo.getValue(1);
 	  Flag = Lo.getValue(2);
-	  Lo = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Lo);
+	  // Lo = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Lo);
+	  Lo = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, Lo, 
+									  DAG.getTargetConstant(Lemberg::FRegClassID, MVT::i32)), 0);
 
 	  // Create node for load of high part
 	  SDValue OpsHi [] = { Chain, DAG.getNode(ISD::ADD, DL, MVT::i32,
@@ -403,13 +422,14 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 	  // Read result from load via LDX
 	  SDValue Hi = DAG.getNode(LembergISD::WaitLoad, DL, WaitLoadTys,
 							   Chain, DAG.getRegister(MemReg, MVT::i32), WordOffset, Flag);
-	  Hi = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Hi);
+	  // Hi = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Hi);
+	  Hi = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, Hi, 
+									  DAG.getTargetConstant(Lemberg::FRegClassID, MVT::i32)), 0);
 	  
 	  SDNode *Undef = DAG.getMachineNode(TargetOpcode::IMPLICIT_DEF, DL, MVT::f64);
 	  SDNode *InsertLo = DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL, MVT::f64,
 											SDValue(Undef, 0), Lo, 
 											DAG.getTargetConstant(Lemberg::sub_even, MVT::i32));
-
 	  Chain = SDValue(DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL,
 										 MVT::f64, MVT::Other, MVT::Glue,
 										 SDValue(InsertLo, 0), Hi,
@@ -439,7 +459,10 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 
   // Convert float store to int store
   if (ST->getMemoryVT() == MVT::f32) {
-	  SDValue Converted = DAG.getNode(ISD::BITCAST, DL, MVT::i32, ST->getValue());
+	  // SDValue Converted = DAG.getNode(ISD::BITCAST, DL, MVT::i32, ST->getValue());
+	  SDValue Converted =
+		  SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::i32, ST->getValue(), 
+									 DAG.getTargetConstant(Lemberg::ARegClassID, MVT::i32)), 0);
 	  ST = dyn_cast<StoreSDNode>
 		  (DAG.getStore(Chain, DL,
 						Converted, ST->getBasePtr(), ST->getMemOperand()).getNode());
@@ -510,29 +533,28 @@ static bool CC_Lemberg_Custom_f64(unsigned &ValNo, MVT &ValVT, MVT &LocVT,
 								  CCValAssign::LocInfo &LocInfo,
 								  ISD::ArgFlagsTy &ArgFlags,
 								  CCState &State) {
+
   static const unsigned RegList[] = { Lemberg::R0, Lemberg::R1,
 									  Lemberg::R2, Lemberg::R3 };
 
   // Try to get the first register.
   if (unsigned Reg = State.AllocateReg(RegList, 4))
-	  State.addLoc(CCValAssign::getCustomReg(ValNo, MVT::i32, Reg, MVT::i32, LocInfo));
-  else {
-	  State.addLoc(CCValAssign::getCustomMem(ValNo, MVT::i32,
+	  State.addLoc(CCValAssign::getCustomReg(ValNo, ValVT, Reg, LocVT, LocInfo));
+  else
+	  State.addLoc(CCValAssign::getCustomMem(ValNo, ValVT,
 											 State.AllocateStack(4, 4),
-											 MVT::i32, LocInfo));
-  }
+											 LocVT, LocInfo));
 
   // Try to get the second register.
   if (unsigned Reg = State.AllocateReg(RegList, 4))
-	  State.addLoc(CCValAssign::getCustomReg(ValNo, MVT::i32, Reg, MVT::i32, LocInfo));
+	  State.addLoc(CCValAssign::getCustomReg(ValNo, ValVT, Reg, LocVT, LocInfo));
   else
-	  State.addLoc(CCValAssign::getCustomMem(ValNo, MVT::i32,
+	  State.addLoc(CCValAssign::getCustomMem(ValNo, ValVT,
 											 State.AllocateStack(4, 4),
-											 MVT::i32, LocInfo));
+											 LocVT, LocInfo));
   return true;
 }
 
-// TODO: remove magic constants for handling of varargs
 SDValue
 LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 											CallingConv::ID CallConv, bool isVarArg,
@@ -551,63 +573,72 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 
   unsigned RegArgs = 0;
 
+  unsigned VarArgOff = isVarArg ? 16 : 0;
+
   for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
     CCValAssign &VA = ArgLocs[i];
 
     if (VA.isRegLoc()) {
       RegArgs++;
 
-      EVT RegVT = VA.getLocVT();
       TargetRegisterClass *RC = Lemberg::ARegisterClass;
 
       assert(RC->contains(VA.getLocReg()) && "Unexpected regclass in CCState");
 
       unsigned Reg = MF.getRegInfo().createVirtualRegister(RC);
       MF.getRegInfo().addLiveIn(VA.getLocReg(), Reg);
-      SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, Reg, RegVT);
+      SDValue ArgValue;
 
       if (VA.needsCustom()) {
+		  assert(VA.getLocVT() == MVT::f64);
 		  assert(i+1 < e);
-		  CCValAssign &VAHi = ArgLocs[++i];
+		  
+		  ArgValue = DAG.getCopyFromReg(Chain, DL, Reg, MVT::i32);
 
+		  CCValAssign &VAHi = ArgLocs[++i];
 		  SDValue ArgValueHi;
 
 		  if (VAHi.isRegLoc()) {
 			  RegArgs++;
 			  unsigned RegHi = MF.getRegInfo().createVirtualRegister(RC);
 			  MF.getRegInfo().addLiveIn(VAHi.getLocReg(), RegHi);
-			  ArgValueHi = DAG.getCopyFromReg(Chain, DL, RegHi, VAHi.getLocVT());
+			  ArgValueHi = DAG.getCopyFromReg(Chain, DL, RegHi, MVT::i32);
 		  } else {
 			  assert(VAHi.isMemLoc() && "CCValAssign must be RegLoc or MemLoc");
-			  int FIHi = MFI->CreateFixedObject(4, VAHi.getLocMemOffset() + (isVarArg ? 4*4 : 0),
-												true);
+			  int FIHi = MFI->CreateFixedObject(4, VAHi.getLocMemOffset()+VarArgOff, true);
 			  SDValue FINHi = DAG.getFrameIndex(FIHi, MVT::i32);
 			  ArgValueHi = DAG.getLoad(MVT::i32, DL, Chain, FINHi,
 									   MachinePointerInfo(new FixedStackPseudoSourceValue(FIHi)),
 									   false, false, 0);
 		  }
 
-		  ArgValue = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValue);
-		  ArgValueHi = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValueHi);
+		  // ArgValue = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValue);
+		  ArgValue = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, ArgValue, 
+		   										DAG.getTargetConstant(Lemberg::FRegClassID, MVT::i32)), 0);
+		  // ArgValueHi = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValueHi);
+		  ArgValueHi = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, ArgValueHi, 
+		   										DAG.getTargetConstant(Lemberg::FRegClassID, MVT::i32)), 0);
 
 		  SDNode *Undef = DAG.getMachineNode(TargetOpcode::IMPLICIT_DEF, DL, MVT::f64);
 		  SDNode *InsertLo = DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL, MVT::f64,
 												SDValue(Undef, 0), ArgValue, 
 												DAG.getTargetConstant(Lemberg::sub_even, MVT::i32));
-		  ArgValue = SDValue(DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL,
-												MVT::f64, MVT::Other, MVT::Glue,
+		  ArgValue = SDValue(DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL, MVT::f64,
 												SDValue(InsertLo, 0), ArgValueHi,
 												DAG.getTargetConstant(Lemberg::sub_odd, MVT::i32)), 0);
+	  } else {
+		  EVT Type = VA.getValVT() == MVT::f32 ? MVT::f32 : MVT::i32;
+		  ArgValue = DAG.getCopyFromReg(Chain, DL, Reg, Type);
 	  }
 
       // If this is an 8 or 16-bit value, it is really passed promoted to 32
       // bits.  Insert an assert[sz]ext to capture this, then truncate to the
       // right size.
       if (VA.getLocInfo() == CCValAssign::SExt)
-        ArgValue = DAG.getNode(ISD::AssertSext, DL, RegVT, ArgValue,
+        ArgValue = DAG.getNode(ISD::AssertSext, DL, MVT::i32, ArgValue,
                                DAG.getValueType(VA.getValVT()));
       else if (VA.getLocInfo() == CCValAssign::ZExt)
-        ArgValue = DAG.getNode(ISD::AssertZext, DL, RegVT, ArgValue,
+        ArgValue = DAG.getNode(ISD::AssertZext, DL, MVT::i32, ArgValue,
                                DAG.getValueType(VA.getValVT()));
 
       if (VA.getLocInfo() == CCValAssign::SExt || VA.getLocInfo() == CCValAssign::ZExt)
@@ -617,24 +648,32 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 
     } else {
       assert(VA.isMemLoc() && "CCValAssign must be RegLoc or MemLoc");
-      int FI = MFI->CreateFixedObject(4, VA.getLocMemOffset() + (isVarArg ? 4*4 : 0), true);
+      int FI = MFI->CreateFixedObject(4, VA.getLocMemOffset()+VarArgOff, true);
       SDValue FIN = DAG.getFrameIndex(FI, MVT::i32);
-	  SDValue ArgValue = DAG.getLoad(VA.getValVT(), DL, Chain, FIN,
-									 MachinePointerInfo(new FixedStackPseudoSourceValue(FI)),
-									 false, false, 0);
-	  
+	  SDValue ArgValue;
+
 	  if (VA.needsCustom()) {
+		  assert(VA.getLocVT() == MVT::f64);
 		  assert(i+1 < e);
+
+		  ArgValue = DAG.getLoad(MVT::i32, DL, Chain, FIN,
+								 MachinePointerInfo(new FixedStackPseudoSourceValue(FI)),
+								 false, false, 0);
+
 		  CCValAssign &VAHi = ArgLocs[++i];
 		  
-		  int FIHi = MFI->CreateFixedObject(4, VAHi.getLocMemOffset() + (isVarArg ? 4*4 : 0), true);
+		  int FIHi = MFI->CreateFixedObject(4, VAHi.getLocMemOffset()+VarArgOff, true);
 		  SDValue FINHi = DAG.getFrameIndex(FIHi, MVT::i32);
 		  SDValue ArgValueHi = DAG.getLoad(MVT::i32, DL, Chain, FINHi,
 										   MachinePointerInfo(new FixedStackPseudoSourceValue(FIHi)),
 										   false, false, 0);
 		  
-		  ArgValue = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValue);
-		  ArgValueHi = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValueHi);
+		  // ArgValue = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValue);
+		  ArgValue = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, ArgValue, 
+		   										DAG.getTargetConstant(Lemberg::FRegClassID, MVT::i32)), 0);
+		  // ArgValueHi = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValueHi);
+		  ArgValueHi = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, ArgValueHi, 
+												  DAG.getTargetConstant(Lemberg::FRegClassID, MVT::i32)), 0);
 		  
 		  SDNode *Undef = DAG.getMachineNode(TargetOpcode::IMPLICIT_DEF, DL, MVT::f64);
 		  SDNode *InsertLo = DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL, MVT::f64,
@@ -643,6 +682,10 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 		  ArgValue = SDValue(DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL, MVT::f64,
 												SDValue(InsertLo, 0), ArgValueHi,
 												DAG.getTargetConstant(Lemberg::sub_odd, MVT::i32)), 0);
+	  } else {
+		  ArgValue = DAG.getLoad(VA.getValVT(), DL, Chain, FIN,
+								 MachinePointerInfo(new FixedStackPseudoSourceValue(FI)),
+								 false, false, 0);
 	  }
 
       InVals.push_back(ArgValue);
@@ -655,23 +698,30 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 	static const unsigned ArgRegs[] =
 		{ Lemberg::R0, Lemberg::R1, Lemberg::R2, Lemberg::R3 };
 
+	int VarArgIdx = 0;
+
 	// Store remaining ArgRegs to the stack if this is a varargs function.
 	for (unsigned i = RegArgs; i < 4; ++i) {
 		unsigned VReg = MF.getRegInfo().createVirtualRegister(Lemberg::ARegisterClass);
 		MF.getRegInfo().addLiveIn(ArgRegs[i], VReg);
 		SDValue Arg = DAG.getCopyFromReg(DAG.getRoot(), DL, VReg, MVT::i32);
 
-		int FrameIdx = MF.getFrameInfo()->CreateFixedObject(4, i*4, true);
+		int FrameIdx = MFI->CreateFixedObject(4, i*4, true);
 		SDValue FIPtr = DAG.getFrameIndex(FrameIdx, MVT::i32);
 		OutChains.push_back(DAG.getStore(DAG.getRoot(), DL, Arg, FIPtr,
 										 MachinePointerInfo(new FixedStackPseudoSourceValue(FrameIdx)),
 										 false, false, 0));
 
-		// Remember the first vararg offset for the va_start implementation.
 		if (i == RegArgs) {
-			FuncInfo->setVarArgsFrameIndex(FrameIdx);
+			VarArgIdx = FrameIdx;
 		}
     }
+
+	if (RegArgs >= 4) {
+		VarArgIdx = MFI->CreateFixedObject(4, 16+CCInfo.getNextStackOffset(), true);
+	}
+	// Remember the first vararg offset for the va_start implementation.
+	FuncInfo->setVarArgsFrameIndex(VarArgIdx);
 
     if (!OutChains.empty()) {
 		OutChains.push_back(Chain);
@@ -758,8 +808,10 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
   // Lemberg target does not yet support tail call optimization.
   isTailCall = false;
 
+  MachineFrameInfo *MFI = DAG.getMachineFunction().getFrameInfo();
+
   // The current function obviously contains a call
-  DAG.getMachineFunction().getFrameInfo()->setHasCalls(true);
+  MFI->setHasCalls(true);
 
   // Analyze operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
@@ -769,7 +821,7 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
 
   // Get a count of how many bytes are to be pushed on the stack.
   unsigned NumBytes = CCInfo.getNextStackOffset();
-
+  
   // Round up to next doubleword boundary
   NumBytes = (NumBytes + 7) & ~7;
 
@@ -785,13 +837,18 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
     CCValAssign &VA = ArgLocs[i];
     SDValue Arg = OutVals[k];
 
+	ISD::ArgFlagsTy Flags = Outs[k].Flags;
+	assert(!Flags.isByVal() && "ByVal arguments not supported");
+
 	if (VA.needsCustom()) {
 		SDValue SubRegIdx = DAG.getTargetConstant(SeenCustom ?
 												  Lemberg::sub_odd : Lemberg::sub_even,
 												  MVT::i32);
 		Arg = SDValue(DAG.getMachineNode(TargetOpcode::EXTRACT_SUBREG, DL, MVT::i32,
 										 Arg, SubRegIdx), 0);
-		if (!SeenCustom) k--; // Visit same OutVals index again
+		if (!SeenCustom) {
+			k--; // Visit same OutVals index again
+		}
 		SeenCustom = !SeenCustom;
 	}
 
@@ -800,7 +857,9 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
       default: assert(0 && "Unknown loc info!");
       case CCValAssign::Full: break;
       case CCValAssign::BCvt:
-        Arg = DAG.getNode(ISD::BITCAST, DL, VA.getLocVT(), Arg);
+        // Arg = DAG.getNode(ISD::BITCAST, DL, VA.getLocVT(), Arg);
+		Arg = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, Arg, 
+										 DAG.getTargetConstant(Lemberg::ARegClassID, MVT::i32)), 0);
         break;
       case CCValAssign::SExt:
         Arg = DAG.getNode(ISD::SIGN_EXTEND, DL, VA.getLocVT(), Arg);
