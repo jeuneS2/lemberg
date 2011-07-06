@@ -59,7 +59,7 @@ end sdpram ;
 
 architecture rtl of sdpram is
 
-	signal reg_dout			: std_logic_vector(width-1 downto 0);
+	signal rda : std_logic_vector(addr_width-1 downto 0);
 
 	subtype word is std_logic_vector(width-1 downto 0);
 	constant nwords : integer := 2 ** addr_width;
@@ -82,11 +82,11 @@ process (rdclk)
 begin
 	if rising_edge(rdclk) then
 		if rden='1' then
-			reg_dout <= ram(to_integer(unsigned(rdaddress)));
+			rda <= rdaddress;
 		end if;
 	end if;
 end process;
 
-	dout <= reg_dout;
+	dout <= ram(to_integer(unsigned(rda)));
 
 end rtl;
