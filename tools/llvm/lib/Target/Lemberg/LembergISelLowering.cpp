@@ -32,13 +32,21 @@
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Target/TargetFrameLowering.h"
+#include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/Mangler.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 #include <sstream>
 
 using namespace llvm;
+
+// Selective floating point support
+static cl::opt<bool>
+SoftDouble("lemberg-soft-double",
+  cl::desc("Generate software floating point library calls for doubles only"),
+  cl::init(false));
 
 //===----------------------------------------------------------------------===//
 // Calling Convention Implementation
@@ -69,8 +77,12 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	// Set up the legal register classes.
 	addRegisterClass(MVT::i32,   Lemberg::ARegisterClass);
 	addRegisterClass(MVT::i1,    Lemberg::CRegisterClass);
-	addRegisterClass(MVT::f32,   Lemberg::FRegisterClass);
-	addRegisterClass(MVT::f64,   Lemberg::DRegisterClass);
+	if (!UseSoftFloat) {
+		addRegisterClass(MVT::f32,   Lemberg::FRegisterClass);
+		if (!SoftDouble) {
+			addRegisterClass(MVT::f64,   Lemberg::DRegisterClass);
+		}
+	}
 
 	computeRegisterProperties();
 
@@ -858,7 +870,7 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
       case CCValAssign::Full: break;
       case CCValAssign::BCvt:
         // Arg = DAG.getNode(ISD::BITCAST, DL, VA.getLocVT(), Arg);
-		Arg = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, Arg, 
+		Arg = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::i32, Arg, 
 										 DAG.getTargetConstant(Lemberg::ARegClassID, MVT::i32)), 0);
         break;
       case CCValAssign::SExt:

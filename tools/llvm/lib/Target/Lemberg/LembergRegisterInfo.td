@@ -499,7 +499,7 @@ let CopyCost = -1 in {
   def M3 : RegisterClass<"Lemberg", [i32], 32, [MUL3] >;
 
   // Class for memory result
-  def Mem : RegisterClass<"Lemberg", [i32,f32], 32, [MEM, MEMHU, MEMHS, MEMBU, MEMBS] >
+  def Mem : RegisterClass<"Lemberg", [i32], 32, [MEM, MEMHU, MEMHS, MEMBU, MEMBS] >
 {
   let MethodProtos = [{
     iterator allocation_order_end(const MachineFunction &MF) const;
