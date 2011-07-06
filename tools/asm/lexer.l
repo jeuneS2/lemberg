@@ -255,6 +255,14 @@ $f[0-9]+ {
 	return EXPR;
   }
 
+(lo11|mi10|hi11)\{\ {SYM}-{SYM}\ \} {
+	/* recognize bit extraction from symbols */
+	yylval.exprval = NULL_EXPR;
+	yylval.exprval.strval = malloc(strlen(yytext)+1);
+	strcpy(yylval.exprval.strval, yytext);
+	return EXPR;
+  }
+
 {SYM}-{SYM} {
 	/* recognize the difference of two symbols */
 	yylval.exprval = NULL_EXPR;
