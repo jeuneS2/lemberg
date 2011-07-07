@@ -125,7 +125,7 @@ unsigned LembergInstrInfo::isStoreToStackSlot(const MachineInstr *MI,
   default: break;
   case Lemberg::STORE32s_pseudo:
   case Lemberg::STORE32s_xpseudo:
-  case Lemberg::STORE64s_xpseudo:
+  // case Lemberg::STORE64s_xpseudo:
     if (MI->getOperand(2).isFI() &&
         MI->getOperand(1).isImm() &&
         MI->getOperand(1).getImm() == 0) {
@@ -148,7 +148,7 @@ unsigned LembergInstrInfo::isLoadFromStackSlot(const MachineInstr *MI,
   default: break;
   case Lemberg::LOAD32s_pseudo:
   case Lemberg::LOAD32s_xpseudo:
-  case Lemberg::LOAD64s_xpseudo:
+  // case Lemberg::LOAD64s_xpseudo:
     if (MI->getOperand(2).isFI() &&
         MI->getOperand(1).isImm() &&
         MI->getOperand(1).getImm() == 0) {
