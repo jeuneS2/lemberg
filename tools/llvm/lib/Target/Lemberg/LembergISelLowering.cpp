@@ -354,8 +354,44 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 
   const Type *Ty = LD->getMemoryVT().getTypeForEVT(*DAG.getContext());
   unsigned ABIAlignment = getTargetData()->getABITypeAlignment(Ty);
-  assert(LD->getAlignment() >= ABIAlignment && "Unaligned load detected");
+  // Need to split unaligned loads
+  if (LD->getAlignment() < ABIAlignment) {
+	  EVT LDType = LD->getMemoryVT();
 
+	  assert((LDType == MVT::f32 || LDType == MVT::i32 || LDType == MVT::i16)
+			 && "Cannot handle this unaligned load");
+
+	  EVT LDHalfType = LDType == MVT::i16 ? MVT::i8 : MVT::i16;
+	  unsigned LDHalfSize = LDType == MVT::i16 ? 1 : 2;
+
+	  SDValue LDA = DAG.getExtLoad(ISD::ZEXTLOAD, DL, MVT::i32, Chain,
+								   LD->getBasePtr(), LD->getPointerInfo(),
+								   LDHalfType, LD->isVolatile(), LD->isNonTemporal(), LD->getAlignment());
+	  LDA = LowerLOAD(LDA, DAG);
+	  Chain = LDA.getValue(1);
+
+	  SDValue LDB = DAG.getExtLoad(ISD::ZEXTLOAD, DL, MVT::i32, Chain,
+								   DAG.getNode(ISD::ADD, DL, MVT::i32, LD->getBasePtr(), 
+											   DAG.getConstant(LDHalfSize, MVT::i32)),
+								   LD->getPointerInfo().getWithOffset(LDHalfSize),
+								   LDHalfType, LD->isVolatile(), LD->isNonTemporal(), LD->getAlignment());
+	  LDB = LowerLOAD(LDB, DAG);
+	  Chain = LDB.getValue(1);
+
+	  SDValue ShiftAmount = DAG.getConstant(8*LDHalfSize, MVT::i32);
+	  SDValue RetVal = DAG.getNode(ISD::SHL, DL, MVT::i32, LDB, ShiftAmount);
+	  RetVal = DAG.getNode(ISD::OR, DL, MVT::i32, RetVal, LDA);
+ 
+	  if (LDType == MVT::f32) {
+		  RetVal = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, RetVal,
+											  DAG.getTargetConstant(Lemberg::FRegClassID, MVT::i32)), 0);
+	  }
+
+	  SDValue MergeOps[] = { RetVal, Chain };
+	  return DAG.getMergeValues(MergeOps, 2, DL);
+  }
+
+  // Handle sub-word loads
   unsigned MemReg = Lemberg::MEM;
   SDValue WordOffset = DAG.getConstant(0, MVT::i32);
   if (ExtType == ISD::EXTLOAD
@@ -476,8 +512,7 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 		  SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::i32, ST->getValue(), 
 									 DAG.getTargetConstant(Lemberg::ARegClassID, MVT::i32)), 0);
 	  ST = dyn_cast<StoreSDNode>
-		  (DAG.getStore(Chain, DL,
-						Converted, ST->getBasePtr(), ST->getMemOperand()).getNode());
+		  (DAG.getStore(Chain, DL, Converted, ST->getBasePtr(), ST->getMemOperand()).getNode());
   }
 
   bool isStackStore = false;
@@ -488,7 +523,34 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 
   const Type *Ty = ST->getMemoryVT().getTypeForEVT(*DAG.getContext());
   unsigned ABIAlignment = getTargetData()->getABITypeAlignment(Ty);
-  assert(ST->getAlignment() >= ABIAlignment && "Unaligned store detected");
+  // Need to split unaligned stores
+  if (ST->getAlignment() < ABIAlignment) {
+	  EVT STType = ST->getMemoryVT();
+
+	  assert((STType == MVT::i32 || STType == MVT::i16)
+			 && "Cannot handle this unaligned store");
+
+	  EVT STHalfType = STType == MVT::i16 ? MVT::i8 : MVT::i16;
+	  unsigned STHalfSize = STType == MVT::i16 ? 1 : 2;
+
+	  SDValue STA = ST->getValue();
+	  STA = DAG.getTruncStore(Chain, DL, STA,
+							  ST->getBasePtr(), ST->getPointerInfo(),
+							  STHalfType, ST->isVolatile(), ST->isNonTemporal(), ST->getAlignment());
+	  Chain = LowerSTORE(STA, DAG);
+
+	  SDValue ShiftAmount = DAG.getConstant(8*STHalfSize, MVT::i32);
+	  SDValue STB = DAG.getNode(ISD::SRL, DL, MVT::i32, ST->getValue(), ShiftAmount);
+
+	  STB = DAG.getTruncStore(Chain, DL, STB,
+							  DAG.getNode(ISD::ADD, DL, MVT::i32, ST->getBasePtr(), 
+										  DAG.getConstant(STHalfSize, MVT::i32)),
+							  ST->getPointerInfo().getWithOffset(STHalfSize),
+							  STHalfType, ST->isVolatile(), ST->isNonTemporal(), ST->getAlignment());
+	  Chain = LowerSTORE(STB, DAG);
+
+	  return Chain;
+  }
  
   // Create node for store
   if (ST->getMemoryVT() != MVT::f64) {
