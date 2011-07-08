@@ -14,6 +14,9 @@
 // Lemberg C Calling convention.
 def CC_Lemberg : CallingConv<[
 
+  // Handle ByVal arguments
+  CCIfByVal<CCCustom<"CC_Lemberg_Custom_ByVal">>,
+
   // Promote i8/i16 arguments to i32
   CCIfType<[i8, i16], CCPromoteToType<i32>>,
   // Convert f32 to i32

@@ -57,6 +57,11 @@ static bool CC_Lemberg_Custom_f64(unsigned &ValNo, MVT &ValVT, MVT &LocVT,
 								  ISD::ArgFlagsTy &ArgFlags,
 								  CCState &State);
 
+static bool CC_Lemberg_Custom_ByVal(unsigned &ValNo, MVT &ValVT, MVT &LocVT,
+									CCValAssign::LocInfo &LocInfo,
+									ISD::ArgFlagsTy &ArgFlags,
+									CCState &State);
+
 #include "LembergGenCallingConv.inc"
 
 //===----------------------------------------------------------------------===//
@@ -629,6 +634,38 @@ static bool CC_Lemberg_Custom_f64(unsigned &ValNo, MVT &ValVT, MVT &LocVT,
   return true;
 }
 
+static bool CC_Lemberg_Custom_ByVal(unsigned &ValNo, MVT &ValVT, MVT &LocVT,
+								  CCValAssign::LocInfo &LocInfo,
+								  ISD::ArgFlagsTy &ArgFlags,
+								  CCState &State) {
+
+	static const unsigned RegList[] = { Lemberg::R0, Lemberg::R1,
+										Lemberg::R2, Lemberg::R3 };
+
+	unsigned Align = ArgFlags.getByValAlign();
+	unsigned Size  = ArgFlags.getByValSize();
+	if (4 > Size) Size = 4;
+	if (4 > Align) Align = 4;
+	
+	// Shadow registers
+	unsigned Shadow = 0;
+	while (Shadow < Size) {
+		unsigned Reg = State.AllocateReg(RegList, 4);
+		if (!Reg) break;
+		Shadow += 4;
+	}
+
+	// Reserve memory for copy of ByVal argument
+	unsigned Offset = 0;
+	if (Size > Shadow) {
+		Offset = State.AllocateStack(Size-Shadow, Align);
+	}
+
+	State.addLoc(CCValAssign::getMem(ValNo, ValVT, Offset, LocVT, LocInfo));
+
+	return true;
+}
+
 SDValue
 LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 											CallingConv::ID CallConv, bool isVarArg,
@@ -647,10 +684,12 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 
   unsigned RegArgs = 0;
 
-  unsigned VarArgOff = isVarArg ? 16 : 0;
+  unsigned ShadowOff = 16;
 
   for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
     CCValAssign &VA = ArgLocs[i];
+
+	ISD::ArgFlagsTy Flags = Ins[VA.getValNo()].Flags;
 
     if (VA.isRegLoc()) {
       RegArgs++;
@@ -663,7 +702,7 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
       MF.getRegInfo().addLiveIn(VA.getLocReg(), Reg);
       SDValue ArgValue;
 
-      if (VA.needsCustom()) {
+	  if (VA.needsCustom()) {
 		  assert(VA.getLocVT() == MVT::f64);
 		  assert(i+1 < e);
 		  
@@ -679,10 +718,10 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 			  ArgValueHi = DAG.getCopyFromReg(Chain, DL, RegHi, MVT::i32);
 		  } else {
 			  assert(VAHi.isMemLoc() && "CCValAssign must be RegLoc or MemLoc");
-			  int FIHi = MFI->CreateFixedObject(4, VAHi.getLocMemOffset()+VarArgOff, true);
+			  int FIHi = MFI->CreateFixedObject(4, VAHi.getLocMemOffset()+ShadowOff, true);
 			  SDValue FINHi = DAG.getFrameIndex(FIHi, MVT::i32);
 			  ArgValueHi = DAG.getLoad(MVT::i32, DL, Chain, FINHi,
-									   MachinePointerInfo(new FixedStackPseudoSourceValue(FIHi)),
+									   MachinePointerInfo::getFixedStack(FIHi),
 									   false, false, 0);
 		  }
 
@@ -722,24 +761,26 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 
     } else {
       assert(VA.isMemLoc() && "CCValAssign must be RegLoc or MemLoc");
-      int FI = MFI->CreateFixedObject(4, VA.getLocMemOffset()+VarArgOff, true);
-      SDValue FIN = DAG.getFrameIndex(FI, MVT::i32);
+
 	  SDValue ArgValue;
 
 	  if (VA.needsCustom()) {
 		  assert(VA.getLocVT() == MVT::f64);
 		  assert(i+1 < e);
 
+		  int FI = MFI->CreateFixedObject(4, VA.getLocMemOffset()+ShadowOff, true);
+		  SDValue FIN = DAG.getFrameIndex(FI, MVT::i32);
+
 		  ArgValue = DAG.getLoad(MVT::i32, DL, Chain, FIN,
-								 MachinePointerInfo(new FixedStackPseudoSourceValue(FI)),
+								 MachinePointerInfo::getFixedStack(FI),
 								 false, false, 0);
 
 		  CCValAssign &VAHi = ArgLocs[++i];
 		  
-		  int FIHi = MFI->CreateFixedObject(4, VAHi.getLocMemOffset()+VarArgOff, true);
+		  int FIHi = MFI->CreateFixedObject(4, VAHi.getLocMemOffset()+ShadowOff, true);
 		  SDValue FINHi = DAG.getFrameIndex(FIHi, MVT::i32);
 		  SDValue ArgValueHi = DAG.getLoad(MVT::i32, DL, Chain, FINHi,
-										   MachinePointerInfo(new FixedStackPseudoSourceValue(FIHi)),
+										   MachinePointerInfo::getFixedStack(FIHi),
 										   false, false, 0);
 		  
 		  // ArgValue = DAG.getNode(ISD::BITCAST, DL, MVT::f32, ArgValue);
@@ -756,9 +797,21 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 		  ArgValue = SDValue(DAG.getMachineNode(TargetOpcode::INSERT_SUBREG, DL, MVT::f64,
 												SDValue(InsertLo, 0), ArgValueHi,
 												DAG.getTargetConstant(Lemberg::sub_odd, MVT::i32)), 0);
+	  } else if (Flags.isByVal()) {
+		  unsigned Size = Flags.getByValSize();
+		  int FI = MFI->CreateFixedObject(Size, VA.getLocMemOffset()+4*RegArgs, false);
+		  ArgValue = DAG.getFrameIndex(FI, MVT::i32);
+
+		  while ((int)Size > 0 && RegArgs < 4) {
+			  Size -= 4;
+			  RegArgs++;
+		  }
 	  } else {
+		  int FI = MFI->CreateFixedObject(4, VA.getLocMemOffset()+ShadowOff, true);
+		  SDValue FIN = DAG.getFrameIndex(FI, MVT::i32);
+
 		  ArgValue = DAG.getLoad(VA.getValVT(), DL, Chain, FIN,
-								 MachinePointerInfo(new FixedStackPseudoSourceValue(FI)),
+								 MachinePointerInfo::getFixedStack(FI),
 								 false, false, 0);
 	  }
 
@@ -776,6 +829,7 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 
 	// Store remaining ArgRegs to the stack if this is a varargs function.
 	for (unsigned i = RegArgs; i < 4; ++i) {
+		
 		unsigned VReg = MF.getRegInfo().createVirtualRegister(Lemberg::ARegisterClass);
 		MF.getRegInfo().addLiveIn(ArgRegs[i], VReg);
 		SDValue Arg = DAG.getCopyFromReg(DAG.getRoot(), DL, VReg, MVT::i32);
@@ -783,7 +837,7 @@ LembergTargetLowering::LowerFormalArguments(SDValue Chain,
 		int FrameIdx = MFI->CreateFixedObject(4, i*4, true);
 		SDValue FIPtr = DAG.getFrameIndex(FrameIdx, MVT::i32);
 		OutChains.push_back(DAG.getStore(DAG.getRoot(), DL, Arg, FIPtr,
-										 MachinePointerInfo(new FixedStackPseudoSourceValue(FrameIdx)),
+                                         MachinePointerInfo::getFixedStack(FrameIdx),
 										 false, false, 0));
 
 		if (i == RegArgs) {
@@ -907,12 +961,11 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
   bool SeenCustom = false;
 
   // Walk the register/memloc assignments, inserting copies/loads.
-  for (unsigned i = 0, k = 0, e = ArgLocs.size(); i != e; ++i, ++k) {
+  for (unsigned i = 0, argIdx = 0, e = ArgLocs.size(); i != e; ++i, ++argIdx) {
     CCValAssign &VA = ArgLocs[i];
-    SDValue Arg = OutVals[k];
+    SDValue Arg = OutVals[argIdx];
 
-	ISD::ArgFlagsTy Flags = Outs[k].Flags;
-	assert(!Flags.isByVal() && "ByVal arguments not supported");
+    ISD::ArgFlagsTy Flags = Outs[argIdx].Flags;
 
 	if (VA.needsCustom()) {
 		SDValue SubRegIdx = DAG.getTargetConstant(SeenCustom ?
@@ -921,7 +974,7 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
 		Arg = SDValue(DAG.getMachineNode(TargetOpcode::EXTRACT_SUBREG, DL, MVT::i32,
 										 Arg, SubRegIdx), 0);
 		if (!SeenCustom) {
-			k--; // Visit same OutVals index again
+			--argIdx; // Visit same OutVals index again
 		}
 		SeenCustom = !SeenCustom;
 	}
@@ -953,18 +1006,59 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
     } else {
       assert(VA.isMemLoc());
 
-      if (StackPtr.getNode() == 0) {
-        const LembergRegisterInfo *LRI =
-			(const LembergRegisterInfo *)getTargetMachine().getRegisterInfo();
-        StackPtr = DAG.getCopyFromReg(Chain, DL, LRI->getStackRegister(), MVT::i32);
-	  }
+	  if (StackPtr.getNode() == 0) {
+		  const LembergRegisterInfo *LRI =
+			  (const LembergRegisterInfo *)getTargetMachine().getRegisterInfo();
+		  StackPtr = DAG.getCopyFromReg(Chain, DL, LRI->getStackRegister(), MVT::i32);
+	  }		  
 
-      SDValue PtrOff = DAG.getNode(ISD::ADD, DL, MVT::i32, StackPtr,
+	  SDValue PtrOff = DAG.getNode(ISD::ADD, DL, MVT::i32, StackPtr,
 								   DAG.getIntPtrConstant(VA.getLocMemOffset()));
 
-      MemOpChains.push_back(DAG.getStore(Chain, DL, Arg, PtrOff,
-                                         MachinePointerInfo(),
-                                         false, false, 0));
+	  if (Flags.isByVal()) {
+		  unsigned Size = Flags.getByValSize();
+		  unsigned Align = Flags.getByValAlign();
+
+		  // Check how much is shadowed in the registers
+		  unsigned ShadowSize = 0;
+		  static const unsigned ShadowRegs[] = { Lemberg::R0, Lemberg::R1, Lemberg::R2, Lemberg::R3 };
+		  unsigned ShadowRegIdx = RegsToPass.size();
+		  while (ShadowRegIdx < 4 && ShadowSize < Size) {
+			  // Partial load to register
+			  SDValue ArgOff = DAG.getNode(ISD::ADD, DL, MVT::i32, Arg,
+										   DAG.getIntPtrConstant(ShadowSize));
+			  SDValue ArgVal = DAG.getLoad(MVT::i32, DL, Chain, ArgOff,
+										   MachinePointerInfo(), false, false, Align);
+			  Chain = ArgVal.getValue(1);
+
+			  RegsToPass.push_back(std::make_pair(ShadowRegs[ShadowRegIdx], ArgVal));
+
+			  // Partial copy of argument
+			  SDValue ShadowOff = DAG.getNode(ISD::ADD, DL, MVT::i32, StackPtr,
+											  DAG.getIntPtrConstant(VA.getLocMemOffset()-16+4*ShadowRegIdx));
+			  Chain = DAG.getStore(Chain, DL, ArgVal, ShadowOff,
+								   MachinePointerInfo::getStack(VA.getLocMemOffset()-16+4*ShadowRegIdx),
+								   false, false, 0);
+
+			  ++ShadowRegIdx;
+			  ShadowSize += 4;
+		  }
+
+		  // Copy argument to memory
+		  if (ShadowSize < Size) {
+			  SDValue ArgOff = DAG.getNode(ISD::ADD, DL, MVT::i32, Arg,
+										   DAG.getIntPtrConstant(ShadowSize));
+			  SDValue SizeNode = DAG.getConstant(Size-ShadowSize, MVT::i32);
+			  Chain = DAG.getMemcpy(Chain, DL, PtrOff, ArgOff, SizeNode, Align,
+									false, false, MachinePointerInfo(), MachinePointerInfo());
+			  MemOpChains.push_back(Chain);
+		  }
+	  } else {		  
+		  Chain = DAG.getStore(Chain, DL, Arg, PtrOff,
+							   MachinePointerInfo::getStack(VA.getLocMemOffset()),
+							   false, false, 0);
+		  MemOpChains.push_back(Chain);
+	  }
     }
   }
 

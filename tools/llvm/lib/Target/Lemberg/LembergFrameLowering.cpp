@@ -229,10 +229,7 @@ void LembergFrameLowering::emitPrologue(MachineFunction &MF) const {
   MFI->setStackSize(NumBytes);
 
   // Take into account room for varargs passed in registers
-  // TODO: get rid of magic number here
-  if (MF.getFunction()->isVarArg()) {
-	  NumBytes += 16;
-  }
+  NumBytes += 16;
 
   // Take into account space for call frames
   if (!hasFP(MF)) {
@@ -289,10 +286,7 @@ void LembergFrameLowering::emitEpilogue(MachineFunction &MF, MachineBasicBlock &
   long CallFrameBytes = 0;
 
   // Take into account room for varargs passed in registers
-  // TODO: get rid of magic number here
-  if (MF.getFunction()->isVarArg()) {
-	  NumBytes += 16;
-  }
+  NumBytes += 16;
 
   // Take into account space for call frames
   if (!hasFP(MF)) {
