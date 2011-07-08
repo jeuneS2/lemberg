@@ -119,6 +119,10 @@ runOnMachineBasicBlock(MachineBasicBlock &MBB)
 					--J;
 					while (J->getOpcode() != Lemberg::SEP) {
 						
+						// do not move past inline asm
+						if (J->isInlineAsm()) {							
+							conflicts = true;
+						}
 						// do not move past condition definition
 						if (condReg && J->definesRegister(condReg)) {							
 							conflicts = true;

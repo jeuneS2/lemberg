@@ -64,6 +64,10 @@ namespace llvm {
 	virtual unsigned getJumpTableEncoding() const {
 		return MachineJumpTableInfo::EK_Custom32;
 	}
+    virtual std::vector<unsigned>
+		getRegClassForInlineAsmConstraint(const std::string &Constraint,
+										  EVT VT) const;
+
     virtual SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const;
 
   private:

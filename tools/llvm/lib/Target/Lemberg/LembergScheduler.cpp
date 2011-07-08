@@ -324,8 +324,9 @@ void HazardRecognizer::Reset() {
 /// and terminators.
 static bool isSchedulingBoundary(const MachineInstr *MI,
                                  const MachineFunction &MF) {
-	// Terminators, labels and calls can't be scheduled around.
-	if (MI->getDesc().isTerminator() || MI->isLabel() || MI->getDesc().isCall())
+	// Terminators, labels, calls and inline asm can't be scheduled around.
+	if (MI->getDesc().isTerminator() || MI->isLabel() || MI->getDesc().isCall()
+		|| MI->isInlineAsm())
 		return true;
 	
 	return false;
@@ -368,8 +369,7 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
     for (MachineBasicBlock::iterator I = Current; I != MBB->begin(); ) {
       MachineInstr *MI = prior(I);
 	  // No need to schedule kills or implicit defs
-	  if (MI->getOpcode() == TargetOpcode::KILL
-		  || MI->getOpcode() == TargetOpcode::IMPLICIT_DEF) {
+	  if (MI->isKill() || MI->isImplicitDef()) {
 		  MI->eraseFromParent();
 		  --Count;
 		  continue;

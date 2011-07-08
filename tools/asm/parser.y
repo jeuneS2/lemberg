@@ -95,7 +95,11 @@ Input : Input Bundle
       | /* empty */
 ;
 
-LFOpt : NewLine | /* empty */
+LFOpt : NewLine BSep | NewLine | /* empty */
+;
+
+BSep : BSEP NewLine
+     | BSep BSEP NewLine
 ;
 
 Label: SYM ':' LFOpt
@@ -161,7 +165,7 @@ Directive : ALIGN NUM NewLine
 		  }
 ;
 
-Bundle : NOP Constant NewLine BSEP NewLine
+Bundle : NOP Constant NewLine BSep
        {
 		   pos += 1;
 
@@ -169,7 +173,7 @@ Bundle : NOP Constant NewLine BSEP NewLine
 		   $$.size = 1;
 		   $$.raw = $2;
        }
-       | Operation BSEP NewLine
+       | Operation BSep
        {
 		   pos += 4;
 		   fix_offset(&($1.op));
@@ -178,7 +182,7 @@ Bundle : NOP Constant NewLine BSEP NewLine
 		   $$.size = 4;
 		   $$.op[$1.clust] = $1;
        }
-       | Operation Operation BSEP NewLine
+       | Operation Operation BSep
        {
 		   pos += 7;
 		   fix_offset(&($1.op));
@@ -189,7 +193,7 @@ Bundle : NOP Constant NewLine BSEP NewLine
 		   $$.op[$1.clust] = $1;
 		   $$.op[$2.clust] = $2;
        }
-       | Operation Operation Operation BSEP NewLine
+       | Operation Operation Operation BSep
        {
 		   pos += 10;
 		   fix_offset(&($1.op));
@@ -202,7 +206,7 @@ Bundle : NOP Constant NewLine BSEP NewLine
 		   $$.op[$2.clust] = $2;
 		   $$.op[$3.clust] = $3;
        }
-       | Operation Operation Operation Operation BSEP NewLine
+       | Operation Operation Operation Operation BSep
        {
 		   pos += 13;
 		   fix_offset(&($1.op));
