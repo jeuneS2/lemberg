@@ -6,8 +6,8 @@ _main:                                  ; @main
 	.size	_main_end-_main
 _main_start:
 ; BB#0:                                 ; %entry
-#0:	       ldiu	32 -> r3
-#2:	       wb.s	r15, 8
+#0:	       ldiu	48 -> r3
+#2:	       wb.s	r15, 12
 #1:	       ldx	$rb, 0 -> r1.31
 #3:	       ldga	_printstr -> r0
 	;;
@@ -248,8 +248,8 @@ _printstr:                              ; @printstr
 	.size	_printstr_end-_printstr
 _printstr_start:
 ; BB#0:                                 ; %entry
-#0:	       wb.s	r15, 2
-#1:	       sub	r15, 8 -> r15
+#0:	       wb.s	r15, 6
+#1:	       sub	r15, 24 -> r15
 	;;
 #0:	       ldm.f	r0, 0
 	;;
@@ -258,7 +258,7 @@ _printstr_start:
 #0:	       cmpeq	r1, 0 -> c1
 	;;
 #0:	if  c1 ret
-#1:	if  c1 add	r15, 8 -> r15
+#1:	if  c1 add	r15, 24 -> r15
 	;;
 	       nop	3
 	;;
@@ -297,7 +297,7 @@ _printstr_start:
 	       nop	2
 	;;
 .BB1_4:                                 ; %return
-#0:	       add	r15, 8 -> r15
+#0:	       add	r15, 24 -> r15
 #1:	       ret
 	;;
 	       nop	3
@@ -312,8 +312,8 @@ _readint_start:
 ; BB#0:                                 ; %bb.nph
 #0:	       ldi	4 -> r1
 #1:	       ldi	0 -> r0
-#2:	       wb.s	r15, 2
-#3:	       sub	r15, 8 -> r15
+#2:	       wb.s	r15, 6
+#3:	       sub	r15, 24 -> r15
 	;;
 .BB2_1:                                 ; %bb
                                         ; =>This Inner Loop Header: Depth=1
@@ -338,7 +338,7 @@ _readint_start:
 #0:	       ldm.b	r2, 0
 #1:	       cmpeq	r1, 0 -> c1
 	;;
-#0:	if  c1 add	r15, 8 -> r15
+#0:	if  c1 add	r15, 24 -> r15
 	;;
 #0:	if  c1 ret
 #1:	       ldx	$membu, r2 -> r2
@@ -361,8 +361,8 @@ _printint:                              ; @printint
 _printint_start:
 ; BB#0:                                 ; %bb.nph
 #0:	       ldi	28 -> r1
-#1:	       wb.s	r15, 2
-#2:	       sub	r15, 8 -> r15
+#1:	       wb.s	r15, 6
+#2:	       sub	r15, 24 -> r15
 	;;
 .BB3_1:                                 ; %bb
                                         ; =>This Loop Header: Depth=1
@@ -403,7 +403,7 @@ _printint_start:
 #0:	       or	r0.16, 0 -> r1
 	;;
 #0:	       stmb.a	r2, r3, 0
-#1:	if !c1 add	r15, 8 -> r15
+#1:	if !c1 add	r15, 24 -> r15
 	;;
 #0:	if !c1 ret
 	;;
@@ -422,8 +422,8 @@ _reset:                                 ; @reset
 	.size	_reset_end-_reset
 _reset_start:
 ; BB#0:                                 ; %entry
-#0:	       wb.s	r15, 2
-#1:	       sub	r15, 8 -> r15
+#0:	       wb.s	r15, 6
+#1:	       sub	r15, 24 -> r15
 #2:	       ldiu	2047 -> r1
 	;;
 #0:	       add	r15, 4 -> r0

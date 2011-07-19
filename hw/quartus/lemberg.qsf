@@ -47,7 +47,7 @@ set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
 set_global_assignment -name MUX_RESTRUCTURE ON
-set_global_assignment -name ADV_NETLIST_OPT_SYNTH_WYSIWYG_REMAP OFF
+set_global_assignment -name ADV_NETLIST_OPT_SYNTH_WYSIWYG_REMAP ON
 set_global_assignment -name REMOVE_REDUNDANT_LOGIC_CELLS ON
 set_global_assignment -name ALLOW_ANY_ROM_SIZE_FOR_RECOGNITION ON
 set_global_assignment -name ALLOW_ANY_RAM_SIZE_FOR_RECOGNITION ON
@@ -68,8 +68,8 @@ set_global_assignment -name AUTO_PACKED_REGISTERS_MAXII NORMAL
 set_global_assignment -name AUTO_PACKED_REGISTERS_CYCLONE NORMAL
 set_global_assignment -name AUTO_PACKED_REGISTERS NORMAL
 set_global_assignment -name AUTO_PACKED_REGISTERS_STRATIX NORMAL
-set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING OFF
-set_global_assignment -name SEED 4
+set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING ON
+set_global_assignment -name SEED 3
 set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT EXTRA
 set_global_assignment -name PLACEMENT_EFFORT_MULTIPLIER 3.0
 set_global_assignment -name REMOVE_DUPLICATE_LOGIC OFF
@@ -113,7 +113,7 @@ set_global_assignment -name SYNTH_PROTECT_SDC_CONSTRAINT ON
 set_global_assignment -name ENABLE_DA_RULE "C101, C102, C103, C104, C105, C106, R101, R102, R103, R104, R105, T101, T102, A101, A102, A103, A104, A105, A106, A107, A108, A109, A110, S101, S102, S103, S104, D101, D102, D103, M101, M102, M103, M104, M105"
 set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER ON
 set_global_assignment -name STATE_MACHINE_PROCESSING AUTO
-set_global_assignment -name PRE_MAPPING_RESYNTHESIS ON
+set_global_assignment -name PRE_MAPPING_RESYNTHESIS OFF
 set_global_assignment -name POWER_USE_INPUT_FILES ON
 set_global_assignment -name POWER_DEFAULT_INPUT_IO_TOGGLE_RATE "12.5 %"
 set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim (VHDL)"
