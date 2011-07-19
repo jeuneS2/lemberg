@@ -233,6 +233,10 @@ SDValue LembergTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) con
 	  return LowerSTORE(Op, DAG);
   case ISD::VASTART:
 	  return LowerVASTART(Op, DAG);
+  case ISD::FRAMEADDR:
+	  return LowerFRAMEADDR(Op, DAG);
+  case ISD::RETURNADDR:
+	  return LowerRETURNADDR(Op, DAG);
   }
 }
 
@@ -603,6 +607,51 @@ SDValue LembergTargetLowering::LowerVASTART(SDValue Op, SelectionDAG &DAG) const
   const Value *SV = cast<SrcValueSDNode>(Op.getOperand(2))->getValue();
   return DAG.getStore(Op.getOperand(0), DL, FR, Op.getOperand(1),
 					  MachinePointerInfo(SV), false, false, 0);
+}
+
+SDValue LembergTargetLowering::LowerFRAMEADDR(SDValue Op, SelectionDAG &DAG) const {
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachineFrameInfo *MFI = MF.getFrameInfo();
+  MFI->setFrameAddressIsTaken(true);
+
+  EVT VT = Op.getValueType();
+  DebugLoc DL = Op.getDebugLoc();
+
+  const LembergRegisterInfo *LRI = (const LembergRegisterInfo *)getTargetMachine().getRegisterInfo();
+  unsigned FrameReg = LRI->getFrameRegister(MF);
+  uint64_t depth = Op.getConstantOperandVal(0);
+
+  SDValue FrameAddr;
+  if (depth == 0)
+    FrameAddr = DAG.getCopyFromReg(DAG.getEntryNode(), DL, FrameReg, VT);
+  else {
+	llvm_unreachable("Cannot retrieve frame address for depth > 0");
+  }
+  return FrameAddr;
+}
+
+SDValue LembergTargetLowering::LowerRETURNADDR(SDValue Op, SelectionDAG &DAG) const {
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachineFrameInfo *MFI = MF.getFrameInfo();
+  MFI->setReturnAddressIsTaken(true);
+
+  EVT VT = Op.getValueType();
+  DebugLoc DL = Op.getDebugLoc();
+
+  const LembergRegisterInfo *LRI = (const LembergRegisterInfo *)getTargetMachine().getRegisterInfo();
+  unsigned RetBaseReg = LRI->getRARegister();
+  unsigned RetOffReg = LRI->getRAOffRegister();
+  uint64_t depth = Op.getConstantOperandVal(0);
+
+  SDValue RetAddr;
+  if (depth == 0)
+    RetAddr = DAG.getNode(ISD::ADD, DL, MVT::i32,
+						  DAG.getCopyFromReg(DAG.getEntryNode(), DL, RetBaseReg, VT),
+						  DAG.getCopyFromReg(DAG.getEntryNode(), DL, RetOffReg, VT));
+  else {
+	llvm_unreachable("Cannot retrieve return address for depth > 0");
+  }
+  return RetAddr;
 }
 
 // f64 is in register pairs, possibly split to stack
