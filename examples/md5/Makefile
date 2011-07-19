@@ -1,7 +1,9 @@
 include /usr/local/lemberg/etc/Makefile.rules
 
 CFLAGS=-O3
-LLCFLAGS=-O3 -code-model=small -combiner-alias-analysis -combiner-global-alias-analysis
+LLVM_LDFLAGS=
+OPTFLAGS=-O3
+LLCFLAGS=-O3 -code-model=small
 
 all: md5.bin md5.dat
 

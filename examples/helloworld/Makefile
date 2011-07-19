@@ -1,8 +1,9 @@
 include /usr/local/lemberg/etc/Makefile.rules
 
 CFLAGS=-O3
+OPTFLAGS=-O3
 LIBLLSYMS=
-LLCFLAGS=-O3 -code-model=small -combiner-alias-analysis -combiner-global-alias-analysis
+LLCFLAGS=-O3 -code-model=small
 
 all: helloworld.bin helloworld.dat
 
