@@ -15,6 +15,8 @@ declare i64 @__ashrdi3(i64 %a, i32 %b) nounwind readnone
 declare i64 @__lshrdi3(i64 %a, i32 %b) nounwind readnone
 declare i64 @__muldi3(i64 %a, i64 %b) nounwind readnone
 	
-declare i8* @memcpy(i8* %dst0, i8* %src0, i32 %len0) nounwind
-declare i8* @memmove(i8* %dst_void, i8* %src_void, i32 %length) nounwind
+declare i8* @memcpy(i8* %dst, i8* %src, i32 %len) nounwind
+declare i8* @memmove(i8* %dst, i8* %src, i32 %len) nounwind
 declare i8* @memset(i8* %m, i32 %c, i32 %n) nounwind
+		
+declare void @abort() noreturn nounwind
