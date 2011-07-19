@@ -58,7 +58,7 @@ package core_pack is
 	-- data cache sizes
 	constant DM_ADDR_WIDTH    : integer := 10;
 	constant FA_ADDR_WIDTH    : integer := 7;
-	constant STACK_ADDR_WIDTH : integer := 10;
+	constant STACK_ADDR_WIDTH : integer := 12;
 	
 	-- bits for en-/decoding
 	constant OP_BITS          : integer := 6;
