@@ -77,7 +77,7 @@ package op_pack is
 					  ALU_MUL,
 					  ALU_CARR,
 					  ALU_BORR,
-					  ALU_MASK,
+					  ALU_BBH,
 					  ALU_CMPEQ,
 					  ALU_CMPNE,
 					  ALU_CMPLT,

@@ -29,8 +29,6 @@ namespace llvm {
 	  Carry, Borrow,
 	  // Multiplication is a little special
 	  Mul,
-	  // Masking
-	  Mask,
 	  // Magic wrapper
 	  Wrapper,
       // Call

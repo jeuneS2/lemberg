@@ -54,116 +54,6 @@ architecture behavior of alu is
 	signal mul_reg, mul_next : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal add_tmp, sub_tmp: std_logic_vector(DATA_WIDTH downto 0);
 	signal eq_tmp : std_logic;
-
-	-- extract and mask bytes and halfwords from word
-	function mask (
-		data    : std_logic_vector(DATA_WIDTH-1 downto 0);
-		pattern : std_logic_vector(2 downto 0);
-		offset  : std_logic_vector(1 downto 0))
-		return std_logic_vector is
-
-	variable result : std_logic_vector(DATA_WIDTH-1 downto 0);
-
-	begin
-		case pattern is
-			when "000" => -- extract unsigned byte
-				result := (others => '0');
-				case offset is
-					when "00" =>
-						result(BYTE_WIDTH-1 downto 0) := data(BYTE_WIDTH-1 downto 0);
-					when "01" =>
-						result(BYTE_WIDTH-1 downto 0) := data(2*BYTE_WIDTH-1 downto BYTE_WIDTH);
-					when "10" =>
-						result(BYTE_WIDTH-1 downto 0) := data(3*BYTE_WIDTH-1 downto 2*BYTE_WIDTH);
-					when "11" =>
-						result(BYTE_WIDTH-1 downto 0) := data(DATA_WIDTH-1 downto 3*BYTE_WIDTH);
-					when others => null;
-				end case;
-			when "001" => -- extract unsigned halfword
-				result := (others => '0');
-				case offset(1) is
-					when '0' =>
-						result(2*BYTE_WIDTH-1 downto 0) := data(2*BYTE_WIDTH-1 downto 0);
-					when '1' =>
-						result(2*BYTE_WIDTH-1 downto 0) := data(DATA_WIDTH-1 downto 2*BYTE_WIDTH);
-					when others => null;
-				end case;
-			when "010" => -- extract signed byte
-				case offset is
-					when "00" =>
-						result := (others => data(BYTE_WIDTH-1));
-						result(BYTE_WIDTH-1 downto 0) := data(BYTE_WIDTH-1 downto 0);
-					when "01" =>
-						result := (others => data(2*BYTE_WIDTH-1));
-						result(BYTE_WIDTH-1 downto 0) := data(2*BYTE_WIDTH-1 downto BYTE_WIDTH);
-					when "10" =>
-						result := (others => data(3*BYTE_WIDTH-1));
-						result(BYTE_WIDTH-1 downto 0) := data(3*BYTE_WIDTH-1 downto 2*BYTE_WIDTH);
-					when "11" =>
-						result := (others => data(DATA_WIDTH-1));
-						result(BYTE_WIDTH-1 downto 0) := data(DATA_WIDTH-1 downto 3*BYTE_WIDTH);
-					when others => null;
-				end case;
-			when "011" => -- extract signed halfword
-				case offset(1) is
-					when '0' =>
-						result := (others => data(2*BYTE_WIDTH-1));
-						result(2*BYTE_WIDTH-1 downto 0) := data(2*BYTE_WIDTH-1 downto 0);
-					when '1' =>
-						result := (others => data(DATA_WIDTH-1));
-						result(2*BYTE_WIDTH-1 downto 0) := data(DATA_WIDTH-1 downto 2*BYTE_WIDTH);
-					when others => null;
-				end case;
-			when "100" => -- shift in byte
-				result := (others => '0');
-				case offset is
-					when "00" =>
-						result(BYTE_WIDTH-1 downto 0) := data(BYTE_WIDTH-1 downto 0);
-					when "01" =>
-						result(2*BYTE_WIDTH-1 downto BYTE_WIDTH) := data(BYTE_WIDTH-1 downto 0);
-					when "10" =>
-						result(3*BYTE_WIDTH-1 downto 2*BYTE_WIDTH) := data(BYTE_WIDTH-1 downto 0);
-					when "11" =>
-						result(DATA_WIDTH-1 downto 3*BYTE_WIDTH) := data(BYTE_WIDTH-1 downto 0);
-					when others => null;
-				end case;
-			when "101" => -- shift in halfword
-				result := (others => '0');
-				case offset(1) is
-					when '0' =>
-						result(2*BYTE_WIDTH-1 downto 0) := data(2*BYTE_WIDTH-1 downto 0);
-					when '1' =>
-						result(DATA_WIDTH-1 downto 2*BYTE_WIDTH) := data(2*BYTE_WIDTH-1 downto 0);
-					when others => null;
-				end case;
-			when "110" => -- mask out byte
-				result := data;
-				case offset is
-					when "00" =>
-						result(BYTE_WIDTH-1 downto 0) := (others => '0');
-					when "01" =>
-						result(2*BYTE_WIDTH-1 downto BYTE_WIDTH) := (others => '0');
-					when "10" =>
-						result(3*BYTE_WIDTH-1 downto 2*BYTE_WIDTH) := (others => '0');
-					when "11" =>
-						result(DATA_WIDTH-1 downto 3*BYTE_WIDTH) := (others => '0');
-					when others => null;
-				end case;
-			when "111" => -- mask out halfword
-				result := data;
-				case offset(1) is
-					when '0' =>
-						result(2*BYTE_WIDTH-1 downto 0) := (others => '0');
-					when '1' =>
-						result(DATA_WIDTH-1 downto 2*BYTE_WIDTH) := (others => '0');
-					when others => null;
-				end case;
-			when others => null;
-		end case;
-
-		return result;
-		
-	end mask;
 	
 begin  -- behavior
 
@@ -188,6 +78,8 @@ begin  -- behavior
 				  add_tmp, sub_tmp, eq_tmp, fpu_rddata)
 		variable valid : std_logic;
 		variable mul_tmp : std_logic_vector(2*DATA_WIDTH-1 downto 0);
+		variable popcnt : integer range 0 to 32;
+		variable parity : std_logic;
 	begin  -- process alu
 
 		case op.cond is
@@ -273,9 +165,54 @@ begin  -- behavior
 				wren <= valid;
 				wrdata <= (others => '0');
 				wrdata(0) <= sub_tmp(DATA_WIDTH);
-			when ALU_MASK =>
+			when ALU_BBH =>
 				wren <= valid;
-				wrdata <= mask(op.rddata0, op.rddata1(4 downto 2), op.rddata1(1 downto 0));
+				case op.rddata1(4 downto 0) is
+					when "00000" =>  	-- SEXT8
+						wrdata <= std_logic_vector(
+							resize(signed(op.rddata0(BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
+					when "00001" =>  	-- SEXT16
+						wrdata <= std_logic_vector(
+							resize(signed(op.rddata0(2*BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
+					when "00010" =>  	-- ZEXT8
+						wrdata <= std_logic_vector(
+							resize(unsigned(op.rddata0(BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
+					when "00011" =>  	-- ZEXT16
+						wrdata <= std_logic_vector(
+							resize(unsigned(op.rddata0(2*BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
+					when "00100" =>  	-- CLZ
+						wrdata <= (others => '0');
+						for i in 1 to DATA_WIDTH loop
+							if op.rddata0(DATA_WIDTH-i) = '0' then
+								wrdata <= std_logic_vector(to_unsigned(i, DATA_WIDTH));
+							else
+								exit;
+							end if;
+						end loop;  -- i
+					when "00101" =>  	-- CTZ
+						wrdata <= (others => '0');
+						for i in 1 to DATA_WIDTH loop
+							if op.rddata0(i-1) = '0' then
+								wrdata <= std_logic_vector(to_unsigned(i, DATA_WIDTH));
+							else
+								exit;
+							end if;
+						end loop;  -- i
+					when "00110" | "00111" =>  	-- POP / PAR
+						popcnt := 0;						
+						for i in 0 to DATA_WIDTH-1 loop
+							if op.rddata0(i) = '1' then
+								popcnt := popcnt+1;
+							end if;
+						end loop;  -- i
+						if op.rddata1(4 downto 0) = "00110" then
+							wrdata <= std_logic_vector(to_unsigned(popcnt, DATA_WIDTH));
+						else
+							wrdata <= std_logic_vector(to_unsigned(popcnt mod 2, DATA_WIDTH))
+						end if;
+					when others =>
+						wrdata <= op.rddata0;
+				end case;
 			when ALU_LDI =>
 				wren <= valid;
 				wrdata <= op.rddata1;  -- beware: we're moving in the second operand!

@@ -59,10 +59,6 @@ def LembergBorrow: SDNode<"LembergISD::Borrow", SDTIntBinOp,
 def LembergMul: SDNode<"LembergISD::Mul", SDTIntBinOp,
 					   [SDNPCommutative, SDNPAssociative]>;
 
-// Masking
-def SDT_LembergMask : SDTypeProfile<1, 2, [SDTCisVT<0, i32>, SDTCisVT<2, i32>]>;
-def LembergMask: SDNode<"LembergISD::Mask", SDT_LembergMask, []>;
-
 // Magic
 def SDT_LembergWrapper : SDTypeProfile<1, 1, [SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 def LembergWrapper: SDNode<"LembergISD::Wrapper", SDT_LembergWrapper, []>;
@@ -494,9 +490,6 @@ def WB: F1<(outs), (ins pred:$p, A:$src1, i32imm:$src2),
 		   [(LembergWriteBack A:$src1, uimm11:$src2)],
 		   IIMem>;
 
-// Masking operation for sub-word accesses
-defm MASK: OP3<LembergMask, "mask", uimm5>;
-
 // Load frame pointer
 def LEAs: F1<(outs A:$dst), (ins pred:$p, mem:$ptr),
 			 "$p add\t$ptr -> $dst",
@@ -677,57 +670,40 @@ def : Pat <(LembergStore32 imm5:$val, (LembergWrapper tglobaladdr:$addr)),
 def : Pat<(LembergWrapper tblockaddress:$addr),
 		  (LOADsym10mi (LOADsym11lo tblockaddress:$addr), tblockaddress:$addr)>;
 
-// Nifty mask/shift operations
-def : Pat<(and A:$src, (i32 0xff)),
-		  (MASKaia A:$src, (i32 0))>;
-def : Pat<(and (srl A:$src, (i32 8)), (i32 0xff)),
-		  (MASKaia A:$src, (i32 1))>;
-def : Pat<(and (srl A:$src, (i32 16)), (i32 0xff)),
-		  (MASKaia A:$src, (i32 2))>;
-def : Pat<(and (srl A:$src, (i32 24)), (i32 0xff)),
-		  (MASKaia A:$src, (i32 3))>;
+// Bit, byte and half-word instructions
+def SEXT8 : F1<(outs A:$dst), (ins pred:$p, A:$src),
+			   "$p bbh\tsext8 $src -> $dst",
+			   [(set A:$dst, (sext_inreg A:$src, i8))],
+			   IIAlu>;
+def SEXT16 : F1<(outs A:$dst), (ins pred:$p, A:$src),
+				"$p bbh\tsext16 $src -> $dst",
+				[(set A:$dst, (sext_inreg A:$src, i16))],
+				IIAlu>;
+def ZEXT8 : F1<(outs A:$dst), (ins pred:$p, A:$src),
+			   "$p bbh\tzext8 $src -> $dst",
+			   [(set A:$dst, (and A:$src, (i32 0xff)))],
+			   IIAlu>;
+def ZEXT16 : F1<(outs A:$dst), (ins pred:$p, A:$src),
+				"$p bbh\tzext16 $src -> $dst",
+				[(set A:$dst, (and A:$src, (i32 0xffff)))],
+				IIAlu>;
 
-def : Pat<(and A:$src, (i32 0xffff)),
-		  (MASKaia A:$src, (i32 4))>;
-def : Pat<(and (srl A:$src, (i32 16)), (i32 0xffff)),
-		  (MASKaia A:$src, (i32 6))>;
-
-def : Pat<(sext_inreg A:$src, i8),
-		  (MASKaia A:$src, (i32 8))>;
-def : Pat<(sext_inreg (srl A:$src, (i32 8)), i8),
-		  (MASKaia A:$src, (i32 9))>;
-def : Pat<(sext_inreg (srl A:$src, (i32 16)), i8),
-		  (MASKaia A:$src, (i32 10))>;
-def : Pat<(sext_inreg (srl A:$src, (i32 24)), i8),
-		  (MASKaia A:$src, (i32 11))>;
-
-def : Pat<(sext_inreg A:$src, i16),
-		  (MASKaia A:$src, (i32 12))>;
-def : Pat<(sext_inreg (srl A:$src, (i32 16)), i16),
-		  (MASKaia A:$src, (i32 14))>;
-
-
-def : Pat<(shl (and A:$src, (i32 0xff)), (i32 8)),
-		  (MASKaia A:$src, (i32 17))>;
-def : Pat<(shl (and A:$src, (i32 0xff)), (i32 16)),
-		  (MASKaia A:$src, (i32 18))>;
-def : Pat<(shl (and A:$src, (i32 0xff)), (i32 24)),
-		  (MASKaia A:$src, (i32 19))>;
-
-def : Pat<(shl (and A:$src, (i32 0xffff)), (i32 16)),
-		  (MASKaia A:$src, (i32 22))>;
-
-def : Pat<(and A:$src, (i32 0xffffff00)),
-		  (MASKaia A:$src, (i32 24))>;
-def : Pat<(and A:$src, (i32 0xffff00ff)),
-		  (MASKaia A:$src, (i32 25))>;
-def : Pat<(and A:$src, (i32 0xff00ffff)),
-		  (MASKaia A:$src, (i32 26))>;
-def : Pat<(and A:$src, (i32 0x00ffffff)),
-		  (MASKaia A:$src, (i32 27))>;
-
-def : Pat<(and A:$src, (i32 0xffff0000)),
-		  (MASKaia A:$src, (i32 28))>;
+def CTLZ: F1<(outs A:$dst), (ins pred:$p, A:$src),
+			 "$p bbh\tclz $src -> $dst",
+			 [(set A:$dst, (ctlz A:$src))],
+			 IIAlu>;
+def CTTZ: F1<(outs A:$dst), (ins pred:$p, A:$src),
+			 "$p bbh\tctz $src -> $dst",
+			 [(set A:$dst, (cttz A:$src))],
+			 IIAlu>;
+def CTPOP: F1<(outs A:$dst), (ins pred:$p, A:$src),
+			  "$p bbh\tpop $src -> $dst",
+			  [(set A:$dst, (ctpop A:$src))],
+			  IIAlu>;
+def PAR: F1<(outs A:$dst), (ins pred:$p, A:$src),
+			"$p bbh\tpar $src -> $dst",
+			[(set A:$dst, (and (ctpop A:$src), (i32 1)))],
+			IIAlu>;
 
 let Constraints = "$src2 = $dst" in {
     // Conditional move

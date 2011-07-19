@@ -213,7 +213,7 @@ begin  -- behavior
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "001101" =>
-					op(i).op <= ALU_MASK;
+					op(i).op <= ALU_BBH;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "010000" =>

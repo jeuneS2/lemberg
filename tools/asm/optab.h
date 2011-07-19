@@ -34,7 +34,7 @@
 #define OP_MUL       0x0A
 #define OP_CARR      0x0B
 #define OP_BORR      0x0C
-#define OP_MASK      0x0D
+#define OP_BBH       0x0D
 
 #define OP_CMPEQ     0x10
 #define OP_CMPNE     0x11
@@ -75,6 +75,17 @@
 #define OP_FOP       0x2E
 
 #define OP_LDGA      0x30
+
+/* bit/byte/halfword sub-operations */
+#define OP_SEXT8     0x00
+#define OP_SEXT16    0x01
+#define OP_ZEXT8     0x02
+#define OP_ZEXT16    0x03
+
+#define OP_CLZ       0x04
+#define OP_CTZ       0x05
+#define OP_POP       0x06
+#define OP_PAR       0x07
 
 /* Floating-point operations */
 #define OP_FADD      0x00

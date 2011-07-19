@@ -142,9 +142,6 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 
 	// Expand whatever we don't have
 	setOperationAction(ISD::BSWAP, MVT::i32, Expand);
-	setOperationAction(ISD::CTPOP, MVT::i32, Expand);
-	setOperationAction(ISD::CTLZ, MVT::i32, Expand);
-	setOperationAction(ISD::CTTZ, MVT::i32, Expand);
 	setOperationAction(ISD::ROTR, MVT::i32, Expand);
 	setOperationAction(ISD::SHL_PARTS, MVT::i32, Expand);
 	setOperationAction(ISD::SRA_PARTS, MVT::i32, Expand);
@@ -196,7 +193,6 @@ const char *LembergTargetLowering::getTargetNodeName(unsigned Opcode) const {
   case LembergISD::Carry:      return "LembergISD::Carry";
   case LembergISD::Borrow:     return "LembergISD::Borrow";
   case LembergISD::Mul:        return "LembergISD::Mul";
-  case LembergISD::Mask:       return "LembergISD::Mask";
   case LembergISD::Wrapper:    return "LembergISD::Wrapper";
   case LembergISD::Call:       return "LembergISD::Call";
   case LembergISD::Return:     return "LembergISD::Return";
@@ -983,7 +979,7 @@ LembergTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
 
     // Promote the value if needed.
     switch (VA.getLocInfo()) {
-      default: assert(0 && "Unknown loc info!");
+	default: llvm_unreachable("Unknown loc info!");
       case CCValAssign::Full: break;
       case CCValAssign::BCvt:
         // Arg = DAG.getNode(ISD::BITCAST, DL, VA.getLocVT(), Arg);

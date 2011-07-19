@@ -81,7 +81,7 @@ SYM [\._a-zA-Z0-9]+
 "mul"      ACCEPT(MUL,   MULOP);
 "carr"     ACCEPT(CARR,  THREEOP);
 "borr"     ACCEPT(BORR,  THREEOP);
-"mask"     ACCEPT(MASK,  THREEOP);
+"bbh"      ACCEPT(BBH,   BBHOP);
 
 "cmpeq"    ACCEPT(CMPEQ,  CMPOP);
 "cmpne"    ACCEPT(CMPNE,  CMPOP);
@@ -123,6 +123,15 @@ SYM [\._a-zA-Z0-9]+
 "fop"      ACCEPT(FOP,  FOP);
 
 "ldga"     ACCEPT(LDGA, LDGAOP);
+
+"sext8"    ACCEPT(SEXT8,  BBHSUBOP);
+"sext16"   ACCEPT(SEXT16, BBHSUBOP);
+"zext8"    ACCEPT(ZEXT8,  BBHSUBOP);
+"zext16"   ACCEPT(ZEXT16, BBHSUBOP);
+"clz"      ACCEPT(CLZ,    BBHSUBOP);
+"ctz"      ACCEPT(CTZ,    BBHSUBOP);
+"pop"      ACCEPT(POP,    BBHSUBOP);
+"par"      ACCEPT(PAR,    BBHSUBOP);
 
 "fadd"     ACCEPT(FADD,  FTHREEOP);
 "fsub"     ACCEPT(FSUB,  FTHREEOP);

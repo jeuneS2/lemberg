@@ -68,7 +68,7 @@
 %token <strval>  STR
 %token <exprval> NUM EXPR SYM
 %token <opcode>  NOP THREEOP ONEOP NULLOP LDIOP WBOP CMPOP BRANCHOP GLOBOP
-                 LDGAOP STOREOP LOADOP LDXOP STXOP MULOP CCOP
+                 LDGAOP STOREOP LOADOP LDXOP STXOP MULOP CCOP BBHOP BBHSUBOP
                  FOP FTHREEOP FCMPOP FTWOOP FONEOP F2DOP
                  DTHREEOP DCMPOP DTWOOP DONEOP D2FOP
 
@@ -428,6 +428,16 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.fmt.H.dest = $4;
 		  $$.fmt.H.address = $2;
       }
+      | Condition BBHOP BBHSUBOP REG DEST REG
+	  {
+		  $$.op = $2;
+		  $$.fmt.B.src1 = $4;
+		  $$.fmt.B.src2.imm.intval = $3;
+		  $$.fmt.B.src2.imm.strval = 0;
+		  $$.fmt.B.dest = $6;
+		  $$.fmt.B.imm = 1;
+		  $$.fmt.B.cond = $1;
+	  }
       | Condition CCOP THREEOP NotOptFlag ',' NotOptFlag DEST FLAG
 	  {
 		  $$.op = $2;
