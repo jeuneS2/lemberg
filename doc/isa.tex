@@ -62,7 +62,7 @@
 \noindent
 \begin{bytefield}{8}
 \bitheader[l]{0,4,8}\\
-\BitBox{4}{\texttt{\scriptsize 0000}} & \BitBox{4}{} \\
+\BitBox{4}{\texttt{\scriptsize 0000}} & \BitBox{4}{N} \\
 \end{bytefield}
 
 \noindent
@@ -358,9 +358,9 @@ Opcode & Name & Fmt & Unit & Semantics \\
 \texttt{00 1000} & \texttt{sra} & B & A & \texttt{dest = src1 \ashr{} src2} \\
 \texttt{00 1001} & \texttt{rl} & B & A & \texttt{dest = (src1 \shl{} src2)|(src1 \shr{} (32-src2))} \\
 \texttt{00 1010} & \texttt{mul} & B & A & \texttt{\$mul = src1 * src2} \\
-\texttt{00 1011} & \texttt{carr} & B & A & \texttt{dest = ((int64\_t)src1+(int64\_t)src2) \shr{} 32} \\
-\texttt{00 1100} & \texttt{borr} & B & A & \texttt{dest = ((int64\_t)src1-(int64\_t)src2) \shr{} 32} \\
-\texttt{00 1101} & \texttt{mask} & B & A & masking operation (see Section~\ref{sec:mask}) \\
+\texttt{00 1011} & \texttt{carr} & B & A & \texttt{dest = ((uint64\_t)src1+(uint64\_t)src2)\shr{}32} \\
+\texttt{00 1100} & \texttt{borr} & B & A & \texttt{dest = ((uint64\_t)src1-(uint64\_t)src2)\shr{}32} \\
+\texttt{00 1101} & \texttt{bbh} & B & A & bit/byte/half-word operation (see Section~\ref{sec:mask}) \\
 \texttt{00 1110} & \texttt{?} & & & \\
 \texttt{00 1111} & \texttt{?} & & & \\
 \midrule
@@ -431,58 +431,57 @@ Opcode & Name & Fmt & Unit & Semantics \\
 \end{longtable}  
 
 \pagebreak
-\subsection{Masking Operation}
+\subsection{Bit/Byte/Half-word Operations}
 \label{sec:mask}
 
-\begin{tabular}{cl}
+\begin{tabular}{cll}
 \toprule
-Src2 & Semantics \\
+Src2 & Name & Semantics \\
 \midrule
-\multicolumn{2}{c}{\textsf{\textbf{Extract Unsigned Sub-Words}}} \\
-\cmidrule{1-2}
-\texttt{000 00} & \texttt{dest = (uint8\_t)src1[ 7\ldots{}\ 0]} \\
-\texttt{000 01} & \texttt{dest = (uint8\_t)src1[15\ldots{}\ 8]} \\
-\texttt{000 10} & \texttt{dest = (uint8\_t)src1[23\ldots{}16]} \\
-\texttt{000 11} & \texttt{dest = (uint8\_t)src1[31\ldots{}24]} \\
-\cmidrule{1-2}
-\texttt{001 0-} & \texttt{dest = (uint16\_t)src1[15\ldots{}\ 0]} \\
-\texttt{001 1-} & \texttt{dest = (uint16\_t)src1[31\ldots{}16]} \\
+\multicolumn{3}{c}{\textsf{\textbf{Sub-Word Extraction}}} \\
+\cmidrule{1-3}
+\texttt{000 00} & \texttt{sext8}  & \texttt{dest = (int8\_t)src1} \\
+\texttt{000 01} & \texttt{sext16} & \texttt{dest = (int16\_t)src1} \\
+\texttt{000 10} & \texttt{zext8}  & \texttt{dest = (uint8\_t)src1} \\
+\texttt{000 11} & \texttt{zext16} & \texttt{dest = (uint16\_t)src1} \\
 \midrule
-\multicolumn{2}{c}{\textsf{\textbf{Extract Signed Sub-Words}}} \\
-\cmidrule{1-2}
-\texttt{010 00} & \texttt{dest = (int8\_t)src1[ 7\ldots{}\ 0]} \\
-\texttt{010 01} & \texttt{dest = (int8\_t)src1[15\ldots{}\ 8]} \\
-\texttt{010 10} & \texttt{dest = (int8\_t)src1[23\ldots{}16]} \\
-\texttt{010 11} & \texttt{dest = (int8\_t)src1[31\ldots{}24]} \\
-\cmidrule{1-2}
-\texttt{011 0-} & \texttt{dest = (int16\_t)src1[15\ldots{}\ 0]} \\
-\texttt{011 1-} & \texttt{dest = (int16\_t)src1[31\ldots{}16]} \\
+\multicolumn{3}{c}{\textsf{\textbf{Bit Counting}}} \\
+\cmidrule{1-3}
+\texttt{001 00} & \texttt{clz} & count leading zeros \\
+\texttt{001 01} & \texttt{ctz} & count trailing zeros \\
+\texttt{001 10} & \texttt{pop} & count ones \\
+\texttt{001 11} & \texttt{par} & compute parity \\
 \midrule
-\multicolumn{2}{c}{\textsf{\textbf{Shift Sub-Words}}} \\
-\cmidrule{1-2}
-\texttt{100 00} & \texttt{dest = 0; dest[ 7\ldots{}\ 0] = src1[7\ldots{}0]} \\
-\texttt{100 01} & \texttt{dest = 0; dest[15\ldots{}\ 8] = src1[7\ldots{}0]} \\
-\texttt{100 10} & \texttt{dest = 0; dest[23\ldots{}16] = src1[7\ldots{}0]} \\
-\texttt{100 11} & \texttt{dest = 0; dest[31\ldots{}24] = src1[7\ldots{}0]} \\
-\cmidrule{1-2}
-\texttt{101 0-} & \texttt{dest = 0; dest[15\ldots{}\ 0] = src1[15\ldots{}0]} \\
-\texttt{101 1-} & \texttt{dest = 0; dest[31\ldots{}16] = src1[15\ldots{}0]} \\
-\midrule
-\multicolumn{2}{c}{\textsf{\textbf{Clear Sub-Words}}} \\
-\cmidrule{1-2}
-\texttt{110 00} & \texttt{dest[ 7\ldots{}\ 0] = 0} \\
-\texttt{110 01} & \texttt{dest[15\ldots{}\ 8] = 0} \\
-\texttt{110 10} & \texttt{dest[23\ldots{}16] = 0} \\
-\texttt{110 11} & \texttt{dest[31\ldots{}24] = 0} \\
-\cmidrule{1-2}
-\texttt{111 0-} & \texttt{dest[15\ldots{}\ 0] = 0} \\
-\texttt{111 1-} & \texttt{dest[31\ldots{}16] = 0} \\
+\multicolumn{3}{c}{\textbf{---}} \\
+\cmidrule{1-3}
+\texttt{010 00} & \texttt{?} & \\
+\texttt{010 01} & \texttt{?} & \\
+\texttt{010 10} & \texttt{?} & \\
+\texttt{010 11} & \texttt{?} & \\
+\texttt{011 00} & \texttt{?} & \\
+\texttt{011 01} & \texttt{?} & \\
+\texttt{011 10} & \texttt{?} & \\
+\texttt{011 11} & \texttt{?} & \\
+\texttt{100 00} & \texttt{?} & \\
+\texttt{100 01} & \texttt{?} & \\
+\texttt{100 10} & \texttt{?} & \\
+\texttt{100 11} & \texttt{?} & \\
+\texttt{101 00} & \texttt{?} & \\
+\texttt{101 01} & \texttt{?} & \\
+\texttt{101 10} & \texttt{?} & \\
+\texttt{101 11} & \texttt{?} & \\
+\texttt{110 00} & \texttt{?} & \\
+\texttt{110 01} & \texttt{?} & \\
+\texttt{110 10} & \texttt{?} & \\
+\texttt{110 11} & \texttt{?} & \\
+\texttt{111 00} & \texttt{?} & \\
+\texttt{111 01} & \texttt{?} & \\
+\texttt{111 10} & \texttt{?} & \\
+\texttt{111 11} & \texttt{?} & \\
 \bottomrule  
 \end{tabular}
 
-\paragraph{TODO} Rework these. Only extraction of sub-words is used really.
-
-\subsection{Flag Combination Operation}
+\subsection{Flag Combination Operations}
 \label{sec:comb}
 
 \begin{tabular}{cll}

@@ -1,5 +1,4 @@
-all:
-	isa.pdf
+all: isa.pdf
 
 isa.pdf:
 	pdflatex isa.tex
