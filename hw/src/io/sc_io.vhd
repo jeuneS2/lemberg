@@ -39,7 +39,7 @@ end sc_io;
 
 architecture rtl of sc_io is
 
-	constant CLOCK_FREQ : integer := 70000000;
+	constant CLOCK_FREQ : integer := 66666667;
 
 	constant SYSINFO_ADDR_WIDTH : integer := 4;
 	constant SYSINFO_SELECT : std_logic_vector(IO_ADDR_WIDTH-SYSINFO_ADDR_WIDTH-1 downto 0) := "11111";
