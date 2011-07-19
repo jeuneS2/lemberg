@@ -208,7 +208,7 @@ begin  -- behavior
 						if op.rddata1(4 downto 0) = "00110" then
 							wrdata <= std_logic_vector(to_unsigned(popcnt, DATA_WIDTH));
 						else
-							wrdata <= std_logic_vector(to_unsigned(popcnt mod 2, DATA_WIDTH))
+							wrdata <= std_logic_vector(to_unsigned(popcnt mod 2, DATA_WIDTH));
 						end if;
 					when others =>
 						wrdata <= op.rddata0;
