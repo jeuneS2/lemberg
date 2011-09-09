@@ -35,6 +35,8 @@
 #define OP_CARR      0x0B
 #define OP_BORR      0x0C
 #define OP_BBH       0x0D
+#define OP_BEQZ      0x0E
+#define OP_BNEZ      0x0F
 
 #define OP_CMPEQ     0x10
 #define OP_CMPNE     0x11

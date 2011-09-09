@@ -58,8 +58,8 @@ SYM [\._a-zA-Z0-9]+
 ".stabs".*\n { line_number++; /* ignore .stabs directive */ }
 
 ".align" return ALIGN;
+".size" return SIZE;
 ".quad" return QUAD;
-".size" return LONG;
 ".long" return LONG;
 ".short" return SHORT;
 ".byte" return BYTE;
@@ -82,6 +82,9 @@ SYM [\._a-zA-Z0-9]+
 "carr"     ACCEPT(CARR,  THREEOP);
 "borr"     ACCEPT(BORR,  THREEOP);
 "bbh"      ACCEPT(BBH,   BBHOP);
+
+"beqz"     ACCEPT(BEQZ,  BRANCHZOP);
+"bnez"     ACCEPT(BNEZ,  BRANCHZOP);
 
 "cmpeq"    ACCEPT(CMPEQ,  CMPOP);
 "cmpne"    ACCEPT(CMPNE,  CMPOP);

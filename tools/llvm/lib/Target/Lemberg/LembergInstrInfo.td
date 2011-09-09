@@ -1090,14 +1090,29 @@ let isBranch = 1, isTerminator = 1, hasDelaySlot=1 in {
                       [(brcond (notcc C:$cond), bb:$target)],
 	                  IIBranch>;
 
+	let Defs = [C3] in {
+	  def JUMPeqz : F1<(outs), (ins A:$src, brtarget:$target),
+	                   "       beqz\t$src, $target",
+                       [(brcond (i1 (seteq A:$src, (i32 0))), bb:$target)],
+	                   IIBranch>;
+      def JUMPnez : F1<(outs), (ins A:$src, brtarget:$target),
+	                   "       bnez\t$src, $target",
+                       [(brcond (i1 (setne A:$src, (i32 0))), bb:$target)],
+	                   IIBranch>;
+	}
+
 	// predicated version for easier if-conversion
 	def JUMPpred : F1<(outs), (ins pred:$p, brtarget:$target),
 	                  "$p br\t$target", [], IIBranch>;
 }
 
 // Patterns to match special cases of conditions
+def : Pat<(brcond (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), bb:$target),
+		  (JUMPtrue (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), bb:$target)>;
 def : Pat<(brcond (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), bb:$target),
 		  (JUMPfalse (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), bb:$target)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src3, A:$src4),
+		  (MOVEtrue (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4)>;
 def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src3, A:$src4),
 		  (MOVEfalse (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4)>;
 

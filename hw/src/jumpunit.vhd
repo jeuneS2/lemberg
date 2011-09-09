@@ -31,6 +31,7 @@ entity jumpunit is
 		reset   : in  std_logic;
 		op      : in  jmpop_arr_type;
 		fl_in   : in  std_logic_vector(FLAG_COUNT-1 downto 0);
+		zero    : in  std_logic_vector(CLUSTERS-1 downto 0);
 		ena     : in  std_logic;
 		pc_in   : in  std_logic_vector(PC_WIDTH-1 downto 0);
 		pcoff   : in  std_logic_vector(ICACHE_BLOCK_BITS-1 downto 0);
@@ -90,7 +91,7 @@ begin  -- behavior
 		end if;
 	end process sync;
 
-	async: process (op, fl_in, ro0_reg, ro1_reg, pc_in,
+	async: process (op, fl_in, zero, ro0_reg, ro1_reg, pc_in,
 					pcoff, off_reg, off_prev, ro_in, ro_wren, fetch_reg,
 					pc_wr_reg, pc0_out_reg, pc1_out_reg)
 		variable idx : integer range 0 to CLUSTERS-1;
@@ -170,6 +171,14 @@ begin  -- behavior
 				pc1_out_next <= std_logic_vector(unsigned(op(idx).target1) +
 												 (unsigned(off_reg) &
 												  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
+			when JMP_BEQZ =>
+				pc_wr <= zero(idx);
+				pc0_out <= op(idx).target0;
+				pc1_out <= op(idx).target1;
+			when JMP_BNEZ =>
+				pc_wr <= not zero(idx);
+				pc0_out <= op(idx).target0;
+				pc1_out <= op(idx).target1;
 			when JMP_CALL =>
 				pc_wr_next <= valid;
 				fetch_next <= valid;

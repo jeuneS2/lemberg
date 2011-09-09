@@ -90,6 +90,7 @@ begin  -- behavior
 		variable use_glob   : std_logic;
 		variable glob       : std_logic_vector(ADDR_WIDTH+1 downto 0);
 		variable target     : std_logic_vector(PC_WIDTH-1 downto 0);
+		variable ztarget    : std_logic_vector(PC_WIDTH-1 downto 0);
 		variable raw_op     : std_logic_vector(3*REG_BITS downto 0);
 		
 	begin  -- process async
@@ -157,6 +158,13 @@ begin  -- behavior
 												& signed(bundle_reg(i).src2)
 												& signed(bundle_reg(i).dest), PC_WIDTH));
 
+			ztarget := std_logic_vector(signed(pc_reg)
+										+ resize(signed(bundle_reg(i).src2
+												        & bundle_reg(i).dest
+														& bundle_reg(i).imm
+														& bundle_reg(i).cond)
+												 & signed(bundle_reg(i).flag), PC_WIDTH));
+
 			case bundle_reg(i).op is
 				when "000000" =>
 					op(i).op <= ALU_ADD;
@@ -216,6 +224,18 @@ begin  -- behavior
 					op(i).op <= ALU_BBH;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+				when "001110" =>
+					jmpop(i).op <= JMP_BEQZ;
+					jmpop(i).cond <= '1';
+					jmpop(i).flag(0) <= '1';
+					always_imm := '1';
+					target := ztarget;
+				when "001111" =>
+					jmpop(i).op <= JMP_BNEZ;
+					jmpop(i).cond <= '1';
+					jmpop(i).flag(0) <= '1';
+					always_imm := '1';
+					target := ztarget;
 				when "010000" =>
 					op(i).op <= ALU_CMPEQ;
 					op(i).cond <= bundle_reg(i).cond;
@@ -627,15 +647,16 @@ begin  -- behavior
 			end if;
 			memop(i).index <= idx;
 			if bundle_reg(i).imm = '1' then
-				memop(i).wrdata <= imm;
+				memop(i).wrdata <= imm;				
 			else
 				memop(i).wrdata <= rddata(2*i+1);
 			end if;			
 
-			if bundle_reg(i).imm = '1' then
+			if bundle_reg(i).imm = '1' or always_imm = '1' then
 				jmpop(i).target0 <= std_logic_vector(unsigned(target)+0);
 				jmpop(i).target1 <= std_logic_vector(unsigned(target)
 													 +FETCH_WIDTH/BYTE_WIDTH);
+				jmpop(i).fwd <= '0';
 			else
 				jmpop(i).target0 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))+0);
 				jmpop(i).target1 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))

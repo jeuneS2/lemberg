@@ -299,21 +299,18 @@ LembergInstrInfo::AnalyzeBranch(MachineBasicBlock &MBB,
 			return false;
 		}
 		if (LastOpc == Lemberg::JUMPtrue) {
-			// Block ends with fall-through condbranch.
 			TBB = LastInst->getOperand(1).getMBB();
 			Cond.push_back(LastInst->getOperand(0));
 			Cond.push_back(MachineOperand::CreateImm(1));
 			return false;
 		}
 		if (LastOpc == Lemberg::JUMPfalse) {
-			// Block ends with fall-through condbranch.
 			TBB = LastInst->getOperand(1).getMBB();
 			Cond.push_back(LastInst->getOperand(0));
 			Cond.push_back(MachineOperand::CreateImm(0));
 			return false;
 		}
 		if (LastOpc == Lemberg::JUMPpred) {
-			// Block ends with fall-through condbranch.
 			TBB = LastInst->getOperand(2).getMBB();
 			Cond.push_back(LastInst->getOperand(1));
 			Cond.push_back(LastInst->getOperand(0));
@@ -349,13 +346,28 @@ LembergInstrInfo::AnalyzeBranch(MachineBasicBlock &MBB,
 			return false;
 		}
 		if (SecondLastInst->getOpcode() == Lemberg::JUMPpred) {
-			// Block ends with fall-through condbranch.
 			TBB = SecondLastInst->getOperand(2).getMBB();
 			Cond.push_back(SecondLastInst->getOperand(1));
 			Cond.push_back(SecondLastInst->getOperand(0));
 			FBB = LastInst->getOperand(0).getMBB();
 			return false;
 		}
+	}
+
+	// Replace an unconditional jump with a fall-through after JUMPeqz/JUMPnez
+	// We pretend we cannot analyze them, because we cannot use eqz/nez as predicates
+	if ((SecondLastInst->getOpcode() == Lemberg::JUMPeqz ||
+		 SecondLastInst->getOpcode() == Lemberg::JUMPnez) &&
+		LastInst->getOpcode() == Lemberg::JUMP &&
+		AllowModify) {
+
+		MachineBasicBlock *Target = LastInst->getOperand(0).getMBB();
+		if (MBB.isLayoutSuccessor(Target)) {
+			I = LastInst;
+			I->eraseFromParent();
+		}
+
+		return true;
 	}
 
 	// If the block ends with two JUMPs, handle it. The second one is
@@ -374,13 +386,16 @@ LembergInstrInfo::AnalyzeBranch(MachineBasicBlock &MBB,
 }
 
 unsigned LembergInstrInfo::RemoveBranch(MachineBasicBlock &MBB) const {
+	
   MachineBasicBlock::iterator I = MBB.end();
   if (I == MBB.begin()) return 0;
   --I;
   if (I->getOpcode() != Lemberg::JUMP &&
 	  I->getOpcode() != Lemberg::JUMPtrue &&
 	  I->getOpcode() != Lemberg::JUMPfalse &&
-	  I->getOpcode() != Lemberg::JUMPpred)
+	  I->getOpcode() != Lemberg::JUMPpred &&
+	  I->getOpcode() != Lemberg::JUMPeqz &&
+	  I->getOpcode() != Lemberg::JUMPnez)
     return 0;
 
   // Remove the branch.
@@ -392,7 +407,9 @@ unsigned LembergInstrInfo::RemoveBranch(MachineBasicBlock &MBB) const {
   --I;
   if (I->getOpcode() != Lemberg::JUMPtrue &&
 	  I->getOpcode() != Lemberg::JUMPfalse &&
-	  I->getOpcode() != Lemberg::JUMPpred)
+	  I->getOpcode() != Lemberg::JUMPpred &&
+	  I->getOpcode() != Lemberg::JUMPeqz &&
+	  I->getOpcode() != Lemberg::JUMPnez)
     return 1;
 
   // Remove the branch.
@@ -433,21 +450,31 @@ bool LembergInstrInfo::
 ReverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const {
   assert(Cond.size() == 2 && "Invalid Lemberg branch condition!");
 
+  unsigned Code = 0;
+  switch (Cond[1].getImm()) {
+  case 0: Code = 1; break;
+  case 1: Code = 0; break;
+  default: llvm_unreachable("Cannot reverse condition");
+  }
+
   // Invert condition flag
-  Cond[1].setImm(Cond[1].getImm() == 1 ? 0 : 1);
+  Cond[1].setImm(Code);
   return false;
 }
 
 bool LembergInstrInfo::
 PredicateInstruction(MachineInstr *MI,
                      const SmallVectorImpl<MachineOperand> &Pred) const {
-  int PIdx = MI->findFirstPredOperandIdx();
-  if (PIdx != -1) {
-	  MI->getOperand(PIdx).setImm(Pred[1].getImm());
-	  MI->getOperand(PIdx+1).setReg(Pred[0].getReg());
-	  return true;
-  }
 
+  if (Pred[1].getImm() == 0 || Pred[1].getImm() == 1) {
+	  int PIdx = MI->findFirstPredOperandIdx();
+	  if (PIdx != -1) {
+		  MI->getOperand(PIdx).setImm(Pred[1].getImm());
+		  MI->getOperand(PIdx+1).setReg(Pred[0].getReg());
+		  return true;
+	  }
+  }
+	  
   return false;
 }
 
@@ -474,6 +501,7 @@ DefinesPredicate(MachineInstr *MI, std::vector<MachineOperand> &Pred) const {
   const TargetInstrDesc &TID = MI->getDesc();
 
   bool Found = false;
+
   for (unsigned i = 0, e = TID.getNumDefs(); i != e; ++i) {
     const MachineOperand &MO = MI->getOperand(i);
     if (MO.isReg() && Lemberg::CRegClass.contains(MO.getReg())) {

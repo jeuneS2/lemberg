@@ -189,6 +189,8 @@ package op_pack is
 	type jmp_type is (JMP_NOP,
 					  JMP_BR,
 					  JMP_BRIND,
+					  JMP_BEQZ,
+					  JMP_BNEZ,
 					  JMP_CALL,
 					  JMP_RET);
 

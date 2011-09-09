@@ -66,6 +66,11 @@ namespace {
 bool Filler::
 runOnMachineBasicBlock(MachineBasicBlock &MBB) 
 {
+	const LembergSubtarget *LST = ((LembergTargetMachine &)TM).getSubtargetImpl();
+	const InstrItineraryData &IID = LST->getInstrItins();
+	const InstrItinerary *IITab = IID.Itineraries;
+	const InstrStage *IIStages = IID.Stages;
+		
 	bool Changed = false;
 	for (MachineBasicBlock::iterator II = MBB.end(); II != MBB.begin(); ) {
 
@@ -93,6 +98,8 @@ runOnMachineBasicBlock(MachineBasicBlock &MBB)
 					|| Opcode == Lemberg::JUMPpred
 					|| Opcode == Lemberg::JUMPtrue
 					|| Opcode == Lemberg::JUMPfalse
+					|| Opcode == Lemberg::JUMPeqz
+					|| Opcode == Lemberg::JUMPnez
 					|| Opcode == Lemberg::CALLga
 				    || Opcode == Lemberg::RET)) {
 
@@ -104,9 +111,14 @@ runOnMachineBasicBlock(MachineBasicBlock &MBB)
 					break;
 				case Lemberg::JUMPtrue:
 				case Lemberg::JUMPfalse:
+				case Lemberg::JUMPeqz:
+				case Lemberg::JUMPnez:
 					condReg = II->getOperand(0).getReg();
 					break;
 				}
+
+				unsigned BrSchedClass = II->getDesc().getSchedClass();
+				unsigned BrSlot = IIStages[IITab[BrSchedClass].FirstStage].getUnits();				
 
 				MachineBasicBlock::iterator J = prior(II), newII = II;				
 				unsigned movedSlots = 0;
@@ -164,6 +176,16 @@ runOnMachineBasicBlock(MachineBasicBlock &MBB)
 								conflictsHere = true;
 							}
 						}
+						
+						// avoid clashes with other ops in same slot
+						if (Opcode == Lemberg::JUMPeqz || Opcode == Lemberg::JUMPnez) {
+							unsigned SchedClass = J->getDesc().getSchedClass();
+							unsigned Slot = IIStages[IITab[SchedClass].FirstStage].getUnits();
+							if (Slot == BrSlot
+								&& !Lemberg::GRegClass.contains(condReg)) {
+								conflictsHere = true;
+							}
+						}
 
 						++bundleSize;
 
@@ -194,23 +216,25 @@ runOnMachineBasicBlock(MachineBasicBlock &MBB)
 				MachineInstr *N = next(newII);
 				if (N->getOpcode() == Lemberg::NOP) {
 					assert(N->getOperand(0).getImm() == 0 
-						   && "Cannot share cycle with multicacle NOP");
+						   && "Cannot share cycle with multicycle NOP");
 					N->eraseFromParent();
 				}
 
 				HiddenSlots += movedSlots;
 				// fill remaining slots
 				if (movedSlots < maxSlots) {
-					BuildMI(MBB, insertII, DL, TII->get(Lemberg::SEP));
-					BuildMI(MBB, insertII, DL, TII->get(Lemberg::NOP))
-						.addImm(maxSlots-movedSlots-1);
-					FilledSlots += maxSlots-movedSlots;
+					for (unsigned i = 0; i < maxSlots-movedSlots; i++) {
+						BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::SEP));
+						BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::NOP)).addImm(0);
+						FilledSlots++;
+					}
 				}
 			} else {
-				BuildMI(MBB, insertII, DL, TII->get(Lemberg::SEP));
-				BuildMI(MBB, insertII, DL, TII->get(Lemberg::NOP))
-					.addImm(maxSlots-1);
-				FilledSlots += maxSlots;
+				for (unsigned i = 0; i < maxSlots; i++) {
+					BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::SEP));
+					BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::NOP)).addImm(0);
+					FilledSlots++;
+				}
 			}
 			Changed = true;
 		}

@@ -68,11 +68,12 @@ architecture behavior of core is
 	signal fwd_memop   : memop_arr_type;
 	signal fwd_stallop : stallop_arr_type;
 	signal fwd_jmpop   : jmpop_arr_type;
-
+	
 	signal alu_wren	   : reg_wren_type;
 	signal alu_wraddr  : reg_wraddr_type;
 	signal alu_wrdata  : reg_wrdata_type;
-
+	signal alu_zero    : std_logic_vector(CLUSTERS-1 downto 0);
+	
 	signal rb_wren     : std_logic_vector(CLUSTERS-1 downto 0);
 	signal rb_wrdata   : rb_wrdata_type;
 
@@ -175,6 +176,7 @@ begin  -- behavior
 				wren    => alu_wren(i),
 				wraddr  => alu_wraddr(i),
 				wrdata  => alu_wrdata(i),
+				zero    => alu_zero(i),
 				memdata => mem_memdata,
 				rb_in   => mem_rb,
 				rb_wren => rb_wren(i),
@@ -215,6 +217,7 @@ begin  -- behavior
 			reset	=> reset,
 			op		=> fwd_jmpop,
 			fl_in	=> fl_rddata,
+			zero    => alu_zero,
 			ena     => ena,
 			pc_in   => fetch_pc,
 			pcoff   => mem_pcoff,

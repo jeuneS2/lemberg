@@ -33,6 +33,7 @@ entity alu is
 		wren       : out std_logic;
 		wraddr     : out std_logic_vector(REG_BITS-1 downto 0);
 		wrdata     : out std_logic_vector(DATA_WIDTH-1 downto 0);
+		zero       : out std_logic;
 		memdata    : in  std_logic_vector(DATA_WIDTH-1 downto 0);
 		ba         : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
 		rb_in      : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
@@ -113,6 +114,12 @@ begin  -- behavior
 		ro_out <= op.rddata0(PC_WIDTH-1 downto 0);
 		
 		mul_next <= mul_reg;
+
+		if unsigned(op.rddata0) = 0 then
+			zero <= '1';
+		else
+			zero <= '0';
+		end if;
 		
 		case op.op is
 			when ALU_ADD =>

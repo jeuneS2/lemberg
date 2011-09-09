@@ -62,13 +62,13 @@
 	struct bundle bundle;
 }
 
-%token IF DEST BSEP ALIGN QUAD LONG SHORT BYTE ASCII COMM
+%token IF DEST BSEP ALIGN SIZE QUAD LONG SHORT BYTE ASCII COMM
 
 %token <intval>  CLUST FLAG REG EXT FREG DREG
 %token <strval>  STR
 %token <exprval> NUM EXPR SYM
-%token <opcode>  NOP THREEOP ONEOP NULLOP LDIOP WBOP CMPOP BRANCHOP GLOBOP
-                 LDGAOP STOREOP LOADOP LDXOP STXOP MULOP CCOP BBHOP BBHSUBOP
+%token <opcode>  NOP THREEOP ONEOP NULLOP LDIOP WBOP CMPOP BRANCHOP BRANCHZOP 
+                 GLOBOP LDGAOP STOREOP LOADOP LDXOP STXOP MULOP CCOP BBHOP BBHSUBOP
                  FOP FTHREEOP FCMPOP FTWOOP FONEOP F2DOP
                  DTHREEOP DCMPOP DTWOOP DONEOP D2FOP
 
@@ -111,35 +111,42 @@ Label: SYM ':' LFOpt
 Directive : ALIGN NUM NewLine
           {
 			  int align = $2.intval;
-			  $$.type = -2;
+			  $$.type = TYPE_ALIGN;
 			  $$.size = pos % align == 0 ? 0 : align - pos % align;
 			  $$.raw = NULL_EXPR;
 			  pos = ((pos+align-1) / align) * align;
 		  }
+          | SIZE Constant NewLine
+		  {
+			  $$.type = TYPE_SIZE;
+			  $$.size = 4;
+			  $$.raw = $2;
+			  pos += 4;
+		  }
           | QUAD Constant NewLine
 		  {
-			  $$.type = -1;
+			  $$.type = TYPE_RAW;
 			  $$.size = 8;
 			  $$.raw = $2;
 			  pos += 8;
 		  }
           | LONG Constant NewLine
 		  {
-			  $$.type = -1;
+			  $$.type = TYPE_RAW;
 			  $$.size = 4;
 			  $$.raw = $2;
 			  pos += 4;
 		  }
           | SHORT Constant NewLine
 		  {
-			  $$.type = -1;
+			  $$.type = TYPE_RAW;
 			  $$.size = 2;
 			  $$.raw = $2;
 			  pos += 2;
 		  }
           | BYTE Constant NewLine
 		  {
-			  $$.type = -1;
+			  $$.type = TYPE_RAW;
 			  $$.size = 1;
 			  $$.raw = $2;
 			  pos += 1;
@@ -147,14 +154,14 @@ Directive : ALIGN NUM NewLine
           | ASCII STR NewLine
 		  {
 			  emit_string($2);
-			  $$.type = -1;
+			  $$.type = TYPE_RAW;
 			  $$.size = 0;
 			  $$.raw = NULL_EXPR;
 		  }
           | COMM SYM ',' NUM ',' NUM NewLine
           {
 			  int align = $6.intval;
-			  $$.type = -1;
+			  $$.type = TYPE_RAW;
 			  $$.size = pos % align == 0 ? 0 : align - pos % align;
 			  $$.raw = NULL_EXPR;
 			  pos = ((pos+align-1) / align) * align;			  
@@ -184,6 +191,10 @@ Bundle : NOP Constant NewLine BSep
        }
        | Operation Operation BSep
        {
+		   if ($1.clust == $2.clust) {
+			   yyerror("Cluster specified more than once in a bundle\n");
+		   }
+
 		   pos += 7;
 		   fix_offset(&($1.op));
 		   fix_offset(&($2.op));
@@ -195,6 +206,12 @@ Bundle : NOP Constant NewLine BSep
        }
        | Operation Operation Operation BSep
        {
+		   if ($1.clust == $2.clust
+			   || $1.clust == $3.clust
+			   || $2.clust == $3.clust) {
+			   yyerror("Cluster specified more than once in a bundle\n");
+		   }
+
 		   pos += 10;
 		   fix_offset(&($1.op));
 		   fix_offset(&($2.op));
@@ -208,6 +225,15 @@ Bundle : NOP Constant NewLine BSep
        }
        | Operation Operation Operation Operation BSep
        {
+		   if ($1.clust == $2.clust
+			   || $1.clust == $3.clust
+			   || $1.clust == $4.clust
+			   || $2.clust == $3.clust
+			   || $2.clust == $4.clust
+			   || $3.clust == $4.clust) {
+			   yyerror("Cluster specified more than once in a bundle\n");
+		   }
+
 		   pos += 13;
 		   fix_offset(&($1.op));
 		   fix_offset(&($2.op));
@@ -363,6 +389,12 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.fmt.J.imm = 0;
 		  $$.fmt.J.cond = $1;
       }
+      | BRANCHZOP REG ',' Constant
+      {
+		  $$.op = $1;
+		  $$.fmt.Z.reg = $2;
+		  $$.fmt.Z.target = $4;
+      }
       | Condition LDXOP EXT DEST REG
       {
 		  $$.op = $2;
@@ -448,8 +480,7 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  case OP_OR:  $$.fmt.C.op = 1; break;
 		  case OP_XOR: $$.fmt.C.op = 2; break;
 		  default:
-			  fprintf(stderr, "error: Invalid combination operation.");
-			  exit(EXIT_FAILURE);
+			  yyerror("Invalid combination operation.");
 		  }
 
 		  if ($4 < 0) {
@@ -633,7 +664,7 @@ static void emit_string(const char *str)
 					c = *p;
 				}
 
-			bundle.type = -1;
+			bundle.type = TYPE_RAW;
 			bundle.size = 1;
 			bundle.raw = NULL_EXPR;
 			bundle.raw.intval = c;
@@ -662,6 +693,24 @@ static void fix_offset(struct asmop *op)
 			/* fprintf(stderr, "BR: %lld/%s\n", */
 			/* 		op->fmt.J.target.offset.intval, */
 			/* 		op->fmt.J.target.offset.strval); */
+		}
+
+	if (op->op == OP_BEQZ || op->op == OP_BNEZ)
+		{
+			if (op->fmt.Z.target.strval == NULL)
+				{
+					op->fmt.Z.target.intval -= pos;
+				}
+			else
+				{
+					char *strval = op->fmt.Z.target.strval;
+					char *relexpr = malloc(strlen(strval)+16);
+					sprintf(relexpr, "%s-0x%lx", strval, pos);
+					op->fmt.Z.target.strval = relexpr;
+				}
+			/* fprintf(stderr, "BEQZ/BNEZ: %lld/%s\n", */
+			/* 		op->fmt.Z.target.intval, */
+			/* 		op->fmt.Z.target.strval); */
 		}
 }
 
@@ -757,9 +806,9 @@ static void dump_dwords(unsigned long long val, int bytes)
 
 static void dump_padding(int type)
 {
-	while(buf_pos != 0)
+	while (buf_pos != 0)
 		{
-			if (type == -1)
+			if ((type == TYPE_RAW) || (type == TYPE_SIZE))
 				dump_dwords(0, 1);
 			else
 				dump_words(0, 1);
@@ -790,13 +839,23 @@ static void dump()
 		{
 			switch (code[i].type)
 				{
-				case -2:
-					if (type == -1)
+				case TYPE_ALIGN:
+					if ((type == TYPE_RAW) || (type == TYPE_SIZE))
 						dump_dwords(expr_evaluate(code[i].raw), code[i].size);
 					else
 						dump_words(expr_evaluate(code[i].raw), code[i].size);
 					break;
-				case -1:
+				case TYPE_SIZE:
+					{
+						long long size = expr_evaluate(code[i].raw);
+						if ((size > (1 << 15)) || (size < 0)) {
+							fprintf(stderr, "error: invalid size %016llx\n", size);
+							exit(EXIT_FAILURE);
+						}
+						dump_dwords(size, code[i].size);
+					}
+					break;
+				case TYPE_RAW:
 					dump_dwords(expr_evaluate(code[i].raw), code[i].size);
 					break;
 				case 0x0:
@@ -897,10 +956,10 @@ static void dump()
 					dump_words((conv_asmop(code[i].op[3].op) & 0xFF), 1);
 					break;
 				default:
-					fprintf(stderr, "Error: unknown bundle type\n");
+					fprintf(stderr, "error: unknown bundle type\n");
 					exit(EXIT_FAILURE);
 				}
-			if (code[i].type != -2)
+			if (code[i].type != TYPE_ALIGN)
 				type = code[i].type;
 		}
 	dump_padding(type);

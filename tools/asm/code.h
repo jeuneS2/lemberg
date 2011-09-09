@@ -81,6 +81,10 @@ struct asmop {
 			struct cond cond;
 		} J;
 		struct {
+			unsigned int reg : REG_BITS;
+			struct expr target;
+		} Z;
+		struct {
 			struct expr address;
 		} G;
 		struct {
@@ -110,6 +114,10 @@ struct op {
 	unsigned int clust;
 	struct asmop op;
 };
+
+#define TYPE_RAW -1
+#define TYPE_SIZE -2
+#define TYPE_ALIGN -3
 
 struct bundle {
 	int type;

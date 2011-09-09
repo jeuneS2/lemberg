@@ -67,6 +67,15 @@ static int is_format_J(unsigned int opcode)
 	}
 }
 
+static int is_format_Z(unsigned int opcode)
+{
+	switch (opcode) {
+	case OP_BEQZ: case OP_BNEZ:
+		return 1;
+	default: return 0;
+	}
+}
+
 static int is_format_L(unsigned int opcode)
 {
 	switch (opcode) {
@@ -242,6 +251,27 @@ static unsigned long conv_format_J(struct asmop op)
 		| (op.fmt.J.cond.flag << 0);
 }
 
+static unsigned long conv_format_Z(struct asmop op)
+{
+	unsigned int target = expr_evaluate(op.fmt.Z.target);
+
+	/* special handling to ease identification */
+	if (!(fits_bits(target, 14) && fits_bits(-target, 14))) {
+		fprintf(stderr, "error: Jump offset too large: ");
+		fprintf(stderr, "%08x / %s\n",
+				target, op.fmt.Z.target.strval);
+		exit(EXIT_FAILURE);
+	}
+
+	check_bits(op.op, 6);
+	check_bits(op.fmt.Z.reg, 5);
+
+	return
+		(op.op << 19)
+		| (op.fmt.Z.reg << 14)
+		| (target & 0x3fff);
+}
+
 static unsigned long conv_format_G(struct asmop op)
 {
 	unsigned int address = expr_evaluate(op.fmt.G.address);
@@ -324,6 +354,8 @@ unsigned long conv_asmop(struct asmop op)
 		return conv_format_S(op);
 	} else if (is_format_J(op.op)) {
 		return conv_format_J(op);
+	} else if (is_format_Z(op.op)) {
+		return conv_format_Z(op);
 	} else if (is_format_G(op.op)) {
 		return conv_format_G(op);
 	} else if (is_format_H(op.op)) {
