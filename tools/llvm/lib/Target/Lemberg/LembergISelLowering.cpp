@@ -80,6 +80,7 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	setBooleanContents(ZeroOrOneBooleanContent);
 
 	maxStoresPerMemset = maxStoresPerMemcpy = maxStoresPerMemmove = 12;
+	benefitFromCodePlacementOpt = true;
 
 	// Set up the legal register classes.
 	addRegisterClass(MVT::i32,   Lemberg::ARegisterClass);
