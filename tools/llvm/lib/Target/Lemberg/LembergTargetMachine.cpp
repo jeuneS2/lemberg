@@ -62,6 +62,7 @@ bool LembergTargetMachine::addPreEmitPass(PassManagerBase &PM,
   if (OptLevel != CodeGenOpt::None) {
     PM.add(createIfConverterPass());
   }
+  PM.add(createLembergBranchSelectorPass(*this, OptLevel));
   PM.add(createLembergPinnerPass(*this, OptLevel));
   PM.add(createLembergSchedulerPass(*this, OptLevel));
   PM.add(createLembergDelaySlotFillerPass(*this, OptLevel));
