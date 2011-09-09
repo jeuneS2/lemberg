@@ -106,38 +106,21 @@ BuildLargeFrameOffset (MachineFunction &MF,
 
 	assert(isInt<22>(Offset) && "Offset too big for loading");
 
-	// Quit after a few instructions as not to confuse the register scavenger
-	const unsigned MaxLookup = 0;
-
-	// Look if we already built this offset before
+	// Check if we already built this offset before
 	if (Offset == LastLargeFrame->Offset
 		&& MBB.begin() == LastLargeFrame->Begin
-		&& LastLargeFrame->Register != 0
-		&& LastLargeFrame->Dist < MaxLookup) {
+		&& LastLargeFrame->Register != 0) {
 
-		for (MachineBasicBlock::iterator II = MBBI, IE = MBB.begin();
-			 LastLargeFrame->Dist++ < MaxLookup; --II) {
-			// Do not search beyond definitions, kills, and calls
-			if (II != LastLargeFrame->Killer
-				&& (II->modifiesRegister(LastLargeFrame->Register, this)
-					|| II->killsRegister(LastLargeFrame->Register, this)
-					|| II->getDesc().isCall())) {
-				break;
-			}
-			// We found the original user/killer
-			if (II == LastLargeFrame->Killer) {
-				// Remove kill information
-				for (unsigned i = II->getNumOperands(); i > 0; --i) {
-					MachineOperand &MO = II->getOperand(i-1);
-					if (MO.isReg() && MO.getReg() == LastLargeFrame->Register) {
-						MO.setIsKill(false);
-					}
+		// Check if we are back-to-back with previously built offset
+		if (LastLargeFrame->Boundary == prior(MBBI)) {
+			// Remove kill information
+			for (unsigned i = LastLargeFrame->Killer->getNumOperands(); i > 0; --i) {
+				MachineOperand &MO = LastLargeFrame->Killer->getOperand(i-1);
+				if (MO.isReg() && MO.getReg() == LastLargeFrame->Register) {
+					MO.setIsKill(false);
 				}
-				return LastLargeFrame->Register;
 			}
-			// Force exit at begin of basic block
-			if (II == IE)
-				break;
+			return LastLargeFrame->Register;
 		}
 	}
 
@@ -148,7 +131,6 @@ BuildLargeFrameOffset (MachineFunction &MF,
 	LastLargeFrame->Register = ScratchReg;
 	LastLargeFrame->Offset = Offset;
 	LastLargeFrame->Begin = MBB.begin();
-	LastLargeFrame->Dist = 0;
 
 	if (isUInt<5>(Offset >> 2) && ((Offset & 0x03) == 0)) {
 		BuildMI(MBB, MBBI, DL, TII.get(Lemberg::S2ADDaia), ScratchReg)
@@ -346,6 +328,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateReg(ScratchReg, false, false, true));
 			  MI.addOperand(MachineOperand::CreateImm(ModOffset));
 			  LastLargeFrame->Killer = *II;
+			  LastLargeFrame->Boundary = next(II);
 			  break;
 		  case Lemberg::STORE32s_match:
 		  case Lemberg::STORE32s_match_imm:
@@ -361,12 +344,14 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateReg(ScratchReg, false, false, true));
 			  MI.addOperand(MachineOperand::CreateImm(ModOffset >> storeIdxShift));
 			  LastLargeFrame->Killer = *II;
+			  LastLargeFrame->Boundary = *II;
 			  break;
 		  case Lemberg::LEAs:
 			  MI.setDesc(TII.get(Lemberg::ADDaia));
 			  MI.addOperand(MachineOperand::CreateReg(ScratchReg, false, false, true));
 			  MI.addOperand(MachineOperand::CreateImm(ModOffset));
 			  LastLargeFrame->Killer = *II;
+			  LastLargeFrame->Boundary = *II;
 			  break;
 		  default:
 			  llvm_unreachable("Cannot eliminate frame index");
@@ -476,6 +461,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateReg(Lemberg::MEM, false));
 			  MI.addOperand(MachineOperand::CreateImm(0));
 			  LastLargeFrame->Killer = prior(II);
+			  LastLargeFrame->Boundary = *II;
 			  break;
 		  case Lemberg::LOAD32s_xpseudo:
 			  BuildMI(MBB, II, DL, TII.get(Lemberg::LOAD32spi))
@@ -490,6 +476,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
 			  MI.addOperand(MachineOperand::CreateReg(CopyReg, false, false, true));
 			  LastLargeFrame->Killer = prior(II, 2);
+			  LastLargeFrame->Boundary = *II;
 			  break;
 		  case Lemberg::STORE32s_pseudo:
 		  case Lemberg::STORE32s_pseudo_imm:
@@ -502,6 +489,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateReg(ScratchReg, false, false, true));
 			  MI.addOperand(MachineOperand::CreateImm(ModOffset >> 2));
 			  LastLargeFrame->Killer = *II;
+			  LastLargeFrame->Boundary = *II;
 			  break;
 		  case Lemberg::STORE32s_xpseudo:
 			  BuildMI(MBB, II, DL, TII.get(isFloat ? Lemberg::MOVEfa : Lemberg::MOVExa), CopyReg)
@@ -515,6 +503,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateReg(ScratchReg, false, false, true));
 			  MI.addOperand(MachineOperand::CreateImm(ModOffset >> 2));
 			  LastLargeFrame->Killer = *II;
+			  LastLargeFrame->Boundary = *II;
 			  break;
 		  default:
 			  MI.dump();
@@ -556,6 +545,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  .addImm(-1).addReg(0)
 			  .addReg(CopyRegA, RegState::Kill);
 		  LastLargeFrame->Killer = prior(II, 3);
+		  LastLargeFrame->Boundary = *II;
 
 		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseHiOffset);
 		  BuildMI(MBB, II, DL, TII.get(Lemberg::LOAD32spi))
@@ -574,6 +564,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  MI.addOperand(MachineOperand::CreateReg(0, false));
 		  MI.addOperand(MachineOperand::CreateReg(CopyRegB, false, false, true));
 		  LastLargeFrame->Killer = prior(II, 2);
+		  LastLargeFrame->Boundary = *II;
 		  break;
 	  case Lemberg::STORE64s_xpseudo:
 		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseLoOffset);
@@ -585,7 +576,8 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  .addReg(CopyRegA, RegState::Kill)
 			  .addReg(ScratchReg, RegState::Kill)
 			  .addImm(ModLoOffset >> 2);
-		  LastLargeFrame->Killer = *II;
+		  LastLargeFrame->Killer = prior(II, 1);
+		  LastLargeFrame->Boundary = *II;
 
 		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseHiOffset);
 		  BuildMI(MBB, II, DL, TII.get(Lemberg::MOVEfa), CopyRegB)
@@ -599,6 +591,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  MI.addOperand(MachineOperand::CreateReg(ScratchReg, false, false, true));
 		  MI.addOperand(MachineOperand::CreateImm(ModHiOffset >> 2));
 		  LastLargeFrame->Killer = *II;
+		  LastLargeFrame->Boundary = *II;
 		  break;
 	  default:
 		  MI.dump();
