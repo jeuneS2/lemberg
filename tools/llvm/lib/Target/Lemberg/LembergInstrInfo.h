@@ -86,7 +86,10 @@ namespace llvm {
     virtual bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs,
 									 unsigned ExtraPredCycles,
 									 float Probability, float Confidence) const {
-      return NumInstrs < 8;
+	  const TargetInstrDesc &TID = prior(MBB.end())->getDesc();
+	  if (TID.isCall() || TID.isReturn())
+		  return false;
+      return NumInstrs <= 8;
     }
 
     virtual bool isProfitableToIfCvt(MachineBasicBlock &TMBB,
@@ -94,12 +97,21 @@ namespace llvm {
 									 MachineBasicBlock &FMBB,
 									 unsigned NumF, unsigned ExtraFCycles,
 									 float Probability, float Confidence) const {
-      return (NumT + NumF) < 12;
+	  const TargetInstrDesc &TTID = prior(TMBB.end())->getDesc();
+	  if (TTID.isCall() || TTID.isReturn())
+		  return false;
+	  const TargetInstrDesc &FTID = prior(FMBB.end())->getDesc();
+	  if (FTID.isCall() || FTID.isReturn())
+		  return false;
+      return (NumT + NumF) <= 16;
 	}
 
 	  virtual bool isProfitableToDupForIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs,
 											 float Probability, float Confidence) const {
-      return NumInstrs < 4;
+	  const TargetInstrDesc &TID = prior(MBB.end())->getDesc();
+	  if (TID.isCall() || TID.isReturn())
+		  return false;
+      return NumInstrs <= 4;
 	}
 
 	virtual ScheduleHazardRecognizer *
