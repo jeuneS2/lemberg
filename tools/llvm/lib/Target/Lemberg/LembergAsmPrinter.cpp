@@ -15,7 +15,6 @@
 #include "LembergTargetMachine.h"
 #include "llvm/Module.h"
 #include "llvm/CodeGen/AsmPrinter.h"
-#include "llvm/CodeGen/DwarfWriter.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineInstr.h"
@@ -130,6 +129,7 @@ void LembergAsmPrinter::printCluster(const MachineInstr *MI, raw_ostream &O) {
 		} else if (FirstUnit == LST->getFuncUnit(LembergFU::SLOT3)) {
 			O << "#3:";
 		} else {
+			MI->getParent()->dump();
 			llvm_unreachable("Cannot compute slot from function unit");
 		}
 	}

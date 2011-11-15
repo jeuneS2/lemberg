@@ -321,7 +321,7 @@ void Pinner::pinToCluster(MachineInstr &MI, int cluster) {
 	unsigned SchedClass = MI.getDesc().getSchedClass();
 
 	const TargetInstrDesc &TID = MI.getDesc();
-	TargetInstrDesc *NTID = new TargetInstrDesc;
+	TargetInstrDesc *NTID = new TargetInstrDesc();
 	*NTID = TID;
 	
 	if (compatibleSchedClass(SchedClass, AluSchedClasses[cluster])) {

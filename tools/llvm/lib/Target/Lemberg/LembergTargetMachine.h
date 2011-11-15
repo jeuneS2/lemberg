@@ -16,7 +16,7 @@
 
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetData.h"
-#include "llvm/Target/TargetFrameInfo.h"
+#include "llvm/Target/TargetFrameLowering.h"
 #include "LembergInstrInfo.h"
 #include "LembergISelLowering.h"
 #include "LembergFrameLowering.h"
