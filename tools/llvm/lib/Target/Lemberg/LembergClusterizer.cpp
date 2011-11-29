@@ -137,20 +137,22 @@ static bool compatibleClass(const TargetRegisterClass *A, const TargetRegisterCl
 	if (A == Lemberg::ARegisterClass
 		|| A == Lemberg::AImmRegisterClass
 		|| A == Lemberg::MulRegisterClass
-		|| A == Lemberg::CRegisterClass
-		|| A == Lemberg::FRegisterClass
-		|| A == Lemberg::DRegisterClass
 		|| B == Lemberg::ARegisterClass
 		|| B == Lemberg::AImmRegisterClass
-		|| B == Lemberg::MulRegisterClass
-		|| B == Lemberg::CRegisterClass
-		|| B == Lemberg::FRegisterClass
-		|| B == Lemberg::DRegisterClass)
+		|| B == Lemberg::MulRegisterClass)
 		return true;
 	
-	// global class is compatible with everything
-	if (A == Lemberg::GRegisterClass || B == Lemberg::GRegisterClass
-		|| A == Lemberg::GImmRegisterClass || B == Lemberg::GImmRegisterClass)
+	// global classes are compatible with everything
+	if (A == Lemberg::GRegisterClass
+		|| A == Lemberg::GImmRegisterClass
+		|| A == Lemberg::FRegisterClass
+		|| A == Lemberg::DRegisterClass
+		|| A == Lemberg::CRegisterClass
+		|| B == Lemberg::GRegisterClass
+		|| B == Lemberg::GImmRegisterClass
+		|| B == Lemberg::FRegisterClass
+		|| B == Lemberg::DRegisterClass
+		|| B == Lemberg::CRegisterClass)
 		return true;
 
 	// general purpose clusters are compatible with mul clusters
@@ -207,10 +209,6 @@ void Clusterizer::buildNeighborhood(MachineFunction &F, MachineRegisterInfo *MRI
 					MachineOperand &O = BI->getOperand(k);
 					if (isVirtualReg(O)) {
 						unsigned r = O.getReg();
-						// Registers are not their own neighbors
-						if (r == regNo) {
-							continue;
-						}
 						if (!Neighbors.count(r)) {
 							Neighbors[r] = new SetVector<unsigned>();
 						}
