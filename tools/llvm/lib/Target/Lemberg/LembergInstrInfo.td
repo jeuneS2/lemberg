@@ -222,6 +222,13 @@ def imm32s2  : PatLeaf<(imm), [{return (N->getZExtValue() & 0x03) == 0;}]>;
 
 def fpimm0    : PatLeaf<(fpimm), [{return N->isExactlyValue(+0.0);}]>;
 def fpimm0neg : PatLeaf<(fpimm), [{return N->isExactlyValue(-0.0);}]>;
+def fpimmH    : PatLeaf<(fpimm), [{return N->isExactlyValue(+0.5);}]>;
+def fpimmHneg : PatLeaf<(fpimm), [{return N->isExactlyValue(-0.5);}]>;
+def fpimm1    : PatLeaf<(fpimm), [{return N->isExactlyValue(+1.0);}]>;
+def fpimm1neg : PatLeaf<(fpimm), [{return N->isExactlyValue(-1.0);}]>;
+def fpimm2    : PatLeaf<(fpimm), [{return N->isExactlyValue(+2.0);}]>;
+def fpimm2neg : PatLeaf<(fpimm), [{return N->isExactlyValue(-2.0);}]>;
+def fpnan     : PatLeaf<(fpimm), [{return N->isNaN();}]>;
 
 def brtarget : Operand<OtherVT>;
 
@@ -934,16 +941,54 @@ let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
 	              "$p fop\tfzero -> $dst",
 	              [(set (f32 F:$dst), fpimm0)],
 			      IIFpu0>;
+	def FHALF: F1<(outs F:$dst), (ins pred:$p),
+	              "$p fop\tfhalf -> $dst",
+	              [(set (f32 F:$dst), fpimmH)],
+			      IIFpu0>;
+	def FONE: F1<(outs F:$dst), (ins pred:$p),
+	              "$p fop\tfone -> $dst",
+	              [(set (f32 F:$dst), fpimm1)],
+			      IIFpu0>;
+	def FTWO: F1<(outs F:$dst), (ins pred:$p),
+	              "$p fop\tftwo -> $dst",
+	              [(set (f32 F:$dst), fpimm2)],
+			      IIFpu0>;
+	def FNAN: F1<(outs F:$dst), (ins pred:$p),
+	              "$p fop\tfnan -> $dst",
+	              [(set (f32 F:$dst), fpnan)],
+			      IIFpu0>;
 }
 def : Pat<(f32 fpimm0neg), (FNEG (FZERO))>;
+def : Pat<(f32 fpimmHneg), (FNEG (FHALF))>;
+def : Pat<(f32 fpimm1neg), (FNEG (FONE))>;
+def : Pat<(f32 fpimm2neg), (FNEG (FTWO))>;
 
 let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
 	def DZERO: F1<(outs D:$dst), (ins pred:$p),
 			      "$p fop\tdzero -> $dst",
 			      [(set D:$dst, fpimm0)],
 			      IIFpu0>;
+	def DHALF: F1<(outs D:$dst), (ins pred:$p),
+			      "$p fop\tdhalf -> $dst",
+			      [(set D:$dst, fpimmH)],
+			      IIFpu0>;
+	def DONE: F1<(outs D:$dst), (ins pred:$p),
+			      "$p fop\tdone -> $dst",
+			      [(set D:$dst, fpimm1)],
+			      IIFpu0>;
+	def DTWO: F1<(outs D:$dst), (ins pred:$p),
+			      "$p fop\tdtwo -> $dst",
+			      [(set D:$dst, fpimm2)],
+			      IIFpu0>;
+	def DNAN: F1<(outs D:$dst), (ins pred:$p),
+	              "$p fop\tdnan -> $dst",
+	              [(set D:$dst, fpnan)],
+			      IIFpu0>;
 }
 def : Pat<(f64 fpimm0neg), (DNEG (DZERO))>;
+def : Pat<(f64 fpimmHneg), (DNEG (DHALF))>;
+def : Pat<(f64 fpimm1neg), (DNEG (DONE))>;
+def : Pat<(f64 fpimm2neg), (DNEG (DTWO))>;
 
 // load floating-point constants
 def : Pat<(f32 fpimm:$imm),

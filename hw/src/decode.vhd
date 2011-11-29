@@ -574,7 +574,16 @@ begin  -- behavior
 									when "0000" => fpop(i).op <= FPU_FMOV;
 									when "0001" => fpop(i).op <= FPU_FNEG;
 									when "0010" => fpop(i).op <= FPU_FABS;
-									when "0011" => fpop(i).op <= FPU_FZERO;
+									when "0011" =>
+										case raw_op(11 downto 8) is
+											when "0000" => fpop(i).op <= FPU_FZERO;
+											when "0001" => fpop(i).op <= FPU_FHALF;
+											when "0010" => fpop(i).op <= FPU_FONE;
+											when "0011" => fpop(i).op <= FPU_FTWO;
+											when "1111" => fpop(i).op <= FPU_FNAN;
+											when others =>
+												assert false report "Cannot decode FP immediate" severity error;
+										end case;										
 									when "1010" => fpop(i).op <= FPU_SI2SF;
 									when "1100" => fpop(i).op <= FPU_SF2SI;
 									when others => null;
@@ -594,7 +603,16 @@ begin  -- behavior
 									when "0100" => fpop(i).op <= FPU_DMOV;
 									when "0101" => fpop(i).op <= FPU_DNEG;
 									when "0110" => fpop(i).op <= FPU_DABS;
-									when "0111" => fpop(i).op <= FPU_DZERO;
+									when "0111" =>
+										case raw_op(11 downto 8) is
+											when "0000" => fpop(i).op <= FPU_DZERO;
+											when "0001" => fpop(i).op <= FPU_DHALF;
+											when "0010" => fpop(i).op <= FPU_DONE;
+											when "0011" => fpop(i).op <= FPU_DTWO;
+											when "1111" => fpop(i).op <= FPU_DNAN;
+											when others =>
+												assert false report "Cannot decode FP immediate" severity error;
+										end case;										
 									when "1011" => fpop(i).op <= FPU_SI2DF;
 									when "1101" => fpop(i).op <= FPU_DF2SI;
 									when others => null;

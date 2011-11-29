@@ -109,12 +109,20 @@
 #define OP_FMOV      0x00
 #define OP_FNEG      0x01
 #define OP_FABS      0x02
-#define OP_FZERO     0x03
+#define OP_FZERO     (0x03 | (OP_FPIMM_ZERO << 4))
+#define OP_FHALF     (0x03 | (OP_FPIMM_HALF << 4))
+#define OP_FONE      (0x03 | (OP_FPIMM_ONE << 4))
+#define OP_FTWO      (0x03 | (OP_FPIMM_TWO << 4))
+#define OP_FNAN      (0x03 | (OP_FPIMM_NAN << 4))
 
 #define OP_DMOV      0x04
 #define OP_DNEG      0x05
 #define OP_DABS      0x06
-#define OP_DZERO     0x07
+#define OP_DZERO     (0x07 | (OP_FPIMM_ZERO << 4))
+#define OP_DHALF     (0x07 | (OP_FPIMM_HALF << 4))
+#define OP_DONE      (0x07 | (OP_FPIMM_ONE << 4))
+#define OP_DTWO      (0x07 | (OP_FPIMM_TWO << 4))
+#define OP_DNAN      (0x07 | (OP_FPIMM_NAN << 4))
 
 #define OP_RND       0x08
 #define OP_EXT       0x09
@@ -122,5 +130,12 @@
 #define OP_SI2DF     0x0B
 #define OP_SF2SI     0x0C
 #define OP_DF2SI     0x0D
+
+/* Floating-point immediates encoding */
+#define OP_FPIMM_ZERO 0x00
+#define OP_FPIMM_HALF 0x01
+#define OP_FPIMM_ONE  0x02
+#define OP_FPIMM_TWO  0x03
+#define OP_FPIMM_NAN  0xff
 
 #endif

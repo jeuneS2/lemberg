@@ -374,7 +374,15 @@ begin  -- behavior
 				single_result(0) <= abs(singleA);
 
 			when FPU_FZERO =>
-				single_result(0) <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
+				single_result(0) <= float32(to_std_logic_vector(X"00000000"));
+			when FPU_FHALF =>
+				single_result(0) <= float32(to_std_logic_vector(X"3F000000"));
+			when FPU_FONE =>
+				single_result(0) <= float32(to_std_logic_vector(X"3F800000"));
+			when FPU_FTWO =>
+				single_result(0) <= float32(to_std_logic_vector(X"40000000"));
+			when FPU_FNAN =>
+				single_result(0) <= float32(to_std_logic_vector(X"7FC00000"));
 				
 			when FPU_FCMP =>
 				single_rddataA <= singleA;
@@ -412,7 +420,15 @@ begin  -- behavior
 				double_result(0) <= abs(doubleA);
 
 			when FPU_DZERO =>
-				double_result(0) <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
+				double_result(0) <= float64(to_std_logic_vector(X"0000000000000000"));
+			when FPU_DHALF =>
+				double_result(0) <= float64(to_std_logic_vector(X"3FE0000000000000"));
+			when FPU_DONE =>
+				double_result(0) <= float64(to_std_logic_vector(X"3FF0000000000000"));
+			when FPU_DTWO =>
+				double_result(0) <= float64(to_std_logic_vector(X"4000000000000000"));
+			when FPU_DNAN =>
+				double_result(0) <= float64(to_std_logic_vector(X"7FF8000000000000"));
 
 			when FPU_DCMP =>
 				double_rddataA <= doubleA;

@@ -153,11 +153,19 @@ SYM [\._a-zA-Z0-9]+
 "fneg"     ACCEPT(FNEG,  FTWOOP);
 "fabs"     ACCEPT(FABS,  FTWOOP);
 "fzero"    ACCEPT(FZERO, FONEOP);
+"fhalf"    ACCEPT(FHALF, FONEOP);
+"fone"     ACCEPT(FONE,  FONEOP);
+"ftwo "    ACCEPT(FTWO,  FONEOP);
+"fnan "    ACCEPT(FNAN,  FONEOP);
 
 "dmov"     ACCEPT(DMOV,  DTWOOP);
 "dneg"     ACCEPT(DNEG,  DTWOOP);
 "dabs"     ACCEPT(DABS,  DTWOOP);
 "dzero"    ACCEPT(DZERO, DONEOP);
+"dhalf"    ACCEPT(DHALF, DONEOP);
+"done"     ACCEPT(DONE,  DONEOP);
+"dtwo "    ACCEPT(DTWO,  DONEOP);
+"dnan "    ACCEPT(DNAN,  DONEOP);
 
 "rnd"      ACCEPT(RND,   D2FOP);
 "ext"      ACCEPT(EXT,   F2DOP);

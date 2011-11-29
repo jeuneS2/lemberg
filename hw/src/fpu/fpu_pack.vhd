@@ -44,7 +44,8 @@ package fpu_pack is
 					 FPU_DMOV, FPU_DNEG, FPU_DABS, 
 					 FPU_FADD, FPU_FSUB, FPU_FMUL, FPU_FMAC, FPU_FCMP,
 					 FPU_DADD, FPU_DSUB, FPU_DMUL, FPU_DMAC, FPU_DCMP,
-					 FPU_FZERO, FPU_DZERO,
+					 FPU_FZERO, FPU_FHALF, FPU_FONE, FPU_FTWO, FPU_FNAN,
+					 FPU_DZERO, FPU_DHALF, FPU_DONE, FPU_DTWO, FPU_DNAN,
 					 FPU_RND,   FPU_EXT,
 					 FPU_SI2SF, FPU_SI2DF,
 					 FPU_SF2SI, FPU_DF2SI);
@@ -92,7 +93,8 @@ package body fpu_pack is
 			when FPU_STX |
 				FPU_FMOV | FPU_FNEG | FPU_FABS |
 				FPU_DMOV | FPU_DNEG | FPU_DABS |
-				FPU_FZERO | FPU_DZERO =>
+				FPU_FZERO | FPU_FHALF | FPU_FONE | FPU_FTWO | FPU_FNAN |
+				FPU_DZERO | FPU_DHALF | FPU_DONE | FPU_DTWO | FPU_DNAN =>
 				return 0;
 			when FPU_FCMP =>
 				return 1;
@@ -122,9 +124,10 @@ package body fpu_pack is
 	begin  -- is_double
 		case op is
 			when FPU_STX |
-				FPU_FMOV | FPU_FNEG | FPU_FABS | FPU_FZERO |
-				FPU_FADD | FPU_FSUB | FPU_FMUL | FPU_FMAC | FPU_FCMP |
-				FPU_DCMP |
+				FPU_FMOV | FPU_FNEG | FPU_FABS |
+				FPU_FZERO | FPU_FHALF | FPU_FONE | FPU_FTWO | FPU_FNAN |
+				FPU_FADD | FPU_FSUB | FPU_FMUL | FPU_FMAC |
+				FPU_FCMP | FPU_DCMP |
 				FPU_RND | FPU_SF2SI | FPU_DF2SI | FPU_SI2SF =>
 				return true;
 			when others =>
@@ -137,7 +140,8 @@ package body fpu_pack is
 		return boolean is
 	begin  -- is_double
 		case op is
-			when FPU_DMOV | FPU_DNEG | FPU_DABS | FPU_DZERO |
+			when FPU_DMOV | FPU_DNEG | FPU_DABS |
+				FPU_DZERO | FPU_DHALF | FPU_DONE | FPU_DTWO | FPU_DNAN |
 				FPU_DADD | FPU_DSUB | FPU_DMUL | FPU_DMAC |
 				FPU_EXT | FPU_SI2DF =>
 				return true;
