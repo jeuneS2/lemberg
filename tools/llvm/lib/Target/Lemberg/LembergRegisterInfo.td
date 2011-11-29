@@ -408,7 +408,11 @@ def LG3 : RegisterClass<"Lemberg", [i32], 32,
 
 // All general purpose registers
 def A : RegisterClass<"Lemberg", [i32], 32, 
-  [// Unpreserved local regs
+   // Return Values and Arguments      
+   [R0, R1, R2, R3,
+   // Not preserved across procedure calls
+   R4, R5, R6, R7, R8, R9,
+   // Unpreserved local regs
    R0_16, R1_16, R2_16, R3_16,
    R0_17, R1_17, R2_17, R3_17,
    R0_18, R1_18, R2_18, R3_18,
@@ -416,6 +420,8 @@ def A : RegisterClass<"Lemberg", [i32], 32,
    R0_20, R1_20, R2_20, R3_20,
    R0_21, R1_21, R2_21, R3_21,
    R0_22, R1_22, R2_22, R3_22,
+   // Callee saved
+   R10, R11, R12, R13, R14,
    // Callee saved local regs
    R0_23, R1_23, R2_23, R3_23,
    R0_24, R1_24, R2_24, R3_24,
@@ -425,15 +431,8 @@ def A : RegisterClass<"Lemberg", [i32], 32,
    R0_28, R1_28, R2_28, R3_28,
    R0_29, R1_29, R2_29, R3_29,
    R0_30, R1_30, R2_30, R3_30,
-   // Return Values and Arguments      
-   R0, R1, R2, R3,
-   // Not preserved across procedure calls
-   R4, R5, R6, R7, R8, R9,
-   // Callee saved
-   R10, R11, R12, R13, R14,
    // Reserved
-   R15,
-   R0_31, R1_31, R2_31, R3_31] >
+   R15, R0_31, R1_31, R2_31, R3_31] >
 {
   let MethodProtos = [{
     iterator allocation_order_end(const MachineFunction &MF) const;
@@ -455,11 +454,11 @@ def LG3Imm : RegisterClass<"Lemberg", [i32], 32, [R0, R1, R2, R3, R3_16, R3_17, 
 def GImm   : RegisterClass<"Lemberg", [i32], 32, [R0, R1, R2, R3]>;
 
 def AImm : RegisterClass<"Lemberg", [i32], 32,
-  [R0_16, R0_17, R0_18, R0_19,
+  [R0, R1, R2, R3,
+   R0_16, R0_17, R0_18, R0_19,
    R1_16, R1_17, R1_18, R1_19,
    R2_16, R2_17, R2_18, R2_19,
-   R3_16, R3_17, R3_18, R3_19,
-   R0, R1, R2, R3] >;
+   R3_16, R3_17, R3_18, R3_19] >;
 
 // Floating-point registers
 def F : RegisterClass<"Lemberg", [f32, i32], 32,
