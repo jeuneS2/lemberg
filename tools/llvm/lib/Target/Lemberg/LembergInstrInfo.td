@@ -397,6 +397,11 @@ let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
 				    [(LembergLoadCached (add A:$ptr, (i32 imm11:$off)))],
 				    IIMem>;
 
+  // Matching load via stack pointer
+  def LOAD32a_match: Pseudo<(outs), (ins mem:$ptr),
+                            "${:comment} LDM.A $ptr",
+                            [(LembergLoadCached addr:$ptr)]>;
+
   // Load from static address
   def LOAD32d_ga: F1<(outs), (ins i32imm:$addr),
                     "       ldmg.d\t$addr",
@@ -440,7 +445,7 @@ def LOAD64s_xpseudo: Pseudo<(outs D:$dst), (ins mem:$ptr),
 							[(set D:$dst, (load addr:$ptr))]>;
 
 let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
-	// Matching load from stack
+  // Matching load from stack
   def LOAD32s_match: Pseudo<(outs), (ins mem:$ptr),
                             "${:comment} LDM.S $ptr",
                             [(LembergLoadStack addr:$ptr)]>;
@@ -459,6 +464,11 @@ let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
 // Memory stores
 
 let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
+	// Matching stores via stack pointer
+	defm STORE32a: OPST_MATCH<LembergStore32, "STM.A">;
+	defm STORE16a: OPST_MATCH<LembergStore16, "STMH.A">;
+	defm STORE8a: OPST_MATCH<LembergStore8, "STMB.A">;
+
 	// Normal stores
 	defm STORE32a: OPST4<LembergStore32, "stm.a">;
 	defm STORE16a: OPST2<LembergStore16, "stmh.a">;
@@ -646,8 +656,7 @@ let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
 
 // load the full 32 bits
 def : Pat<(LembergWrapper tglobaladdr:$addr),
-		  (LOADsym11hi (LOADsym10mi (LOADsym11lo 
-									 tglobaladdr:$addr),
+		  (LOADsym11hi (LOADga 
 						tglobaladdr:$addr),
 		   tglobaladdr:$addr)>;
 
@@ -658,8 +667,7 @@ def : Pat<(LembergLoadCached (add (LembergWrapper tjumptable:$addr), (shl A:$off
 
 // load the full 32 bits
 def : Pat<(LembergLoadCached (add (LembergWrapper tjumptable:$addr), (shl A:$off, (i32 2)))),
-          (LOAD32cp (S2ADDaaa (LOADsym11hi (LOADsym10mi (LOADsym11lo 
-														 tjumptable:$addr),
+          (LOAD32cp (S2ADDaaa (LOADsym11hi (LOADga 
 											tjumptable:$addr),
 							   tjumptable:$addr),
 					 A:$off))>;

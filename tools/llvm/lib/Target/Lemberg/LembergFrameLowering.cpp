@@ -66,13 +66,20 @@ BuildStackAdd (MachineFunction &MF,
 			.addReg(TRI->getStackRegister())
 			.addImm(Offset >> 2);
 	} else {
-		unsigned ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+		unsigned ScratchReg = 0;
 
 		if (isUInt<11>(Offset)){
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset);
+		} else if (isUInt<19>(Offset >> 2) && ((Offset & 0x03) == 0)) {
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GImmRegisterClass);
+			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm19s2), ScratchReg)
+				.addImm(Offset);
 		} else {
+			// Does this really happen?
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset & 0x7ff);
@@ -106,13 +113,20 @@ BuildStackLoad(MachineFunction &MF,
 			.addImm(-1).addReg(0)
 			.addReg(TRI->getStackRegister()).addImm(Offset);
 	} else {
-		unsigned ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+		unsigned ScratchReg = 0;
 
 		if (isUInt<11>(Offset)){
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset);
+		} else if (isUInt<19>(Offset >> 2) && ((Offset & 0x03) == 0)) {
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GImmRegisterClass);
+			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm19s2), ScratchReg)
+				.addImm(Offset);
 		} else {
+			// Does this really happen?
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset & 0x7ff);
@@ -156,13 +170,20 @@ BuildStackStore(MachineFunction &MF,
 			.addReg(TRI->getStackRegister())
 			.addImm(Offset >> 2);
 	} else {
-		unsigned ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+		unsigned ScratchReg = 0;
 
 		if (isUInt<11>(Offset)){
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset);
+		} else if (isUInt<19>(Offset >> 2) && ((Offset & 0x03) == 0)) {
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GImmRegisterClass);
+			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm19s2), ScratchReg)
+				.addImm(Offset);
 		} else {
+			// Does this really happen?
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LOADuimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset & 0x7ff);

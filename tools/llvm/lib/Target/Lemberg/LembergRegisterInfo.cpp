@@ -107,8 +107,9 @@ BuildLargeFrameOffset (MachineFunction &MF,
 	assert(isInt<22>(Offset) && "Offset too big for loading");
 
 	// Check if we already built this offset before
-	if (Offset == LastLargeFrame->Offset
+	if (MBBI != MBB.begin()
 		&& MBB.begin() == LastLargeFrame->Begin
+		&& Offset == LastLargeFrame->Offset
 		&& LastLargeFrame->Register != 0) {
 
 		// Check if we are back-to-back with previously built offset
@@ -126,48 +127,61 @@ BuildLargeFrameOffset (MachineFunction &MF,
 
 	// Build large frame offset from scratch
 	DebugLoc DL = MBB.findDebugLoc(MBBI);
-	unsigned ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
-
-	LastLargeFrame->Register = ScratchReg;
-	LastLargeFrame->Offset = Offset;
-	LastLargeFrame->Begin = MBB.begin();
+	unsigned ScratchReg = 0;
 
 	if (isUInt<5>(Offset >> 2) && ((Offset & 0x03) == 0)) {
+		ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 		BuildMI(MBB, MBBI, DL, TII.get(Lemberg::S2ADDaia), ScratchReg)
 			.addImm(-1).addReg(0)
 			.addReg(getFrameRegister(MF))
 			.addImm(Offset >> 2);		
 	} else {
-		unsigned ImmReg = getEmergencyRegister();
 		if (isUInt<11>(Offset)) {
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ImmReg)
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset);
 		} else if (isInt<11>(Offset)) {
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADimm11), ImmReg)
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset);
+		} else if (isUInt<19>(Offset >> 2) && ((Offset & 0x03) == 0)) {
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GImmRegisterClass);
+			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm19s2), ScratchReg)
+				.addImm(Offset);
 		} else {
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ImmReg)
+			// Does this really happen?
+			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset & 0x7ff);
-			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADimm11mi), ImmReg)
+			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADimm11mi), ScratchReg)
 				.addImm(-1).addReg(0)
-				.addReg(ImmReg)
+				.addReg(ScratchReg)
 				.addImm((Offset >> 11) & 0x7ff);
 		}
 		BuildMI(MBB, MBBI, DL, TII.get(Lemberg::ADDaaa), ScratchReg)
 			.addImm(-1).addReg(0)
 			.addReg(getFrameRegister(MF))
-			.addReg(ImmReg);
+			.addReg(ScratchReg);
 	}
+
+	LastLargeFrame->Register = ScratchReg;
+	LastLargeFrame->Offset = Offset;
+	LastLargeFrame->Begin = MBB.begin();
 
 	return ScratchReg;
 }
 
 static int getModOffset(int Offset, bool isLoad, int storeIdxShift) {
 	if (isLoad) {
-		return ((unsigned)Offset % (1 << 11)) - (1 << 10);
+		unsigned modOffset = (unsigned)Offset % (1 << 11);
+		if (modOffset < (1 << 10)) {
+			return modOffset;
+		} else {
+			return modOffset - (1 << 11);
+		}
 	} else {
 		return ((unsigned)Offset % (1 << (5+storeIdxShift)));
 	}
@@ -232,15 +246,23 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   // Instructions that are already expanded
   if (Opcode == Lemberg::LOAD32s_match
+	  || Opcode == Lemberg::LOAD32a_match
 	  || Opcode == Lemberg::STORE32s_match
 	  || Opcode == Lemberg::STORE32s_match_imm
 	  || Opcode == Lemberg::STORE16s_match
 	  || Opcode == Lemberg::STORE16s_match_imm
 	  || Opcode == Lemberg::STORE8s_match
 	  || Opcode == Lemberg::STORE8s_match_imm
+	  || Opcode == Lemberg::STORE32a_match
+	  || Opcode == Lemberg::STORE32a_match_imm
+	  || Opcode == Lemberg::STORE16a_match
+	  || Opcode == Lemberg::STORE16a_match_imm
+	  || Opcode == Lemberg::STORE8a_match
+	  || Opcode == Lemberg::STORE8a_match_imm
 	  || Opcode == Lemberg::LEAs) {
 
-	  bool isLoad = Opcode == Lemberg::LOAD32s_match;
+	  bool isLoad = (Opcode == Lemberg::LOAD32s_match
+					 || Opcode == Lemberg::LOAD32a_match);
 	  unsigned storeIdxShift = 0;
 
 	  unsigned StOp = Lemberg::STORE32spi;
@@ -269,8 +291,34 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  StOp = Lemberg::STORE8spi_imm;
 		  storeIdxShift = 0;
 		  break;
+	  case Lemberg::STORE32a_match:
+		  StOp = Lemberg::STORE32api;
+		  storeIdxShift = 2;
+		  break;
+	  case Lemberg::STORE32a_match_imm:
+		  StOp = Lemberg::STORE32api_imm;
+		  storeIdxShift = 2;
+		  break;
+	  case Lemberg::STORE16a_match:
+		  StOp = Lemberg::STORE16api;
+		  storeIdxShift = 1;
+		  break;
+	  case Lemberg::STORE16a_match_imm:
+		  StOp = Lemberg::STORE16api_imm;
+		  storeIdxShift = 1;
+		  break;
+	  case Lemberg::STORE8a_match:
+		  StOp = Lemberg::STORE8api;
+		  storeIdxShift = 0;
+		  break;
+	  case Lemberg::STORE8a_match_imm:
+		  StOp = Lemberg::STORE8api_imm;
+		  storeIdxShift = 0;
+		  break;
 	  default:
-		  assert((Opcode == Lemberg::LOAD32s_match || Opcode == Lemberg::LEAs)
+		  assert((Opcode == Lemberg::LOAD32s_match
+				  || Opcode == Lemberg::LOAD32a_match
+				  || Opcode == Lemberg::LEAs)
 				 && "Cannot find opcode for operation");
 	  }
 
@@ -282,7 +330,9 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
   	  if (isUInt<5>(Offset >> storeIdxShift) || (isLoad && isInt<11>(Offset))) {
 		  switch (Opcode) {
 		  case Lemberg::LOAD32s_match:
-			  MI.setDesc(TII.get(Lemberg::LOAD32spi));
+		  case Lemberg::LOAD32a_match:
+			  MI.setDesc(TII.get(Opcode == Lemberg::LOAD32s_match ?
+								 Lemberg::LOAD32spi : Lemberg::LOAD32fpi));
 			  MI.addOperand(MachineOperand::CreateImm(-1));
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
 			  MI.addOperand(MachineOperand::CreateReg(getFrameRegister(MF), false));
@@ -294,6 +344,12 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  case Lemberg::STORE16s_match_imm:
 		  case Lemberg::STORE8s_match:
 		  case Lemberg::STORE8s_match_imm:
+		  case Lemberg::STORE32a_match:
+		  case Lemberg::STORE32a_match_imm:
+		  case Lemberg::STORE16a_match:
+		  case Lemberg::STORE16a_match_imm:
+		  case Lemberg::STORE8a_match:
+		  case Lemberg::STORE8a_match_imm:
 			  MI.setDesc(TII.get(StOp));
 			  MI.addOperand(MachineOperand::CreateImm(-1));
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
@@ -322,7 +378,9 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 
 		  switch (Opcode) {
 		  case Lemberg::LOAD32s_match:
-			  MI.setDesc(TII.get(Lemberg::LOAD32spi));
+		  case Lemberg::LOAD32a_match:
+			  MI.setDesc(TII.get(Opcode == Lemberg::LOAD32s_match ?
+								 Lemberg::LOAD32spi : Lemberg::LOAD32fpi));
 			  MI.addOperand(MachineOperand::CreateImm(-1));
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
 			  MI.addOperand(MachineOperand::CreateReg(ScratchReg, false, false, true));
@@ -336,6 +394,12 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  case Lemberg::STORE16s_match_imm:
 		  case Lemberg::STORE8s_match:
 		  case Lemberg::STORE8s_match_imm:
+		  case Lemberg::STORE32a_match:
+		  case Lemberg::STORE32a_match_imm:
+		  case Lemberg::STORE16a_match:
+		  case Lemberg::STORE16a_match_imm:
+		  case Lemberg::STORE8a_match:
+		  case Lemberg::STORE8a_match_imm:
 			  MI.setDesc(TII.get(StOp));
 			  MI.addOperand(MachineOperand::CreateImm(-1));
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
