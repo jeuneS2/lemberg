@@ -73,7 +73,7 @@ architecture rtl of stackcache is
 	signal fetchtag_reg, next_fetchtag : std_logic_vector(mem_bits-1 downto 0);
 	signal fetch_reg, next_fetch : std_logic;
 
-	type STATE_TYPE is (idle, rd0, rd1, wr0);
+	type STATE_TYPE is (idle, rd0, rd1, wr0, wr1);
 	signal state, next_state : STATE_TYPE;
 
 begin
@@ -194,14 +194,13 @@ begin
 		case state is
 
 			when rd0 =>
+				cpu_in.rdy_cnt <= "11";
 				if ram_dout.tag = cpu_out_reg.address(mem_bits-1 downto index_bits)
 					and ram_dout.valid = '1' then
 					next_rddata <= ram_dout.data;
-					cpu_in.rdy_cnt <= "11";
 					next_state <= idle;					
 				else
 					mem_out.rd <= '1';
-					cpu_in.rdy_cnt <= "11";
 					next_state <= rd1;
 				end if;
 
@@ -212,8 +211,18 @@ begin
 					next_fetch <= '1';
 					next_state <= idle;
 				end if;
-				
+
 			when wr0 =>
+				cpu_in.rdy_cnt <= "00";
+				ram_din.data <= cpu_out_reg.wr_data;
+				ram_din.tag <= cpu_out_reg.address(mem_bits-1 downto index_bits);
+				ram_wraddress <= cpu_out_reg.address(index_bits-1 downto 0);
+				ram_wren_tag <= '1';
+				ram_wren_data <= cpu_out_reg.byte_ena;					
+				next_state <= idle;
+				
+			when wr1 =>
+				cpu_in.rdy_cnt <= "00";
 				-- update data only if we have a cache hit
 				if ram_dout.tag = cpu_out_reg.address(mem_bits-1 downto index_bits)
 					and ram_dout.valid = '1' then					
@@ -223,7 +232,6 @@ begin
 					ram_wren_tag <= '1';
 					ram_wren_data <= cpu_out_reg.byte_ena;					
 				end if;
-				cpu_in.rdy_cnt <= "00";
 				next_state <= idle;
 
 			when others => null;
@@ -235,13 +243,12 @@ begin
 
 		-- enable write
 		if cpu_out.wr = '1' and cpu_out.cache = cache_type then
-			ram_wren_tag <= '1';
-			ram_wren_data <= cpu_out.byte_ena;
+			next_state <= wr0;
 		end if;
 		-- write to ALL_CACHES only updates existing values
 		if cpu_out.wr = '1' and cpu_out.cache = ALL_CACHES then
 			ram_rden_tag <= '1';
-			next_state <= wr0;
+			next_state <= wr1;
 		end if;
 		-- enable read
 		if cpu_out.rd = '1' and cpu_out.cache = cache_type then
