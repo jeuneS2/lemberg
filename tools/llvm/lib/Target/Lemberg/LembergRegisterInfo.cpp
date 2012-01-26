@@ -54,6 +54,7 @@ LembergRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
 	  R0_29, R1_29, R2_29, R3_29,
 	  R0_30, R1_30, R2_30, R3_30,
 	  F10, F11, F12, F13, F14, F15,
+	  RB, RO,
 	  0 };
   return  CalleeSavedRegs;
 }

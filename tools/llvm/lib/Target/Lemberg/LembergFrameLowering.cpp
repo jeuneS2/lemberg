@@ -240,10 +240,6 @@ void LembergFrameLowering::emitPrologue(MachineFunction &MF) const {
 	  // Space for frame pointer
 	  NumBytes += 4;
   }
-  if (MFI->hasCalls()) {
-	  // Space for return addresses
-	  NumBytes += 8;
-  }
   // Round up to next doubleword boundary
   NumBytes = (NumBytes + 7) & ~7;
 
@@ -267,22 +263,6 @@ void LembergFrameLowering::emitPrologue(MachineFunction &MF) const {
   if (hasFP(MF)) {
 	  // Save old frame pointer
 	  BuildStackStore(MF, MBB, MBBI, TRI->getFrameRegister(MF), CallFrameBytes);
-  }
-
-  // Save the return address only if the function isnt a leaf one.
-  if (MFI->hasCalls()) {
-	  // Save $ra
-	  unsigned TmpReg = TRI->getEmergencyRegister();
-	  BuildMI(MBB, MBBI, DL, TII->get(Lemberg::MOVExa), TmpReg)
-		  .addImm(-1).addReg(0)
-		  .addReg(TRI->getRARegister());
-	  BuildStackStore(MF, MBB, MBBI, TmpReg, CallFrameBytes + (hasFP(MF) ? 4 : 0));
-	  // Save $ro
-	  TmpReg = TRI->getEmergencyRegister();
-	  BuildMI(MBB, MBBI, DL, TII->get(Lemberg::MOVExa), TmpReg)
-		  .addImm(-1).addReg(0)
-		  .addReg(TRI->getRAOffRegister());
-	  BuildStackStore(MF, MBB, MBBI, TmpReg, CallFrameBytes + (hasFP(MF) ? 8 : 4));
   }
 
   if (hasFP(MF)) {
@@ -320,22 +300,6 @@ void LembergFrameLowering::emitEpilogue(MachineFunction &MF, MachineBasicBlock &
 	  BuildMI(MBB, MBBI, DL, TII->get(Lemberg::MOVEaa), TRI->getStackRegister())
 	  	  .addImm(-1).addReg(0)
 		  .addReg(TRI->getFrameRegister(MF));
-  }
-
-  // Restore the return address only if the function isnt a leaf one.
-  if (MFI->hasCalls()) { 
-	  // Restore $ro
-	  unsigned TmpReg = TRI->getEmergencyRegister();
-	  BuildStackLoad(MF, MBB, MBBI, TmpReg, CallFrameBytes + (hasFP(MF) ? 8 : 4));
-	  BuildMI(MBB, MBBI, DL, TII->get(Lemberg::MOVEax), TRI->getRAOffRegister())
-		  .addImm(-1).addReg(0)
-		  .addReg(TmpReg);
-	  // Restore $rb
-	  TmpReg = TRI->getEmergencyRegister();
-	  BuildStackLoad(MF, MBB, MBBI, TmpReg, CallFrameBytes + (hasFP(MF) ? 4 : 0));
-	  BuildMI(MBB, MBBI, DL, TII->get(Lemberg::MOVEax), TRI->getRARegister())
-		  .addImm(-1).addReg(0)
-		  .addReg(TmpReg);
   }
 
   if (hasFP(MF)) {

@@ -1211,7 +1211,8 @@ let isCall=1, hasDelaySlot=1,
 			F0, F1, F2, F3,
 			F4, F5, F6, F7, F8, F9,
 			D0, D1,
-			D2, D3, D4] in {
+			D2, D3, D4,
+			RB, RO] in {
 	def CALL : F1<(outs), (ins pred:$p, A:$target, variable_ops),
 				  "$p jop\tcall\t$target",
 				  [(LembergCall A:$target)],
