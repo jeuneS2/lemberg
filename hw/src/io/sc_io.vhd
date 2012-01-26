@@ -39,8 +39,6 @@ end sc_io;
 
 architecture rtl of sc_io is
 
-	constant CLOCK_FREQ : integer := 66666667;
-
 	constant SYSINFO_ADDR_WIDTH : integer := 4;
 	constant SYSINFO_SELECT : std_logic_vector(IO_ADDR_WIDTH-SYSINFO_ADDR_WIDTH-1 downto 0) := "11111";
 	signal sysinfo_out : sc_out_type;
@@ -62,8 +60,7 @@ architecture rtl of sc_io is
 	signal bootrom_in : sc_in_type;
 	
 	type mux_type is (SYSINFO_MUX, TIMER_MUX, UART_MUX, BOOTROM_MUX);
-	signal cntmux_reg, cntmux_next : mux_type;
-	signal datamux_reg, datamux_next : mux_type;
+	signal mux_reg, mux_next : mux_type;
 	
 begin  -- rtl
 
@@ -130,17 +127,15 @@ begin  -- rtl
 	sync: process (clk, reset)
 	begin  -- process sync
 		if reset = '0' then  			-- asynchronous reset (active low)
-			cntmux_reg <= BOOTROM_MUX;
-			datamux_reg <= BOOTROM_MUX;
+			mux_reg <= BOOTROM_MUX;
 		elsif clk'event and clk = '1' then  -- rising clock edge
-			cntmux_reg <= cntmux_next;
-			datamux_reg <= datamux_next;
+			mux_reg <= mux_next;
 		end if;
 	end process sync;
 
 	async: process (cpu_out,
 					sysinfo_in, timer_in, bootrom_in, uart_in,
-					cntmux_reg, datamux_reg)
+					mux_reg)
 	begin  -- process async
 
 		sysinfo_out <= cpu_out;
@@ -159,33 +154,32 @@ begin  -- rtl
 		bootrom_out.rd <= '0';
 		bootrom_out.wr <= '0';
 
-		cntmux_next <= cntmux_reg;
-		datamux_next <= datamux_reg;
+		mux_next <= mux_reg;
 		
 		if cpu_out.rd = '1' or cpu_out.wr = '1' then
 			if cpu_out.address(IO_ADDR_WIDTH-1 downto SYSINFO_ADDR_WIDTH) = SYSINFO_SELECT then
 				sysinfo_out.rd <= cpu_out.rd;
 				sysinfo_out.wr <= cpu_out.wr;
-				cntmux_next <= SYSINFO_MUX;
+				mux_next <= SYSINFO_MUX;
 			end if;
 			if cpu_out.address(IO_ADDR_WIDTH-1 downto TIMER_ADDR_WIDTH) = TIMER_SELECT then
 				timer_out.rd <= cpu_out.rd;
 				timer_out.wr <= cpu_out.wr;
-				cntmux_next <= TIMER_MUX;
+				mux_next <= TIMER_MUX;
 			end if;
 			if cpu_out.address(IO_ADDR_WIDTH-1 downto UART_ADDR_WIDTH) = UART_SELECT then
 				uart_out.rd <= cpu_out.rd;
 				uart_out.wr <= cpu_out.wr;
-				cntmux_next <= UART_MUX;
+				mux_next <= UART_MUX;
 			end if;
 			if cpu_out.address(IO_ADDR_WIDTH-1 downto BOOTROM_ADDR_WIDTH) = BOOTROM_SELECT then
 				bootrom_out.rd <= cpu_out.rd;
 				bootrom_out.wr <= cpu_out.wr;
-				cntmux_next <= BOOTROM_MUX;
+				mux_next <= BOOTROM_MUX;
 			end if;
 		end if;
 
-		case datamux_reg is
+		case mux_reg is
 			when SYSINFO_MUX =>
 				cpu_in.rd_data <= sysinfo_in.rd_data;
 			when TIMER_MUX =>
@@ -200,38 +194,6 @@ begin  -- rtl
 		-- simplify return of rdy_cnt; precondition: all entities assert rdy_cnt only when necessary
 		cpu_in.rdy_cnt <= sysinfo_in.rdy_cnt or timer_in.rdy_cnt
 						  or uart_in.rdy_cnt or bootrom_in.rdy_cnt;
-		
-		case cntmux_reg is
-			when SYSINFO_MUX =>
-				if sysinfo_in.rdy_cnt(1) = '0' then
-					datamux_next <= cntmux_reg;
-				end if;
-				if sysinfo_in.rdy_cnt = 0 then
-					cpu_in.rd_data <= sysinfo_in.rd_data;
-				end if;
-			when TIMER_MUX =>
-				if timer_in.rdy_cnt(1) = '0' then
-					datamux_next <= cntmux_reg;
-				end if;
-				if timer_in.rdy_cnt = 0 then
-					cpu_in.rd_data <= timer_in.rd_data;
-				end if;
-			when UART_MUX =>
-				if uart_in.rdy_cnt(1) = '0' then
-					datamux_next <= cntmux_reg;
-				end if;
-				if uart_in.rdy_cnt = 0 then
-					cpu_in.rd_data <= uart_in.rd_data;
-				end if;
-			when BOOTROM_MUX =>				
-				if bootrom_in.rdy_cnt(1) = '0' then
-					datamux_next <= cntmux_reg;
-				end if;
-				if bootrom_in.rdy_cnt = 0 then
-					cpu_in.rd_data <= bootrom_in.rd_data;
-				end if;
-			when others => null;
-		end case;
 
 	end process async;
 

@@ -95,7 +95,7 @@ begin  -- rtl
 					when "101" =>
 						rd_data <= hireg;						
 					when others =>
-						rd_data <= (others => '0');
+						rd_data <= hireg;
 				end case;
 			end if;
 			

@@ -64,7 +64,7 @@ begin  -- rtl
 			if rd = '1' then
 				case address(3 downto 0) is
 					when "0000" =>
-						rd_data <= X"20110422";
+						rd_data <= VERSION;
 					when "0001" =>
 						rd_data <= std_logic_vector(to_unsigned(clk_freq, DATA_WIDTH));
 					when "0010" =>
