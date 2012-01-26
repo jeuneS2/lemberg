@@ -60,7 +60,11 @@ architecture behavior of fetch is
 	
 	type startvec_type is array (0 to CLUSTERS) of unsigned(FETCHBUF_BITS-1 downto 0);
 	type pcvec_type is array (0 to CLUSTERS) of unsigned(PC_WIDTH-1 downto 0);
-	
+
+	-- precomputed values for next PC value
+	signal vpc0_inc, vpc1_inc : unsigned(PC_WIDTH-1 downto 0);
+	signal vpc0_stall, vpc1_stall : unsigned(PC_WIDTH-1 downto 0);
+
 begin  -- behavior
 
 	assert (CLUSTERS+CLUSTERS*SYLLABLE_WIDTH <= FETCH_WIDTH)
@@ -70,6 +74,7 @@ begin  -- behavior
 	sync: process (clk, reset)
 	begin  -- process sync
 		if reset = '0' then  			-- asynchronous reset (active low)
+
 			vpc0_reg <= to_unsigned(0, PC_WIDTH);
 			vpc1_reg <= to_unsigned(FETCHBUF_BYTES/2, PC_WIDTH);
 			pc_reg <= to_unsigned(0, PC_WIDTH);
@@ -77,7 +82,14 @@ begin  -- behavior
 			fetch_pos <= (others => '0');
 			wrap_reg <= '0';
 			raw_reg <= (others => '0');
+
+			vpc0_inc <= (others => '0');
+			vpc1_inc <= (others => '0');
+			vpc0_stall <= (others => '0');
+			vpc1_stall <= (others => '0');
+			
 		elsif clk'event and clk = '1' then  -- rising clock edge
+
 			vpc0_reg <= vpc0_next;
 			vpc1_reg <= vpc1_next;
 			pc_reg <= pc_next;
@@ -85,13 +97,22 @@ begin  -- behavior
 			fetch_pos <= fetch_next;
 			wrap_reg <= wrap_next;
 			raw_reg <= raw_next;
+
+			-- precompute values
+			vpc0_inc <= vpc0_next+start_next;
+			vpc1_inc <= vpc1_next+start_next;
+			vpc0_stall <= vpc0_next+fetch_next;
+			vpc1_stall <= vpc1_next+fetch_next;
+			
 		end if;
 	end process sync;
 
 	width: process (raw_in, raw_next, raw_reg, ena, xnop,
 					vpc0_reg, vpc1_reg,
 					pc_reg, pc_wr, pc0_in, pc1_in,
-					start_pos, fetch_pos, wrap_reg)
+					start_pos, fetch_pos, wrap_reg,
+					vpc0_inc, vpc1_inc,
+					vpc0_stall, vpc1_stall)
 		variable maskvec : maskvec_type;
 		variable opcntvec : opcntvec_type;
 		variable opcnt : integer range 0 to CLUSTERS;
@@ -124,8 +145,8 @@ begin  -- behavior
 			fetch_next <= fetch_pos;
 			vpc0_next <= vpc0_reg+FETCHBUF_BYTES;
 			vpc1_next <= vpc1_reg+FETCHBUF_BYTES;
-			vpc0_out <= std_logic_vector(vpc0_reg+FETCHBUF_BYTES+start_pos);
-			vpc1_out <= std_logic_vector(vpc1_reg+FETCHBUF_BYTES+start_pos);
+			vpc0_out <= std_logic_vector(vpc0_inc+FETCHBUF_BYTES);
+			vpc1_out <= std_logic_vector(vpc1_inc+FETCHBUF_BYTES);
 		elsif fetch_pos > start_pos then
 			for i in 0 to FETCHBUF_WIDTH-1 loop
 				if i >= to_integer(fetch_pos*BYTE_WIDTH) or i < to_integer(start_pos*BYTE_WIDTH)then
@@ -134,8 +155,8 @@ begin  -- behavior
 			end loop;  -- i
 			vpc0_next <= vpc0_reg+FETCHBUF_BYTES;
 			vpc1_next <= vpc1_reg+FETCHBUF_BYTES;
-			vpc0_out <= std_logic_vector(vpc0_reg+FETCHBUF_BYTES+start_pos);
-			vpc1_out <= std_logic_vector(vpc1_reg+FETCHBUF_BYTES+start_pos);
+			vpc0_out <= std_logic_vector(vpc0_inc+FETCHBUF_BYTES);
+			vpc1_out <= std_logic_vector(vpc1_inc+FETCHBUF_BYTES);
 		else
 			for i in 0 to FETCHBUF_WIDTH-1 loop
 				if i >= to_integer(fetch_pos*BYTE_WIDTH) and i < to_integer(start_pos*BYTE_WIDTH) then
@@ -144,8 +165,8 @@ begin  -- behavior
 			end loop;  -- i
 			vpc0_next <= vpc0_reg;
 			vpc1_next <= vpc1_reg;
-			vpc0_out <= std_logic_vector(vpc0_reg+start_pos);
-			vpc1_out <= std_logic_vector(vpc1_reg+start_pos);
+			vpc0_out <= std_logic_vector(vpc0_inc);
+			vpc1_out <= std_logic_vector(vpc1_inc);
 		end if;
 				
 		if pc_wr = '1' then
@@ -175,8 +196,8 @@ begin  -- behavior
 			pc_next <= pc_reg;
 			vpc0_next <= vpc0_reg;
 			vpc1_next <= vpc1_reg;
-			vpc0_out <= std_logic_vector(vpc0_reg+fetch_pos);
-			vpc1_out <= std_logic_vector(vpc1_reg+fetch_pos);
+			vpc0_out <= std_logic_vector(vpc0_stall);
+			vpc1_out <= std_logic_vector(vpc1_stall);
 		end if;
 
 	end process width;
