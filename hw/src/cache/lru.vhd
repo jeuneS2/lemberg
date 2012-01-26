@@ -81,7 +81,6 @@ architecture rtl of lru is
 	-- register data to CPU
 	signal rd_data_reg, next_rd_data : std_logic_vector(DATA_WIDTH-1 downto 0);
 	
-	signal fetch_reg, next_fetch : std_logic;
 	signal crd_reg, next_crd : std_logic;
 	
 begin
@@ -166,14 +165,12 @@ begin
 		if int_reset = '0' then  -- asynchronous reset (active low)
 			cpu_out_reg <= ((others => '0'), (others => '0'), '0', '0', "1111", bypass);
 			rd_data_reg <= (others => '0');
-			fetch_reg <= '0';
 			crd_reg <= '0';
 			state <= idle;
 
 		elsif clk'event and clk = '1' then  -- rising clock edge
 			cpu_out_reg <= next_cpu_out;				
 			rd_data_reg <= next_rd_data;
-			fetch_reg <= next_fetch;
 			crd_reg <= next_crd;
 			state <= next_state;
 
@@ -181,8 +178,7 @@ begin
 	end process sync;
 	
 	async: process (cpu_out, cpu_out_reg, mem_in,
-					ram_dout, rd_data_reg,
-					fetch_reg, crd_reg,
+					ram_dout, rd_data_reg, crd_reg,
 					state, data, hit)
 
 		variable merged_index : std_logic_vector(index_bits-1 downto 0);
@@ -219,17 +215,13 @@ begin
 
 		-- default values to CPU
 		cpu_in.rdy_cnt <= "00";
-		if fetch_reg = '1' then
-			cpu_in.rd_data <= mem_in.rd_data;
-			next_rd_data <= mem_in.rd_data;
-		elsif crd_reg = '1' then
+		if crd_reg = '1' then
 			cpu_in.rd_data <= ram_dout;
 			next_rd_data <= ram_dout;
 		else
 			cpu_in.rd_data <= rd_data_reg;
 			next_rd_data <= rd_data_reg;
 		end if;
-		next_fetch <= '0';
 		next_crd <= '0';
 		
 		-- default outputs to memory
@@ -255,11 +247,10 @@ begin
 
 			-- memory read sequence, updating cache
 			when rd0 =>  				-- wait for memory
+				cpu_in.rdy_cnt <= "11";
 				if mem_in.rdy_cnt <= 1 then
-					cpu_in.rdy_cnt <= "10";
 					next_state <= rd1;
 				else
-					cpu_in.rdy_cnt <= "11";
 					next_state <= rd0;
 				end if;
 
@@ -272,8 +263,9 @@ begin
 				ram_wraddress <= data(line_cnt-1).index;
 				ram_wren <= (others => '1');
 				
-				cpu_in.rdy_cnt <= "01";
-				next_fetch <= '1';
+				next_rd_data <= mem_in.rd_data;
+
+				cpu_in.rdy_cnt <= "11";
 				next_state <= idle;
 
 			when others => null;
@@ -295,8 +287,9 @@ begin
 			end if;
 
 			next_state <= idle;
-
-		elsif cpu_out_reg.rd = '1' then
+		end if;
+			
+		if cpu_out_reg.rd = '1' then
 
 			if cpu_out_reg.cache = cache_type then
 				-- set enables for shifting lines

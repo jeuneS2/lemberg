@@ -70,8 +70,6 @@ architecture rtl of stackcache is
 	signal cpu_out_reg, next_cpu_out : sc_out_type;
 
 	signal rddata_reg, next_rddata : std_logic_vector(DATA_WIDTH-1 downto 0);
-	signal fetchtag_reg, next_fetchtag : std_logic_vector(mem_bits-1 downto 0);
-	signal fetch_reg, next_fetch : std_logic;
 
 	type STATE_TYPE is (idle, rd0, rd1, wr0, wr1);
 	signal state, next_state : STATE_TYPE;
@@ -131,29 +129,23 @@ begin
 
 			cpu_out_reg <= ((others => '0'), (others => '0'), '0', '0', "1111", bypass);
 			rddata_reg <= (others => '0');
-			fetchtag_reg <= (others => '0');
-			fetch_reg <= '0';
 			state <= idle;
 
 		elsif clk'event and clk = '1' then  -- rising clock edge
 
 			cpu_out_reg <= next_cpu_out;
 			rddata_reg <= next_rddata;
-			fetchtag_reg <= next_fetchtag;
-			fetch_reg <= next_fetch;
 			state <= next_state;
 
 		end if;
 	end process sync;
 
 	async: process (cpu_out, mem_in, ram_dout,
-					cpu_out_reg, rddata_reg, fetchtag_reg, fetch_reg, state)
+					cpu_out_reg, rddata_reg, state)
 	begin  -- process
 
 		next_cpu_out <= cpu_out_reg;
 		next_rddata <= rddata_reg;
-		next_fetchtag <= fetchtag_reg;
-		next_fetch <= '0';
 		next_state <= state;
 
 		-- return data from on-chip memory
@@ -164,13 +156,13 @@ begin
 		ram_rdaddress <= cpu_out.address(index_bits-1 downto 0);
 		ram_rden_tag <= '0';
 		ram_rden_data <= (others => '0');
-		ram_wraddress <= cpu_out.address(index_bits-1 downto 0);
+		ram_wraddress <= cpu_out_reg.address(index_bits-1 downto 0);
 		ram_wren_tag <= '0';
 		ram_wren_data <= (others => '0');
 
 		ram_din.valid <= '1';
-		ram_din.data <= cpu_out.wr_data;
-		ram_din.tag <= cpu_out.address(mem_bits-1 downto index_bits);
+		ram_din.data <= cpu_out_reg.wr_data;
+		ram_din.tag <= cpu_out_reg.address(mem_bits-1 downto index_bits);
 
 		-- defaults to access RAM
 		mem_out.address <= cpu_out_reg.address;
@@ -178,18 +170,6 @@ begin
 		mem_out.wr <= '0';
 		mem_out.wr_data <= cpu_out_reg.wr_data;
 		mem_out.byte_ena <= cpu_out_reg.byte_ena;
-
-		if fetch_reg = '1' then
-			cpu_in.rd_data <= mem_in.rd_data;
-			next_rddata <= mem_in.rd_data;
-
-			ram_din.data <= mem_in.rd_data;
-			ram_din.tag <= fetchtag_reg(mem_bits-1 downto index_bits);
-			ram_wraddress <= fetchtag_reg(index_bits-1 downto 0);
-			ram_wren_tag <= '1';
-			-- we always fill the cache with whole words
-			ram_wren_data <= (others => '1');
-		end if;
 
 		case state is
 
@@ -205,30 +185,31 @@ begin
 				end if;
 
 			when rd1 =>
-				cpu_in.rdy_cnt <= mem_in.rdy_cnt;				
-				if mem_in.rdy_cnt <= 1 then
-					next_fetchtag <= cpu_out_reg.address(mem_bits-1 downto 0);
-					next_fetch <= '1';
+				cpu_in.rdy_cnt <= "11";
+
+				ram_din.data <= mem_in.rd_data;
+				next_rddata <= mem_in.rd_data;
+
+				if mem_in.rdy_cnt = 0 then
+					ram_wren_tag <= '1';
+					ram_wren_data <= (others => '1');
 					next_state <= idle;
 				end if;
 
 			when wr0 =>
 				cpu_in.rdy_cnt <= "00";
-				ram_din.data <= cpu_out_reg.wr_data;
-				ram_din.tag <= cpu_out_reg.address(mem_bits-1 downto index_bits);
-				ram_wraddress <= cpu_out_reg.address(index_bits-1 downto 0);
+
 				ram_wren_tag <= '1';
 				ram_wren_data <= cpu_out_reg.byte_ena;					
+
 				next_state <= idle;
 				
 			when wr1 =>
 				cpu_in.rdy_cnt <= "00";
+
 				-- update data only if we have a cache hit
 				if ram_dout.tag = cpu_out_reg.address(mem_bits-1 downto index_bits)
 					and ram_dout.valid = '1' then					
-					ram_din.data <= cpu_out_reg.wr_data;
-					ram_din.tag <= cpu_out_reg.address(mem_bits-1 downto index_bits);
-					ram_wraddress <= cpu_out_reg.address(index_bits-1 downto 0);
 					ram_wren_tag <= '1';
 					ram_wren_data <= cpu_out_reg.byte_ena;					
 				end if;
