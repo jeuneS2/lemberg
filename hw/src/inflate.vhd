@@ -40,8 +40,6 @@ end inflate;
 
 architecture behavior of inflate is
 
-	constant ENABLE_XNOP : boolean := false;
-	
 	signal raw_reg : std_logic_vector(0 to FETCH_WIDTH-1);
 	signal nop_cnt_reg, nop_cnt_next : unsigned(8-CLUSTERS-1 downto 0);
 
