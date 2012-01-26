@@ -15,7 +15,9 @@ __crt0:
 		;;
 		#1: stm.a r15, r1.16, 0
 		;; 
-		nop 2
+		nop 0
+		;;
+		nop 0
 		;;
 __crt0_return:
 		#0: ldm.s r15, 0
@@ -28,9 +30,13 @@ __crt0_return:
 		;;
 		#2: stx r2.31 -> $rb
 		;;
-		#0: ret
+		#0: jop ret
 		;; 
-		nop 3
+		nop 0
+		;;
+		nop 0
+		;;
+		nop 0
 		;;
 		.align 4
 __crt0_end:
@@ -51,9 +57,13 @@ __crt0_exit:
 		;;
 		#2: stx r2.31 -> $rb
 		;;
-		#0: ret
+		#0: jop ret
 		;; 
-		nop 3
+		nop 0
+		;;
+		nop 0
+		;;
+		nop 0
 		;;
 		.align 4
 __crt0_exit_end:

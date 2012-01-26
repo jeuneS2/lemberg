@@ -26,6 +26,7 @@ using namespace llvm;
 
 STATISTIC(FilledSlots, "Number of no-op delay slot cycles");
 STATISTIC(HiddenSlots, "Number of hidden delay slot cycles");
+STATISTIC(NowSlots, "Number of non-delayed branches");
 
 namespace {
 
@@ -75,12 +76,12 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 
 	unsigned Opcode = II->getOpcode();
 
-	unsigned maxSlots = 3;
+	unsigned maxSlots = 2;
 	if (Opcode == Lemberg::CALL
 		|| Opcode == Lemberg::CALLga
 		|| Opcode == Lemberg::RET
 		|| Opcode == Lemberg::JUMPp) {
-		maxSlots = 4;
+		maxSlots = 3;
 	}
 
 	if (fullOpt
@@ -109,7 +110,7 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 		}
 
 		unsigned BrSchedClass = II->getDesc().getSchedClass();
-		unsigned BrSlot = IIStages[IITab[BrSchedClass].FirstStage].getUnits();				
+		unsigned BrSlot = IIStages[IITab[BrSchedClass].FirstStage].getUnits();	
 
 		MachineBasicBlock::iterator J = prior(II), newII = II;				
 		unsigned movedSlots = 0;
@@ -137,11 +138,20 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 					if (recurse) {
 
 						if (Opcode == Lemberg::JUMP
+							&& !(II->getFlag((MachineInstr::MIFlag)(1 << 7)))
 							&& (ConflictOpcode == Lemberg::JUMPeqz
 								|| ConflictOpcode == Lemberg::JUMPnez)) {
 
-							// Move up conflicting branch first
-							fillDelaySlot(J, MBB, false);
+							MachineInstr *MI = J;
+							if (ConflictOpcode != Lemberg::JUMPeqz) {
+								// Move up conflicting branch first
+								fillDelaySlot(J, MBB, false);
+							} else {
+								// Remove so we can schedule across this branch
+								MBB.erase(next(J)); // remove SEP
+								MI = MBB.remove(J);
+							}
+
 							// Change to reversed branch and move up
 							MachineOperand Dest = II->getOperand(0);
 							II->RemoveOperand(0);
@@ -156,8 +166,18 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							II->addOperand(Dest);
 							
 							fillDelaySlot(II, MBB, false);
-							// We already scheduled J, don't look at it again
-							II = J;
+
+							if (ConflictOpcode == Lemberg::JUMPeqz) {
+								// Insert this branch again
+								MBB.push_back(MI);
+								BuildMI(&MBB, DebugLoc(), TII->get(Lemberg::SEP));
+								// Move up branch
+								fillDelaySlot(J, MBB, false);
+							} else {
+								// We already scheduled J, don't look at it again
+								II = J;
+							}
+
 							return;
 						} else if (Opcode == Lemberg::JUMP
 							&& (ConflictOpcode == Lemberg::JUMPtrue
@@ -291,6 +311,28 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 		}
 
 		HiddenSlots += movedSlots;
+
+		if (movedSlots == 0) {
+			// nothing can be hidden, branch _now_ if possible
+			unsigned OpcodeNow = 0;
+			switch (Opcode) {
+			case Lemberg::JUMP: OpcodeNow = Lemberg::JUMP_now; break;
+			case Lemberg::JUMPtrue: OpcodeNow = Lemberg::JUMPtrue_now; break;
+			case Lemberg::JUMPfalse: OpcodeNow = Lemberg::JUMPfalse_now; break;
+			case Lemberg::JUMPeqz: OpcodeNow = Lemberg::JUMPeqz_now; break;
+			case Lemberg::JUMPnez: OpcodeNow = Lemberg::JUMPnez_now; break;
+			case Lemberg::JUMPpred: OpcodeNow = Lemberg::JUMPpred_now; break;
+			}
+			// found a replacement
+			if (OpcodeNow != 0) {
+				TargetInstrDesc *NTID = new TargetInstrDesc();
+				*NTID = TII->get(OpcodeNow);
+				NTID->SchedClass = II->getDesc().getSchedClass();
+				II->setDesc(*NTID);
+				movedSlots = maxSlots;
+				NowSlots++;
+			}
+		}
 		// fill remaining slots
 		if (movedSlots < maxSlots) {
 			for (unsigned i = 0; i < maxSlots-movedSlots; i++) {
@@ -299,8 +341,30 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 				FilledSlots++;
 			}
 		}
-	} else {
-		for (unsigned i = 0; i < maxSlots; i++) {
+	} else {		
+		unsigned minSlots = 0;
+		if (II == MBB.begin()) {
+			// nothing can be hidden, branch _now_ if possible
+			unsigned OpcodeNow = 0;
+			switch (Opcode) {
+			case Lemberg::JUMP: OpcodeNow = Lemberg::JUMP_now; break;
+			case Lemberg::JUMPtrue: OpcodeNow = Lemberg::JUMPtrue_now; break;
+			case Lemberg::JUMPfalse: OpcodeNow = Lemberg::JUMPfalse_now; break;
+			case Lemberg::JUMPeqz: OpcodeNow = Lemberg::JUMPeqz_now; break;
+			case Lemberg::JUMPnez: OpcodeNow = Lemberg::JUMPnez_now; break;
+			case Lemberg::JUMPpred: OpcodeNow = Lemberg::JUMPpred_now; break;
+			}
+			// found a replacement
+			if (OpcodeNow != 0) {
+				TargetInstrDesc *NTID = new TargetInstrDesc();
+				*NTID = TII->get(OpcodeNow);
+				NTID->SchedClass = II->getDesc().getSchedClass();
+				II->setDesc(*NTID);
+				minSlots = maxSlots;
+				NowSlots++;
+			}
+		}
+		for (unsigned i = minSlots; i < maxSlots; i++) {
 			BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::SEP));
 			BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::NOP)).addImm(0);
 			FilledSlots++;

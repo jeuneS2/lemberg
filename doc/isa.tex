@@ -209,14 +209,18 @@ dest values \texttt{000}-\texttt{011} address r0-r3, values \texttt{100}-\texttt
 \BitBox{1}{c} & \BitBox{2}{F}
 \end{bytefield}
 
-\item Jump format \textsf{\textbf{J}}:\\
+\item Branch format \textsf{\textbf{J}}:\\
 
 \begin{bytefield}{25}
-\bitheader[l]{0-25}\\
-\BitBox{6}{opCode} & \BitBox{5}{target} & \BitBox{10}{} &
-\BitBox{1}{\texttt{0}} & \BitBox{1}{c} & \BitBox{2}{F} \\
-\BitBox{6}{opCode} & \BitBox{15}{offset} &
-\BitBox{1}{\texttt{1}} & \BitBox{1}{c} & \BitBox{2}{F}
+\bitheader[l]{0-25}\\ \BitBox{6}{opCode} & \BitBox{15}{offset} &
+\BitBox{1}{d} & \BitBox{1}{c} & \BitBox{2}{F}
+\end{bytefield}
+
+\item Branch compare zero format \textsf{\textbf{Z}}:\\
+
+\begin{bytefield}{25}
+\bitheader[l]{0-25}\\ \BitBox{6}{opCode} & \BitBox{5}{src} &
+\BitBox{10}{offset} & \BitBox{1}{d} & & \BitBox{3}{op}
 \end{bytefield}
 
 \item Load format \textsf{\textbf{L}}:\\
@@ -245,6 +249,7 @@ dest values \texttt{000}-\texttt{011} address r0-r3, values \texttt{100}-\texttt
 \begin{tabular}{l@{ \ldots\ }l}
   c & condition: \texttt{1} \ldots\ if \texttt{true}, \texttt{0} \ldots\ if \texttt{false} \\
   F & condition flag to use \\
+  d & delayed branch \\
 \end{tabular}
 
 \section{Register File}
@@ -384,10 +389,10 @@ Opcode & Name & Fmt & Unit & Semantics \\
 \midrule
 \multicolumn{5}{c}{\textsf{\textbf{Flow Control}}} \\
 \cmidrule{1-5}
-\texttt{0111 00} & \texttt{br} & J & J & \texttt{pc = imm ?\ pc+offset :\ target} \\
-\texttt{0111 01} & \texttt{call} & B & J,M & \texttt{\$rb = \$ba, \$ro = pc, \$ba = src2, pc = 0} \\
-\texttt{0111 10} & \texttt{callg} & G & J,M & \texttt{\$rb = \$ba, \$ro = pc, \$ba = addr*4, pc = 0} \\
-\texttt{0111 11} & \texttt{ret} & B & J,M & \texttt{\$ba = \$rb, pc = \$ro} \\
+\texttt{0111 00} & \texttt{br} & J & J & \texttt{pc = pc+offset} \\
+\texttt{0111 01} & \texttt{brz} & Z & J & \texttt{if (src op 0) pc = pc+offset} (see Section~\ref{sec:brz}) \\
+\texttt{0111 10} & \texttt{jop} & B & J,M & jump operation (see Section~\ref{sec:jop}) \\
+\texttt{0111 11} & \texttt{callg} & G & J,M & \texttt{\$rb = \$ba, \$ro = pc, \$ba = addr*4, pc = 0} \\
 \midrule
 \pagebreak
 \midrule
@@ -451,33 +456,6 @@ Src2 & Name & Semantics \\
 \texttt{001 01} & \texttt{ctz} & count trailing zeros \\
 \texttt{001 10} & \texttt{pop} & count ones \\
 \texttt{001 11} & \texttt{par} & compute parity \\
-\midrule
-\multicolumn{3}{c}{\textbf{---}} \\
-\cmidrule{1-3}
-\texttt{010 00} & \texttt{?} & \\
-\texttt{010 01} & \texttt{?} & \\
-\texttt{010 10} & \texttt{?} & \\
-\texttt{010 11} & \texttt{?} & \\
-\texttt{011 00} & \texttt{?} & \\
-\texttt{011 01} & \texttt{?} & \\
-\texttt{011 10} & \texttt{?} & \\
-\texttt{011 11} & \texttt{?} & \\
-\texttt{100 00} & \texttt{?} & \\
-\texttt{100 01} & \texttt{?} & \\
-\texttt{100 10} & \texttt{?} & \\
-\texttt{100 11} & \texttt{?} & \\
-\texttt{101 00} & \texttt{?} & \\
-\texttt{101 01} & \texttt{?} & \\
-\texttt{101 10} & \texttt{?} & \\
-\texttt{101 11} & \texttt{?} & \\
-\texttt{110 00} & \texttt{?} & \\
-\texttt{110 01} & \texttt{?} & \\
-\texttt{110 10} & \texttt{?} & \\
-\texttt{110 11} & \texttt{?} & \\
-\texttt{111 00} & \texttt{?} & \\
-\texttt{111 01} & \texttt{?} & \\
-\texttt{111 10} & \texttt{?} & \\
-\texttt{111 11} & \texttt{?} & \\
 \bottomrule  
 \end{tabular}
 
@@ -491,10 +469,37 @@ Op & Name & Semantics \\
 \texttt{00} & \texttt{and} & \texttt{d = (i1 \textasciicircum{} s1) \& (i2 \textasciicircum{} s2)} \\
 \texttt{01} & \texttt{or} & \texttt{d = (i1 \textasciicircum{} s1) | (i2 \textasciicircum{} s2)} \\
 \texttt{10} & \texttt{xor} & \texttt{d = (i1 \textasciicircum{} s1) \textasciicircum{} (i2 \textasciicircum{} s2)} \\
-\texttt{11} & \texttt{?} & \\
 \bottomrule  
 \end{tabular}
 
+\subsection{Branch Zero Operations}
+\label{sec:brz}
+
+\begin{tabular}{cll}
+\toprule
+Op & Name & Semantics \\
+\midrule
+\texttt{000} & \texttt{eq} & \texttt{if (src == 0) pc = pc+offset} \\
+\texttt{001} & \texttt{ne} & \texttt{if (src != 0) pc = pc+offset} \\
+\texttt{010} & \texttt{lt} & \texttt{if (src < 0) \ pc = pc+offset} \\
+\texttt{011} & \texttt{ge} & \texttt{if (src >= 0) pc = pc+offset} \\
+\texttt{100} & \texttt{le} & \texttt{if (src <= 0) pc = pc+offset} \\
+\texttt{101} & \texttt{gt} & \texttt{if (src > 0) \ pc = pc+offset} \\
+\bottomrule  
+\end{tabular}
+
+\subsection{Jump Operations}
+\label{sec:jop}
+
+\begin{tabular}{cll}
+\toprule
+Src2 & Name & Semantics \\
+\midrule
+\texttt{000 00} & \texttt{jmp} & \texttt{pc = src1} \\
+\texttt{000 01} & \texttt{call} & \texttt{\$rb = \$ba, \$ro = pc, \$ba = src1, pc = 0} \\
+\texttt{000 10} & \texttt{ret} & \texttt{\$ba = \$rb, pc = \$ro} \\
+\bottomrule  
+\end{tabular}
 
 \pagebreak
 
@@ -567,6 +572,7 @@ Result Bit & Semantics \\
 \item Stores to the stack are write-back, stores to other caches are
   write-through. Stores do not pull data into the caches (no write allocation).
 \item Support for floating-point operations is optional.
+\item Branches use a delay-slot if bit \texttt{d} is set, and do not use a delay slot if it is cleared
 \end{itemize}
 
 \end{document}

@@ -67,12 +67,15 @@
 %token <intval>  CLUST FLAG REG EXT FREG DREG
 %token <strval>  STR
 %token <exprval> NUM EXPR SYM
-%token <opcode>  NOP THREEOP ONEOP NULLOP LDIOP WBOP CMPOP BRANCHOP BRANCHZOP 
-                 GLOBOP LDGAOP STOREOP LOADOP LDXOP STXOP MULOP CCOP BBHOP BBHSUBOP
+%token <opcode>  NOP THREEOP ONEOP NULLOP LDIOP WBOP CMPOP
+                 BRANCHOP BRANCHZOP BRZSUBOP JOP JSUBOP
+                 GLOBOP LDGAOP STOREOP LOADOP LDXOP STXOP
+                 MULOP CCOP BBHOP BBHSUBOP
                  FOP FTHREEOP FCMPOP FTWOOP FONEOP F2DOP
                  DTHREEOP DCMPOP DTWOOP DONEOP D2FOP
 
 %type <intval>   NotOptFlag
+%type <intval>   DelayOpt
 %type <exprval>  Constant
 %type <cond>     Condition
 %type <asmop>    AsmOp
@@ -375,26 +378,55 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.fmt.S.imm = 0;
 		  $$.fmt.S.cond = $1;
       }
-      | Condition BRANCHOP Constant
+      | Condition BRANCHOP DelayOpt Constant
       {		  
 		  $$.op = $2;
-		  $$.fmt.J.target.offset = $3;
-		  $$.fmt.J.imm = 1;
+		  $$.fmt.J.target = $4;
 		  $$.fmt.J.cond = $1;
+		  $$.fmt.J.delayed = $3;
       }
-      | Condition BRANCHOP REG
-      {
-		  $$.op = $2;
-		  $$.fmt.J.target.reg = $3;
-		  $$.fmt.J.imm = 0;
-		  $$.fmt.J.cond = $1;
-      }
-      | BRANCHZOP REG ',' Constant
+      | BRANCHZOP BRZSUBOP DelayOpt REG ',' Constant
       {
 		  $$.op = $1;
-		  $$.fmt.Z.reg = $2;
-		  $$.fmt.Z.target = $4;
+		  $$.fmt.Z.reg = $4;
+		  $$.fmt.Z.target = $6;
+		  switch ($2) {
+		  case OP_EQ: $$.fmt.Z.op = 0; break;
+		  case OP_NE: $$.fmt.Z.op = 1; break;
+		  case OP_LT: $$.fmt.Z.op = 2; break;
+		  case OP_GE: $$.fmt.Z.op = 3; break;
+		  case OP_LE: $$.fmt.Z.op = 4; break;
+		  case OP_GT: $$.fmt.Z.op = 5; break;
+		  default:
+			  yyerror("Invalid branch zero operation.");
+		  }
+		  $$.fmt.Z.delayed = $3;
       }
+      | Condition JOP JSUBOP REG {
+		  $$.op = $2;
+		  $$.fmt.B.src1 = $4;
+		  switch ($3) {
+		  case OP_BRIND: $$.fmt.B.src2.reg = 0; break;
+		  case OP_CALL: $$.fmt.B.src2.reg = 1; break;
+		  default:
+			  yyerror("Invalid jump operation.");
+		  }
+		  $$.fmt.B.dest = 0;
+		  $$.fmt.B.imm = 0;
+		  $$.fmt.B.cond = $1;
+	  }
+      | Condition JOP JSUBOP {
+		  $$.op = $2;
+		  $$.fmt.B.src1 = 0;
+		  switch ($3) {
+		  case OP_RET: $$.fmt.B.src2.reg = 2; break;
+		  default:
+			  yyerror("Invalid jump operation.");
+		  }
+		  $$.fmt.B.dest = 0;
+		  $$.fmt.B.imm = 0;
+		  $$.fmt.B.cond = $1;
+	  }
       | Condition LDXOP EXT DEST REG
       {
 		  $$.op = $2;
@@ -600,6 +632,17 @@ NotOptFlag: '!' FLAG
           {
 			  $$ = $1;
 		  }
+;
+
+DelayOpt: '@'
+        {
+			$$ = 0;
+		}
+        |
+        {
+			$$ = 1;
+		}
+;
 
 Constant: NUM
         | SYM
@@ -677,25 +720,25 @@ static void emit_string(const char *str)
 
 static void fix_offset(struct asmop *op)
 {
-	if (op->op == OP_BR && op->fmt.J.imm)
+	if (op->op == OP_BR)
 		{
-			if (op->fmt.J.target.offset.strval == NULL)
+			if (op->fmt.J.target.strval == NULL)
 				{
-					op->fmt.J.target.offset.intval -= pos;
+					op->fmt.J.target.intval -= pos;
 				}
 			else
 				{
-					char *strval = op->fmt.J.target.offset.strval;
+					char *strval = op->fmt.J.target.strval;
 					char *relexpr = malloc(strlen(strval)+16);
 					sprintf(relexpr, "%s-0x%lx", strval, pos);
-					op->fmt.J.target.offset.strval = relexpr;
+					op->fmt.J.target.strval = relexpr;
 				}
 			/* fprintf(stderr, "BR: %lld/%s\n", */
 			/* 		op->fmt.J.target.offset.intval, */
 			/* 		op->fmt.J.target.offset.strval); */
 		}
 
-	if (op->op == OP_BEQZ || op->op == OP_BNEZ)
+	if (op->op == OP_BRZ)
 		{
 			if (op->fmt.Z.target.strval == NULL)
 				{
@@ -708,7 +751,7 @@ static void fix_offset(struct asmop *op)
 					sprintf(relexpr, "%s-0x%lx", strval, pos);
 					op->fmt.Z.target.strval = relexpr;
 				}
-			/* fprintf(stderr, "BEQZ/BNEZ: %lld/%s\n", */
+			/* fprintf(stderr, "BRZ: %lld/%s\n", */
 			/* 		op->fmt.Z.target.intval, */
 			/* 		op->fmt.Z.target.strval); */
 		}

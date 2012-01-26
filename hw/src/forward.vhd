@@ -31,6 +31,7 @@ entity forward is
 		clk	        : in  std_logic;
 		reset       : in  std_logic;
 		ena         : in  std_logic;
+		flush       : in  std_logic;
 		wren        : in  reg_wren_type;
 		wraddr      : in  reg_wraddr_type;
 		wrdata      : in  reg_wrdata_type;
@@ -101,13 +102,21 @@ begin  -- behavior
 					wrdata_jmp_reg(i) <= std_logic_vector(unsigned(wrdata(i))
 														  +FETCH_WIDTH/BYTE_WIDTH);
 				end loop;  -- i
-				
+
 				op_reg <= op_in;
 				memop_reg <= memop_in;
 				stallop_reg <= stallop_in;
 				jmpop_reg <= jmpop_in;
-			end if;
 
+				if flush = '1' then
+					for i in 0 to CLUSTERS-1 loop
+						op_reg(i) <= OP_NOP;
+						memop_reg(i) <= MEMOP_NOP;
+						stallop_reg(i) <= STALLOP_NOP;				
+						jmpop_reg(i) <= JMPOP_NOP;				
+					end loop;  -- i
+				end if;			
+			end if;
 		end if;
 	end process sync;
 

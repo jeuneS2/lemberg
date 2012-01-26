@@ -1122,17 +1122,22 @@ def : Pat<(setge (f64 D:$src1), (f64 D:$src2)),
 // Jump
 let isBranch = 1, isTerminator = 1, hasDelaySlot=1 in {
 
-	let isBarrier=1 in
-	def JUMP : F1<(outs), (ins brtarget:$target),
-                  "       br\t$target",
-                  [(br bb:$target)],
-                  IIBranch>;
+	let isBarrier=1 in {
+	  def JUMP : F1<(outs), (ins brtarget:$target),
+                    "       br\t$target",
+                    [(br bb:$target)],
+                    IIBranch>;
+      def JUMP_now : F1<(outs), (ins brtarget:$target),
+                        "       br @\t$target",
+                        [], IIBranch>;
+	}
 
-	let isIndirectBranch = 1, isBarrier=1 in
-	def JUMPp : F1<(outs), (ins pred:$p, A:$target),
-	               "$p br\t$target",
-	               [(brind A:$target)],
-                   IIBranch>;
+	let isIndirectBranch = 1, isBarrier=1 in {
+	  def JUMPp : F1<(outs), (ins pred:$p, A:$target),
+	                 "$p jop\tbrind\t$target",
+	                 [(brind A:$target)],
+                     IIBranch>;
+	}
 
 	def JUMPtrue : F1<(outs), (ins C:$cond, brtarget:$target),
 	                  "if  $cond br\t$target",
@@ -1142,21 +1147,31 @@ let isBranch = 1, isTerminator = 1, hasDelaySlot=1 in {
 	                  "if !$cond br\t$target", 
                       [(brcond (notcc C:$cond), bb:$target)],
 	                  IIBranch>;
+	def JUMPtrue_now : F1<(outs), (ins C:$cond, brtarget:$target),
+	                      "if  $cond br @\t$target", [], IIBranch>;
+	def JUMPfalse_now : F1<(outs), (ins C:$cond, brtarget:$target),
+	                      "if !$cond br @\t$target", [], IIBranch>;
 
 	let Defs = [C3] in {
 	  def JUMPeqz : F1<(outs), (ins A:$src, brtarget:$target),
-	                   "       beqz\t$src, $target",
+	                   "       brz eq\t$src, $target",
                        [(brcond (i1 (seteq A:$src, (i32 0))), bb:$target)],
 	                   IIBranch>;
       def JUMPnez : F1<(outs), (ins A:$src, brtarget:$target),
-	                   "       bnez\t$src, $target",
+	                   "       brz ne\t$src, $target",
                        [(brcond (i1 (setne A:$src, (i32 0))), bb:$target)],
 	                   IIBranch>;
+	  def JUMPeqz_now : F1<(outs), (ins A:$src, brtarget:$target),
+	                       "       brz eq @\t$src, $target", [], IIBranch>;
+      def JUMPnez_now : F1<(outs), (ins A:$src, brtarget:$target),
+	                       "       brz ne @\t$src, $target", [], IIBranch>;
 	}
 
 	// predicated version for easier if-conversion
 	def JUMPpred : F1<(outs), (ins pred:$p, brtarget:$target),
 	                  "$p br\t$target", [], IIBranch>;
+	def JUMPpred_now : F1<(outs), (ins pred:$p, brtarget:$target),
+	                      "$p br @\t$target", [], IIBranch>;
 }
 
 // Patterns to match special cases of conditions
@@ -1198,7 +1213,7 @@ let isCall=1, hasDelaySlot=1,
 			D0, D1,
 			D2, D3, D4] in {
 	def CALL : F1<(outs), (ins pred:$p, A:$target, variable_ops),
-				  "$p call\t$target",
+				  "$p jop\tcall\t$target",
 				  [(LembergCall A:$target)],
 				  IIBranch>;
 
@@ -1212,7 +1227,7 @@ let isCall=1, hasDelaySlot=1,
 // Return
 let isReturn=1, isTerminator=1, hasDelaySlot=1, isBarrier=1 in
 	def RET : F1<(outs), (ins pred:$p),
-				 "$p ret",
+				 "$p jop\tret",
 				 [(LembergReturn)],
 				 IIBranch>;
 

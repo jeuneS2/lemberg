@@ -41,6 +41,7 @@ architecture behavior of core is
 
 	signal ena		   : std_logic;
 	signal xnop        : std_logic;
+	signal flush       : std_logic;
 
 	signal fetch_raw   : std_logic_vector(0 to FETCH_WIDTH-1);
 	signal fetch_vpc0  : std_logic_vector(PC_WIDTH-1 downto 0);
@@ -73,6 +74,7 @@ architecture behavior of core is
 	signal alu_wraddr  : reg_wraddr_type;
 	signal alu_wrdata  : reg_wrdata_type;
 	signal alu_zero    : std_logic_vector(CLUSTERS-1 downto 0);
+	signal alu_neg     : std_logic_vector(CLUSTERS-1 downto 0);
 	
 	signal rb_wren     : std_logic_vector(CLUSTERS-1 downto 0);
 	signal rb_wrdata   : rb_wrdata_type;
@@ -125,10 +127,11 @@ begin  -- behavior
 	inflate: entity work.inflate
 		port map (
 			clk		   => clk,
-			reset	   => reset,
+			reset	   => reset,			
 			raw        => fetch_raw,
 			pc_in	   => fetch_pc,
 			ena		   => ena,
+			flush      => flush,
 			bundle     => infl_bundle,
 			pc_out	   => infl_pc,
 			xnop       => xnop);
@@ -140,6 +143,7 @@ begin  -- behavior
 			bundle   => infl_bundle,
 			pc       => infl_pc,
 			ena      => ena,
+			flush    => flush,
 			op	     => dec_op,
 			memop    => dec_memop,
 			stallop  => dec_stallop,
@@ -154,6 +158,7 @@ begin  -- behavior
 			clk			=> clk,
 			reset		=> reset,
 			ena			=> ena,
+			flush       => flush,
 			wren        => alu_wren,
 			wraddr      => alu_wraddr,
 			wrdata      => alu_wrdata,
@@ -177,6 +182,7 @@ begin  -- behavior
 				wraddr  => alu_wraddr(i),
 				wrdata  => alu_wrdata(i),
 				zero    => alu_zero(i),
+				neg     => alu_neg(i),
 				memdata => mem_memdata,
 				rb_in   => mem_rb,
 				rb_wren => rb_wren(i),
@@ -218,7 +224,9 @@ begin  -- behavior
 			op		=> fwd_jmpop,
 			fl_in	=> fl_rddata,
 			zero    => alu_zero,
+			neg     => alu_neg,
 			ena     => ena,
+			flush   => flush,
 			pc_in   => fetch_pc,
 			pcoff   => mem_pcoff,
 			ro_out  => jmp_ro,

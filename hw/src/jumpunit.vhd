@@ -32,7 +32,9 @@ entity jumpunit is
 		op      : in  jmpop_arr_type;
 		fl_in   : in  std_logic_vector(FLAG_COUNT-1 downto 0);
 		zero    : in  std_logic_vector(CLUSTERS-1 downto 0);
+		neg     : in  std_logic_vector(CLUSTERS-1 downto 0);
 		ena     : in  std_logic;
+		flush   : out std_logic;
 		pc_in   : in  std_logic_vector(PC_WIDTH-1 downto 0);
 		pcoff   : in  std_logic_vector(ICACHE_BLOCK_BITS-1 downto 0);
 		ro_out  : out std_logic_vector(PC_WIDTH-1 downto 0);
@@ -91,7 +93,7 @@ begin  -- behavior
 		end if;
 	end process sync;
 
-	async: process (op, fl_in, zero, ro0_reg, ro1_reg, pc_in,
+	async: process (op, fl_in, zero, neg, ro0_reg, ro1_reg, pc_in,
 					pcoff, off_reg, off_prev, ro_in, ro_wren, fetch_reg,
 					pc_wr_reg, pc0_out_reg, pc1_out_reg)
 		variable idx : integer range 0 to CLUSTERS-1;
@@ -142,7 +144,7 @@ begin  -- behavior
 			ro1_next <= std_logic_vector(unsigned(pc_in) -
 										 (unsigned(off_prev) &
 										  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)
-										  - FETCH_WIDTH/BYTE_WIDTH));					
+										  - FETCH_WIDTH/BYTE_WIDTH));
 			
 		end if;
 		fetch_next <= '0';
@@ -155,12 +157,15 @@ begin  -- behavior
 		pc0_out_next <= pcoff & std_logic_vector(to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS));
 		pc1_out_next <= pcoff & std_logic_vector(to_unsigned(FETCH_WIDTH/BYTE_WIDTH,
 															 PC_WIDTH-ICACHE_BLOCK_BITS));
+
+		flush <= '0';
 		
 		case op(idx).op is
 			when JMP_NOP =>
 				-- nothing to do
 			when JMP_BR =>
 				pc_wr <= valid;
+				flush <= valid and not op(idx).delayed;
 				pc0_out <= op(idx).target0;
 				pc1_out <= op(idx).target1;
 			when JMP_BRIND =>
@@ -171,12 +176,19 @@ begin  -- behavior
 				pc1_out_next <= std_logic_vector(unsigned(op(idx).target1) +
 												 (unsigned(off_reg) &
 												  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
-			when JMP_BEQZ =>
-				pc_wr <= zero(idx);
-				pc0_out <= op(idx).target0;
-				pc1_out <= op(idx).target1;
-			when JMP_BNEZ =>
-				pc_wr <= not zero(idx);
+			when JMP_BRZ =>
+				case op(idx).zop is
+					when BRZ_EQ => valid := zero(idx);
+					when BRZ_NE => valid := not zero(idx);
+					when BRZ_LT => valid := neg(idx);
+					when BRZ_GE => valid := not neg(idx);
+					when BRZ_LE => valid := zero(idx) or neg(idx);
+					when BRZ_GT => valid := not (zero(idx) or neg(idx));
+					when others =>
+						assert false report "Invalid BRZ sub-operation" severity error;
+				end case;
+				pc_wr <= valid;
+				flush <= valid and not op(idx).delayed;				
 				pc0_out <= op(idx).target0;
 				pc1_out <= op(idx).target1;
 			when JMP_CALL =>
@@ -201,6 +213,5 @@ begin  -- behavior
 		end case;
 
 	end process async;
-
 	
 end behavior;

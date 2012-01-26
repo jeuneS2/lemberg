@@ -42,7 +42,7 @@ static int is_format_B(unsigned int opcode)
 	case OP_CARR: case OP_BORR:
 	case OP_CMPEQ: case OP_CMPNE: case OP_CMPLT: case OP_CMPLE:
 	case OP_CMPULT: case OP_CMPULE:	case OP_BTEST:
-	case OP_CALL: case OP_RET:
+	case OP_JOP:
 	case OP_LDX: case OP_STX:
 		return 1;
 	default: return 0;
@@ -70,7 +70,7 @@ static int is_format_J(unsigned int opcode)
 static int is_format_Z(unsigned int opcode)
 {
 	switch (opcode) {
-	case OP_BEQZ: case OP_BNEZ:
+	case OP_BRZ:
 		return 1;
 	default: return 0;
 	}
@@ -222,31 +222,25 @@ static unsigned long conv_format_S(struct asmop op)
 
 static unsigned long conv_format_J(struct asmop op)
 {
-	unsigned int target;
-	if (op.fmt.J.imm) {
-		target = expr_evaluate(op.fmt.J.target.offset);
+	unsigned int target = expr_evaluate(op.fmt.J.target);
 
-		/* special handling to ease identification */
-		if (!(fits_bits(target, 15) && fits_bits(-target, 15))) {
-			fprintf(stderr, "error: Jump offset too large: ");
-			fprintf(stderr, "%08x / %s\n",
-					target, op.fmt.J.target.offset.strval);
-			exit(EXIT_FAILURE);
-		}
-	} else {
-		check_bits(op.fmt.J.target.reg, 5);
-		target = op.fmt.J.target.reg << 10;
+	/* special handling to ease identification */
+	if (!(fits_bits(target, 15) && fits_bits(-target, 15))) {
+		fprintf(stderr, "error: Branch offset too large: ");
+		fprintf(stderr, "%08x / %s\n",
+				target, op.fmt.J.target.strval);
+		exit(EXIT_FAILURE);
 	}
 
 	check_bits(op.op, 6);
-	check_bits(op.fmt.J.imm, 1);
+	check_bits(op.fmt.J.delayed, 1);
 	check_bits(op.fmt.J.cond.cond, 1);
 	check_bits(op.fmt.J.cond.flag, 2);
 
 	return
 		(op.op << 19)
 		| ((target & 0x7fff) << 4)
-		| (op.fmt.J.imm << 3)
+		| (op.fmt.J.delayed << 3)
 		| (op.fmt.J.cond.cond << 2)
 		| (op.fmt.J.cond.flag << 0);
 }
@@ -256,8 +250,8 @@ static unsigned long conv_format_Z(struct asmop op)
 	unsigned int target = expr_evaluate(op.fmt.Z.target);
 
 	/* special handling to ease identification */
-	if (!(fits_bits(target, 14) && fits_bits(-target, 14))) {
-		fprintf(stderr, "error: Jump offset too large: ");
+	if (!(fits_bits(target, 10) && fits_bits(-target, 10))) {
+		fprintf(stderr, "error: Branch offset too large: ");
 		fprintf(stderr, "%08x / %s\n",
 				target, op.fmt.Z.target.strval);
 		exit(EXIT_FAILURE);
@@ -265,11 +259,15 @@ static unsigned long conv_format_Z(struct asmop op)
 
 	check_bits(op.op, 6);
 	check_bits(op.fmt.Z.reg, 5);
+	check_bits(op.fmt.Z.delayed, 1);
+	check_bits(op.fmt.Z.op, 3);
 
 	return
 		(op.op << 19)
 		| (op.fmt.Z.reg << 14)
-		| (target & 0x3fff);
+		| ((target & 0x3ff) << 4)
+		| (op.fmt.Z.delayed << 3)
+		| (op.fmt.Z.op);
 }
 
 static unsigned long conv_format_G(struct asmop op)

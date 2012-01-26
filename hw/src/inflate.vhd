@@ -31,6 +31,7 @@ entity inflate is
 		raw        : in  std_logic_vector(0 to FETCH_WIDTH-1);
 		pc_in      : in  std_logic_vector(PC_WIDTH-1 downto 0);
 		ena        : in  std_logic;
+		flush      : in  std_logic;
 		bundle     : out bundle_type;
 		pc_out     : out std_logic_vector(PC_WIDTH-1 downto 0);
 		xnop       : out std_logic);
@@ -39,32 +40,53 @@ end inflate;
 
 architecture behavior of inflate is
 
+	constant ENABLE_XNOP : boolean := false;
+	
 	signal raw_reg : std_logic_vector(0 to FETCH_WIDTH-1);
 	signal nop_cnt_reg, nop_cnt_next : unsigned(8-CLUSTERS-1 downto 0);
+
+	--pragma synthesis off
+	signal nop_cnt : integer := 0;
+	signal ena_cnt : integer := 0;
+	--pragma synthesis on
 	
 begin  -- behavior	
-	
-	sync: process (clk, reset)
+		
+	sync: process (clk, reset, raw, pc_in)
 	begin  -- process sync
-		if reset = '0' then  			-- asynchronous reset (active low)
-			raw_reg <= (others => '0');
-			pc_out <= (others => '0');
-			nop_cnt_reg <= (others => '0');
-		elsif clk'event and clk = '1' then  -- rising clock edge
-			if ena = '1' then
-				raw_reg <= raw;
-				pc_out <= pc_in;					
-				nop_cnt_reg <= nop_cnt_next;
+		if ENABLE_XNOP then
+			if reset = '0' then  			-- asynchronous reset (active low)
+				raw_reg <= (others => '0');
+				pc_out <= (others => '0');
+				nop_cnt_reg <= (others => '0');
+			elsif clk'event and clk = '1' then  -- rising clock edge
+				if ena = '1' then
+					raw_reg <= raw;
+					pc_out <= pc_in;					
+					nop_cnt_reg <= nop_cnt_next;
+					if flush = '1' then
+						raw_reg <= (others => '0');
+					end if;
+				end if;
 			end if;
+		else
+			raw_reg <= raw;
+			pc_out <= pc_in;
 		end if;
 	end process sync;
 
 	-- this needs to be adapted when changing the number of clusters
 	inflate: process (raw_reg, nop_cnt_reg, nop_cnt_next)
+		variable syll : bundle_type;
 	begin  -- process inflate
 		bundle <= BUNDLE_NOP;
 
-		if nop_cnt_reg /= 0 then
+		for i in 0 to CLUSTERS-1 loop
+			syll(i) := to_syllable(raw_reg(CLUSTERS+i*SYLLABLE_WIDTH
+										   to CLUSTERS+(i+1)*SYLLABLE_WIDTH-1));
+		end loop;  -- i
+		
+		if ENABLE_XNOP and nop_cnt_reg /= 0 then
 			nop_cnt_next <= nop_cnt_reg-1;
 		else
 			nop_cnt_next <= (others => '0');
@@ -72,64 +94,82 @@ begin  -- behavior
 				when "0000" =>
 					nop_cnt_next <= unsigned(raw_reg(CLUSTERS to 8-1));
 				when "0001" =>
-					bundle(0) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
+					bundle(0) <= syll(0);
 				when "0010" =>
-					bundle(1) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
+					bundle(1) <= syll(0);
 				when "0100" =>
-					bundle(2) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
+					bundle(2) <= syll(0);
 				when "1000" =>
-					bundle(3) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
+					bundle(3) <= syll(0);
 				when "0011" =>
-					bundle(0) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(1) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
+					bundle(0) <= syll(0);
+					bundle(1) <= syll(1);
 				when "0101" =>
-					bundle(0) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(2) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
+					bundle(0) <= syll(0);
+					bundle(2) <= syll(1);
 				when "1001" =>
-					bundle(0) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(3) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
+					bundle(0) <= syll(0);
+					bundle(3) <= syll(1);
 				when "0110" =>
-					bundle(1) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(2) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
+					bundle(1) <= syll(0);
+					bundle(2) <= syll(1);
 				when "1010" =>
-					bundle(1) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(3) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
+					bundle(1) <= syll(0);
+					bundle(3) <= syll(1);
 				when "1100" =>
-					bundle(2) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(3) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
+					bundle(2) <= syll(0);
+					bundle(3) <= syll(1);
 				when "0111" =>
-					bundle(0) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(1) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
-					bundle(2) <= to_syllable(raw_reg(CLUSTERS+2*SYLLABLE_WIDTH to CLUSTERS+3*SYLLABLE_WIDTH-1));
+					bundle(0) <= syll(0);
+					bundle(1) <= syll(1);
+					bundle(2) <= syll(2);
 				when "1011" =>
-					bundle(0) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(1) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
-					bundle(3) <= to_syllable(raw_reg(CLUSTERS+2*SYLLABLE_WIDTH to CLUSTERS+3*SYLLABLE_WIDTH-1));
+					bundle(0) <= syll(0);
+					bundle(1) <= syll(1);
+					bundle(3) <= syll(2);
 				when "1101" =>
-					bundle(0) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(2) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
-					bundle(3) <= to_syllable(raw_reg(CLUSTERS+2*SYLLABLE_WIDTH to CLUSTERS+3*SYLLABLE_WIDTH-1));
+					bundle(0) <= syll(0);
+					bundle(2) <= syll(1);
+					bundle(3) <= syll(2);
 				when "1110" =>
-					bundle(1) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(2) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
-					bundle(3) <= to_syllable(raw_reg(CLUSTERS+2*SYLLABLE_WIDTH to CLUSTERS+3*SYLLABLE_WIDTH-1));
+					bundle(1) <= syll(0);
+					bundle(2) <= syll(1);
+					bundle(3) <= syll(2);
 				when "1111" =>
-					bundle(0) <= to_syllable(raw_reg(CLUSTERS to CLUSTERS+SYLLABLE_WIDTH-1));
-					bundle(1) <= to_syllable(raw_reg(CLUSTERS+SYLLABLE_WIDTH to CLUSTERS+2*SYLLABLE_WIDTH-1));
-					bundle(2) <= to_syllable(raw_reg(CLUSTERS+2*SYLLABLE_WIDTH to CLUSTERS+3*SYLLABLE_WIDTH-1));
-					bundle(3) <= to_syllable(raw_reg(CLUSTERS+3*SYLLABLE_WIDTH to CLUSTERS+4*SYLLABLE_WIDTH-1));
+					bundle(0) <= syll(0);
+					bundle(1) <= syll(1);
+					bundle(2) <= syll(2);
+					bundle(3) <= syll(3);
 				when others => null;
 			end case;
 		end if;
 
-		if nop_cnt_next = 0 then
-			xnop <= '0';
-		else
+		if ENABLE_XNOP and nop_cnt_next /= 0 then
 			xnop <= '1';
+		else
+			xnop <= '0';
 		end if;
 
 	end process inflate;
-	
+
+	----------------------------------------------------------------
+	-- gather statistics
+	----------------------------------------------------------------
+	--pragma synthesis off
+	stat: process (clk)
+	begin  -- process
+		if clk'event and clk = '1' then  -- rising clock edge
+			if ena = '1' then
+				if raw(0 to CLUSTERS-1) = "0000" or
+					(ENABLE_XNOP and nop_cnt_reg /= 0) then
+					nop_cnt <= nop_cnt + 1;
+				end if;
+			else
+				ena_cnt <= ena_cnt + 1;
+			end if;
+		end if;
+	end process;
+	--pragma synthesis on
 
 end behavior;
 	

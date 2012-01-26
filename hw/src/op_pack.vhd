@@ -41,6 +41,13 @@ package op_pack is
 
 	constant SYLLABLE_WIDTH : integer := OP_BITS+3*REG_BITS+2+FLAG_BITS;
 
+	constant COND_TRUE  : std_logic := '1';
+	constant COND_FALSE : std_logic := '0';
+
+	constant SYLLABLE_NOP : syllable_type :=
+		( "000100", (others => '1'), (others => '1'), (others => '1'),
+		  '0', COND_FALSE, (others => '0'));
+
 	function to_syllable (
 		raw : in std_logic_vector(0 to SYLLABLE_WIDTH-1))
 		return syllable_type;
@@ -52,13 +59,8 @@ package op_pack is
 
 	-- TODO: define constants for ISA-level operation encoding
 	
-	constant COND_TRUE  : std_logic := '1';
-	constant COND_FALSE : std_logic := '0';
-
 	-- use OR and read from local register as NOP to minimize power
-	constant BUNDLE_NOP : bundle_type :=
-		(others => ( "000100", (others => '1'), (others => '1'), (others => '1'),
-					 '0', COND_FALSE, (others => '0')));
+	constant BUNDLE_NOP : bundle_type := (others => SYLLABLE_NOP);
 
 	---------------------------------------------------------------------------
 	-- definitions that are processor-internal
@@ -188,11 +190,17 @@ package op_pack is
 	
 	type jmp_type is (JMP_NOP,
 					  JMP_BR,
+					  JMP_BRZ,
 					  JMP_BRIND,
-					  JMP_BEQZ,
-					  JMP_BNEZ,
 					  JMP_CALL,
 					  JMP_RET);
+
+	type brz_type is (BRZ_EQ,
+					  BRZ_NE,
+					  BRZ_LT,
+					  BRZ_GE,
+					  BRZ_LE,
+					  BRZ_GT);
 
 	type jmpop_type is
 	record
@@ -201,14 +209,16 @@ package op_pack is
 		rdaddr  : std_logic_vector(REG_BITS-1 downto 0);
 		fwd     : std_logic;
 		op	    : jmp_type;
+		zop     : brz_type;
+		delayed : std_logic;
 		cond    : std_logic;
-		flag    : std_logic_vector(FLAG_COUNT-1 downto 0);
+		flag    : std_logic_vector(FLAG_COUNT-1 downto 0);		
 	end record;
 
 	constant JMPOP_NOP : jmpop_type :=
 		((others => '0'), (others => '0'), (others => '0'), '0',
-		 JMP_NOP,
-		 COND_FALSE, (others => '0'));
+		 JMP_NOP, BRZ_EQ,
+		 '0', COND_FALSE, (others => '0'));
 
 	type jmpop_arr_type is array (0 to CLUSTERS-1) of jmpop_type;
 	

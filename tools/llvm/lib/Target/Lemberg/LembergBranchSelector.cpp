@@ -72,7 +72,9 @@ bool BranchSelector::runOnMachineFunction(MachineFunction &Fn) {
 		unsigned BlockSize = 0;
 		for (MachineBasicBlock::iterator MBBI = MBB->begin(), EE = MBB->end(); MBBI != EE; ++MBBI) {
 			BlockSize += 4;
-			// TODO: overestimation, but branch delay slots are not taken into account
+			if (MBBI->getDesc().hasDelaySlot()) {
+				BlockSize += 3;
+			}
 		}	  
 
 		BlockSizes[MBB->getNumber()] = BlockSize;
@@ -82,7 +84,7 @@ bool BranchSelector::runOnMachineFunction(MachineFunction &Fn) {
 	// If the entire function is smaller than the displacement of a branch field,
 	// we know we don't need to shrink any branches in this function.  This is a
 	// common case.
-	if (FuncSize < (1 << 13)) {
+	if (FuncSize < (1 << 9)) {
 		BlockSizes.clear();
 		return false;
 	}
@@ -91,9 +93,9 @@ bool BranchSelector::runOnMachineFunction(MachineFunction &Fn) {
 	// than the offset field allows, transform it into a long branch sequence
 	// like this:
 	//   short branch:
-	//     beqz/bnez rX, MBB
+	//     brz xx rX, MBB
 	//   longer branch:
-	//     cmpeq/cmpne rX, 0 -> c3
+	//     cmpxx rX, 0 -> c3
 	//     if c3 br MBB
 	//
 	bool MadeChange = true;
@@ -107,15 +109,23 @@ bool BranchSelector::runOnMachineFunction(MachineFunction &Fn) {
 			unsigned MBBStartOffset = 0;
 
 			for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end(); I != E; ++I) {
-				if ((I->getOpcode() != Lemberg::JUMPeqz) && (I->getOpcode() != Lemberg::JUMPnez)) {
+				if ((I->getOpcode() != Lemberg::JUMPeqz)
+					&& (I->getOpcode() != Lemberg::JUMPnez)
+					&& (I->getOpcode() != Lemberg::JUMP)) {
+
 					MBBStartOffset += 4;
-					// TODO: overestimation, but branch delay slots are not taken into account
+					if (I->getDesc().hasDelaySlot()) {
+						MBBStartOffset += 3;
+					}
+
 					continue;
 				}
         
 				// Determine the offset from the current branch to the destination
 				// block.
-				MachineBasicBlock *Dest = I->getOperand(1).getMBB();
+				MachineBasicBlock *Dest =
+					I->getOpcode() == Lemberg::JUMP ?
+					I->getOperand(0).getMBB() : I->getOperand(1).getMBB();				
 		  
 				int BranchSize;
 				if (Dest->getNumber() <= MBB.getNumber()) {
@@ -136,7 +146,13 @@ bool BranchSelector::runOnMachineFunction(MachineFunction &Fn) {
 				}
 		  
 				// If this branch is in range, ignore it.
-				if (isInt<14>(BranchSize)) {
+				if (isInt<10>(BranchSize)) {
+					continue;
+				}
+
+				if (I->getOpcode() == Lemberg::JUMP) {
+					// Set a flag to mark long branch that must not be converted to short format
+					I->setFlag((MachineInstr::MIFlag)(1 << 7));
 					continue;
 				}
 		  

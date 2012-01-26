@@ -35,8 +35,6 @@
 #define OP_CARR      0x0B
 #define OP_BORR      0x0C
 #define OP_BBH       0x0D
-#define OP_BEQZ      0x0E
-#define OP_BNEZ      0x0F
 
 #define OP_CMPEQ     0x10
 #define OP_CMPNE     0x11
@@ -53,9 +51,9 @@
 #define OP_LDIH      0x1B
 
 #define OP_BR        0x1C
-#define OP_CALL      0x1D
-#define OP_CALLG     0x1E
-#define OP_RET       0x1F
+#define OP_BRZ       0x1D
+#define OP_JOP       0x1E
+#define OP_CALLG     0x1F
 
 #define OP_STM_A     0x20
 #define OP_STMH_A    0x21
@@ -88,6 +86,19 @@
 #define OP_CTZ       0x05
 #define OP_POP       0x06
 #define OP_PAR       0x07
+
+/* branch compare zero sub-operations */
+#define OP_EQ        0x00
+#define OP_NE        0x01
+#define OP_LT        0x02
+#define OP_GE        0x03
+#define OP_LE        0x04
+#define OP_GT        0x05
+
+/* jump operations */
+#define OP_BRIND     0x00
+#define OP_CALL      0x01
+#define OP_RET       0x02
 
 /* Floating-point operations */
 #define OP_FADD      0x00

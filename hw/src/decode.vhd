@@ -33,6 +33,7 @@ entity decode is
 		bundle  : in  bundle_type;
 		pc      : in  std_logic_vector(PC_WIDTH-1 downto 0);
 		ena     : in  std_logic;
+		flush   : in  std_logic;
 		op   	: out op_arr_type;
 		memop   : out memop_arr_type;
 		stallop : out stallop_arr_type;
@@ -51,6 +52,15 @@ architecture behavior of decode is
 	signal rddata : reg_rddata_type;
 
 	signal pc_reg : std_logic_vector(PC_WIDTH-1 downto 0);
+
+	--pragma synthesis off
+	type op_cnt_slice is array (0 to 63) of integer;
+	type op_cnt_type is array (0 to 3) of op_cnt_slice;
+	signal op_cnt : op_cnt_type := (others => (others => 0));
+	signal ena_cnt : integer := 0;
+	signal flush_cnt : integer := 0;
+	signal br_cnt : integer := 0;
+	--pragma synthesis on
 	
 begin  -- behavior
 
@@ -75,8 +85,11 @@ begin  -- behavior
 			if ena = '1' then
 				bundle_reg <= bundle;
 				pc_reg <= pc;
+				if flush = '1' then
+					bundle_reg <= BUNDLE_NOP;
+				end if;
 			end if;
-		end if;
+	   end if;
 	end process sync;
 
 	decode: process (bundle_reg, rddata, pc_reg)
@@ -118,13 +131,18 @@ begin  -- behavior
 			stallop(i).op <= STALL_NOP;
 			stallop(i).cond <= COND_FALSE;
 			stallop(i).flag <= (others => '0');			
-			stallop(i).value <= bundle_reg(i).src2(RDY_CNT_WIDTH-1 downto 0);
+			stallop(i).value <= (others => '1');
 						
 			jmpop(i).op <= JMP_NOP;
+			jmpop(i).zop <= BRZ_EQ;
+			jmpop(i).delayed <= raw_op(0);
 			jmpop(i).cond <= COND_FALSE;
 			jmpop(i).flag <= (others => '0');
 			jmpop(i).rdaddr <= bundle_reg(i).src1;
-			jmpop(i).fwd <= not bundle_reg(i).imm;
+			jmpop(i).target0 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))+0);
+			jmpop(i).target1 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))
+												 +FETCH_WIDTH/BYTE_WIDTH);
+			jmpop(i).fwd <= '0';
 
 			fpop(i).op <= FPU_NOP;
 			fpop(i).wraddr <= raw_op(15 downto 12);
@@ -159,12 +177,9 @@ begin  -- behavior
 												& signed(bundle_reg(i).dest), PC_WIDTH));
 
 			ztarget := std_logic_vector(signed(pc_reg)
-										+ resize(signed(bundle_reg(i).src2
-												        & bundle_reg(i).dest
-														& bundle_reg(i).imm
-														& bundle_reg(i).cond)
-												 & signed(bundle_reg(i).flag), PC_WIDTH));
-
+										+ resize(signed(bundle_reg(i).src2)
+												 & signed(bundle_reg(i).dest), PC_WIDTH));
+			
 			case bundle_reg(i).op is
 				when "000000" =>
 					op(i).op <= ALU_ADD;
@@ -224,18 +239,6 @@ begin  -- behavior
 					op(i).op <= ALU_BBH;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-				when "001110" =>
-					jmpop(i).op <= JMP_BEQZ;
-					jmpop(i).cond <= '1';
-					jmpop(i).flag(0) <= '1';
-					always_imm := '1';
-					target := ztarget;
-				when "001111" =>
-					jmpop(i).op <= JMP_BNEZ;
-					jmpop(i).cond <= '1';
-					jmpop(i).flag(0) <= '1';
-					always_imm := '1';
-					target := ztarget;
 				when "010000" =>
 					op(i).op <= ALU_CMPEQ;
 					op(i).cond <= bundle_reg(i).cond;
@@ -320,26 +323,60 @@ begin  -- behavior
 					-- destination and source are the same
 					op(i).wraddr <= bundle_reg(i).src1;
 				when "011100" =>
-					if bundle_reg(i).imm = '1' then
-						jmpop(i).op <= JMP_BR;
-					else
-						jmpop(i).op <= JMP_BRIND;
-					end if;
+					jmpop(i).op <= JMP_BR;
 					jmpop(i).cond <= bundle_reg(i).cond;
 					jmpop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';			
-				when "011101" =>  		-- call
-					jmpop(i).op <= JMP_CALL;
+					jmpop(i).target0 <= std_logic_vector(unsigned(target)+0);
+					jmpop(i).target1 <= std_logic_vector(unsigned(target)
+														 +FETCH_WIDTH/BYTE_WIDTH);
+					jmpop(i).fwd <= '0';
+				when "011101" =>
+					jmpop(i).op <= JMP_BRZ;
+					jmpop(i).cond <= '1';
+					jmpop(i).flag(0) <= '1';
+					case bundle_reg(i).cond & bundle_reg(i).flag is
+						when "000" => jmpop(i).zop <= BRZ_EQ;
+						when "001" => jmpop(i).zop <= BRZ_NE;
+						when "010" => jmpop(i).zop <= BRZ_LT;
+						when "011" => jmpop(i).zop <= BRZ_GE;
+						when "100" => jmpop(i).zop <= BRZ_LE;
+						when "101" => jmpop(i).zop <= BRZ_GT;
+						when others =>
+							assert false report "Cannot decode BRZ operation" severity error;
+					end case;
+					jmpop(i).target0 <= std_logic_vector(unsigned(ztarget)+0);
+					jmpop(i).target1 <= std_logic_vector(unsigned(ztarget)
+														 +FETCH_WIDTH/BYTE_WIDTH);
+					jmpop(i).fwd <= '0';
+				when "011110" =>  		-- jump operation
 					jmpop(i).cond <= bundle_reg(i).cond;
 					jmpop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';			
-					memop(i).op <= MEM_CALL;
-					memop(i).cond <= bundle_reg(i).cond;
-					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).op <= STALL_SOFTWAIT;
-					stallop(i).cond <= bundle_reg(i).cond;				
-					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(1) <= '1';
-				when "011110" =>  		-- call global
+					case bundle_reg(i).src2 is
+						when "00000" =>
+							jmpop(i).op <= JMP_BRIND;
+							jmpop(i).target0 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))+0);
+							jmpop(i).target1 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))
+																 +FETCH_WIDTH/BYTE_WIDTH);
+							jmpop(i).fwd <= '1';
+						when "00001" | "00010" =>
+							if bundle_reg(i).src2 = "00001" then
+								jmpop(i).op <= JMP_CALL;
+								memop(i).op <= MEM_CALL;
+							else
+								jmpop(i).op <= JMP_RET;
+								memop(i).op <= MEM_RET;								
+							end if;
+							memop(i).cond <= bundle_reg(i).cond;
+							memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+							stallop(i).op <= STALL_SOFTWAIT;
+							stallop(i).cond <= bundle_reg(i).cond;				
+							stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+							stallop(i).value <= (others => '0');
+							stallop(i).value(1) <= '1';
+						when others =>
+							assert false report "Cannot decode JOP operation" severity error;
+					end case;
+				when "011111" =>  		-- call global
 					jmpop(i).op <= JMP_CALL;
 					jmpop(i).cond <= '1';
 					jmpop(i).flag(0) <= '1';
@@ -350,18 +387,6 @@ begin  -- behavior
 					stallop(i).op <= STALL_SOFTWAIT;
 					stallop(i).cond <= '1';
 					stallop(i).flag(0) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(1) <= '1';
-				when "011111" =>  		-- return
-					jmpop(i).op <= JMP_RET;
-					jmpop(i).cond <= bundle_reg(i).cond;
-					jmpop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';			
-					memop(i).op <= MEM_RET;
-					memop(i).cond <= bundle_reg(i).cond;
-					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).op <= STALL_SOFTWAIT;
-					stallop(i).cond <= bundle_reg(i).cond;				
-					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					stallop(i).value <= (others => '0');
 					stallop(i).value(1) <= '1';
 				when "100000" =>
@@ -670,17 +695,6 @@ begin  -- behavior
 				memop(i).wrdata <= rddata(2*i+1);
 			end if;			
 
-			if bundle_reg(i).imm = '1' or always_imm = '1' then
-				jmpop(i).target0 <= std_logic_vector(unsigned(target)+0);
-				jmpop(i).target1 <= std_logic_vector(unsigned(target)
-													 +FETCH_WIDTH/BYTE_WIDTH);
-				jmpop(i).fwd <= '0';
-			else
-				jmpop(i).target0 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))+0);
-				jmpop(i).target1 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))
-													 +FETCH_WIDTH/BYTE_WIDTH);
-			end if;
-
 		end loop;  -- i
 	end process decode;
 
@@ -692,4 +706,30 @@ begin  -- behavior
 		end loop;  -- i
 	end process rdregs;
 
+	----------------------------------------------------------------
+	-- gather statistics
+	----------------------------------------------------------------
+	--pragma synthesis off
+	stat: process (clk)
+	begin  -- process
+		if clk'event and clk = '1' then  -- rising clock edge
+			if ena = '1' then
+				for i in 0 to 3 loop
+					op_cnt(i)(to_integer(unsigned(bundle_reg(i).op)))
+						<= op_cnt(i)(to_integer(unsigned(bundle_reg(i).op))) + 1;
+					if bundle_reg(i).op = "011100"
+						or bundle_reg(i).op = "011101" then
+						br_cnt <= br_cnt + 1;
+					end if;
+				end loop;  -- i
+				if flush = '1' then
+					flush_cnt <= flush_cnt + 1;
+				end if;
+			else
+				ena_cnt <= ena_cnt + 1;
+			end if;
+		end if;
+	end process;
+	--pragma synthesis on
+	
 end behavior;

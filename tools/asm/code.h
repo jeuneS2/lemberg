@@ -24,6 +24,8 @@
 #define FLAG_BITS 2
 #define REG_BITS 5
 
+#define BRZOP_BITS 3
+
 #define FOP_BITS 4
 #define FREG_BITS 4
 
@@ -73,16 +75,15 @@ struct asmop {
 			struct cond cond;
 		} S;
 		struct {
-			union {
-				unsigned int reg : REG_BITS;
-				struct expr offset;
-			} target;
-			unsigned int imm : 1;
+			struct expr target;
+			unsigned int delayed : 1;
 			struct cond cond;
 		} J;
 		struct {
 			unsigned int reg : REG_BITS;
 			struct expr target;
+			unsigned int delayed : 1;
+			unsigned int op : BRZOP_BITS;
 		} Z;
 		struct {
 			struct expr address;

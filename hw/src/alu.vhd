@@ -34,6 +34,7 @@ entity alu is
 		wraddr     : out std_logic_vector(REG_BITS-1 downto 0);
 		wrdata     : out std_logic_vector(DATA_WIDTH-1 downto 0);
 		zero       : out std_logic;
+		neg        : out std_logic;
 		memdata    : in  std_logic_vector(DATA_WIDTH-1 downto 0);
 		ba         : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
 		rb_in      : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
@@ -120,6 +121,7 @@ begin  -- behavior
 		else
 			zero <= '0';
 		end if;
+		neg <= op.rddata0(DATA_WIDTH-1);
 		
 		case op.op is
 			when ALU_ADD =>

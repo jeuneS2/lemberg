@@ -83,9 +83,6 @@ SYM [\._a-zA-Z0-9]+
 "borr"     ACCEPT(BORR,  THREEOP);
 "bbh"      ACCEPT(BBH,   BBHOP);
 
-"beqz"     ACCEPT(BEQZ,  BRANCHZOP);
-"bnez"     ACCEPT(BNEZ,  BRANCHZOP);
-
 "cmpeq"    ACCEPT(CMPEQ,  CMPOP);
 "cmpne"    ACCEPT(CMPNE,  CMPOP);
 "cmplt"    ACCEPT(CMPLT,  CMPOP);
@@ -102,9 +99,13 @@ SYM [\._a-zA-Z0-9]+
 "ldih"     ACCEPT(LDIH, LDIOP);
 
 "br"       ACCEPT(BR,    BRANCHOP);
-"call"     ACCEPT(CALL,  ONEOP);
+"brz"      ACCEPT(BRZ,   BRANCHZOP);
+"jop"      ACCEPT(JOP,   JOP);
 "callg"    ACCEPT(CALLG, GLOBOP);
-"ret"      ACCEPT(RET,   NULLOP);
+
+"brind"    ACCEPT(BRIND, JSUBOP);
+"call"     ACCEPT(CALL,  JSUBOP);
+"ret"      ACCEPT(RET,   JSUBOP);
 
 "stm.a"    ACCEPT(STM_A,  STOREOP);
 "stmh.a"   ACCEPT(STMH_A, STOREOP);
@@ -135,6 +136,13 @@ SYM [\._a-zA-Z0-9]+
 "ctz"      ACCEPT(CTZ,    BBHSUBOP);
 "pop"      ACCEPT(POP,    BBHSUBOP);
 "par"      ACCEPT(PAR,    BBHSUBOP);
+
+"eq"       ACCEPT(EQ,    BRZSUBOP);
+"ne"       ACCEPT(NE,    BRZSUBOP);
+"lt"       ACCEPT(LT,    BRZSUBOP);
+"ge"       ACCEPT(GE,    BRZSUBOP);
+"le"       ACCEPT(LE,    BRZSUBOP);
+"gt"       ACCEPT(GT,    BRZSUBOP);
 
 "fadd"     ACCEPT(FADD,  FTHREEOP);
 "fsub"     ACCEPT(FSUB,  FTHREEOP);
@@ -181,6 +189,7 @@ SYM [\._a-zA-Z0-9]+
 "!"   return '!';
 ";;"  return BSEP;
 "\n"  { line_number++; return '\n'; }
+"@"   return '@';
 
 #[0-9]: {
 	yylval.intval = strtoll(yytext+1, NULL, 10);
