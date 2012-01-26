@@ -35,7 +35,7 @@ using namespace llvm;
 // if frame pointer elimination is disabled.
 bool LembergFrameLowering::hasFP(const MachineFunction &MF) const {
   const MachineFrameInfo *MFI = MF.getFrameInfo();
-  return DisableFramePointerElim(MF) || MFI->hasVarSizedObjects();
+  return DisableFramePointerElim(MF) || MFI->hasVarSizedObjects() || MFI->isFrameAddressTaken();
 }
 
 void LembergFrameLowering::
@@ -330,7 +330,7 @@ void LembergFrameLowering::emitEpilogue(MachineFunction &MF, MachineBasicBlock &
 	  BuildMI(MBB, MBBI, DL, TII->get(Lemberg::MOVEax), TRI->getRAOffRegister())
 		  .addImm(-1).addReg(0)
 		  .addReg(TmpReg);
-	  // Restore $ra
+	  // Restore $rb
 	  TmpReg = TRI->getEmergencyRegister();
 	  BuildStackLoad(MF, MBB, MBBI, TmpReg, CallFrameBytes + (hasFP(MF) ? 4 : 0));
 	  BuildMI(MBB, MBBI, DL, TII->get(Lemberg::MOVEax), TRI->getRARegister())
