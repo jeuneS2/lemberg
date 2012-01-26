@@ -261,6 +261,10 @@ void HazardRecognizer::EmitInstruction(SUnit *SU) {
 	case Lemberg::FMAC:
 	case Lemberg::FCMP:
 	case Lemberg::FZERO:
+	case Lemberg::FHALF:
+	case Lemberg::FONE:
+	case Lemberg::FTWO:
+	case Lemberg::FNAN:
 	case Lemberg::DMOV:
 	case Lemberg::DMOVtrue:
 	case Lemberg::DMOVfalse:
@@ -272,6 +276,10 @@ void HazardRecognizer::EmitInstruction(SUnit *SU) {
 	case Lemberg::DMAC:
 	case Lemberg::DCMP:
 	case Lemberg::DZERO:
+	case Lemberg::DHALF:
+	case Lemberg::DONE:
+	case Lemberg::DTWO:
+	case Lemberg::DNAN:
 	case Lemberg::SI2SF:
 	case Lemberg::SF2SI:
 	case Lemberg::SI2DF:
@@ -356,7 +364,7 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
 	DEBUG(dbgs() << "Scheduling BB:\n");
 	DEBUG(MBB->dump());
 
-	// Reserve thrice the size of the MBB to fit separators and potential nops
+	// Reserve five times the size of the MBB to fit separators and potential nops
 	Scheduler.SUnits.reserve(5*MBB->size());
 
     // Initialize register live-range state for scheduling in this block.
