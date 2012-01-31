@@ -79,9 +79,11 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 	unsigned maxSlots = 2;
 	if (Opcode == Lemberg::CALL
 		|| Opcode == Lemberg::CALLga
-		|| Opcode == Lemberg::RET
-		|| Opcode == Lemberg::JUMPp) {
+		|| Opcode == Lemberg::RET) {
 		maxSlots = 3;
+	}
+	if (Opcode == Lemberg::JUMPp) {
+		maxSlots = 0;
 	}
 
 	if (fullOpt
@@ -140,7 +142,9 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 						if (Opcode == Lemberg::JUMP
 							&& !(II->getFlag((MachineInstr::MIFlag)(1 << 7)))
 							&& (ConflictOpcode == Lemberg::JUMPeqz
-								|| ConflictOpcode == Lemberg::JUMPnez)) {
+								|| ConflictOpcode == Lemberg::JUMPeqz_now
+								|| ConflictOpcode == Lemberg::JUMPnez
+								|| ConflictOpcode == Lemberg::JUMPnez_now)) {
 
 							MachineInstr *MI = J;
 							if (ConflictOpcode != Lemberg::JUMPeqz) {
@@ -156,9 +160,15 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							MachineOperand Dest = II->getOperand(0);
 							II->RemoveOperand(0);
 							
+							unsigned ConvOpcode = 0;
+							if (ConflictOpcode == Lemberg::JUMPeqz
+								|| ConflictOpcode == Lemberg::JUMPeqz_now) {
+								ConvOpcode = Lemberg::JUMPnez;
+							} else {
+								ConvOpcode = Lemberg::JUMPeqz;
+							}
 							TargetInstrDesc *NTID = new TargetInstrDesc();
-							*NTID = TII->get(ConflictOpcode == Lemberg::JUMPeqz 
-											 ? Lemberg::JUMPnez : Lemberg::JUMPeqz);
+							*NTID = TII->get(ConvOpcode);
 							NTID->SchedClass = J->getDesc().getSchedClass();
 							II->setDesc(*NTID);
 							
@@ -181,7 +191,9 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							return;
 						} else if (Opcode == Lemberg::JUMP
 							&& (ConflictOpcode == Lemberg::JUMPtrue
-								|| ConflictOpcode == Lemberg::JUMPfalse)) {
+								|| ConflictOpcode == Lemberg::JUMPtrue_now
+								|| ConflictOpcode == Lemberg::JUMPfalse
+								|| ConflictOpcode == Lemberg::JUMPfalse_now)) {
 
 							// Move up conflicting branch first
 							fillDelaySlot(J, MBB, false);
@@ -189,8 +201,14 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							MachineOperand Dest = II->getOperand(0);
 							II->RemoveOperand(0);
 							
-							II->setDesc(TII->get(ConflictOpcode == Lemberg::JUMPtrue 
-											 ? Lemberg::JUMPfalse : Lemberg::JUMPfalse));
+							unsigned ConvOpcode = 0;
+							if (ConflictOpcode == Lemberg::JUMPtrue
+								|| ConflictOpcode == Lemberg::JUMPtrue_now) {
+								ConvOpcode = Lemberg::JUMPfalse;
+							} else {
+								ConvOpcode = Lemberg::JUMPtrue;
+							}
+							II->setDesc(TII->get(ConvOpcode));
 							II->addOperand(J->getOperand(0));
 							II->addOperand(Dest);
 							
@@ -199,7 +217,8 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							if (next(II) != J) II = J;
 							return;
 						} else if (Opcode == Lemberg::JUMP
-								   && ConflictOpcode == Lemberg::JUMPpred) {
+								   && (ConflictOpcode == Lemberg::JUMPpred
+									   || ConflictOpcode == Lemberg::JUMPpred_now)) {
 
 							// Move up conflicting branch first
 							fillDelaySlot(J, MBB, false);
@@ -222,11 +241,14 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 						}
 					} else {
 						if ((Opcode == Lemberg::JUMPpred 
-							 && ConflictOpcode == Lemberg::JUMPpred)
+							 && (ConflictOpcode == Lemberg::JUMPpred
+								 || ConflictOpcode == Lemberg::JUMPpred_now))
 							|| (Opcode == Lemberg::JUMPtrue
-								&& ConflictOpcode == Lemberg::JUMPfalse)
+								&& (ConflictOpcode == Lemberg::JUMPfalse
+									|| ConflictOpcode == Lemberg::JUMPfalse_now))
 							|| (Opcode == Lemberg::JUMPfalse
-								&& ConflictOpcode == Lemberg::JUMPtrue)) {
+								&& (ConflictOpcode == Lemberg::JUMPtrue
+									|| ConflictOpcode == Lemberg::JUMPtrue_now))) {
 							/* no conflict in these cases */
 						} else {
 							conflicts = true;
