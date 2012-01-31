@@ -214,7 +214,17 @@ LembergInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 			  .addImm(0).addFrameIndex(FI);
 	  } else {
 		  // A fugly special case
+
 		  unsigned TmpReg = getRegisterInfo().getEmergencyRegister();
+		  if (inClass(Lemberg::L0RegClass, DestReg, RC, RI))
+			  TmpReg = Lemberg::R0_31;
+		  else if (inClass(Lemberg::L1RegClass, DestReg, RC, RI))
+			  TmpReg = Lemberg::R1_31;
+		  else if (inClass(Lemberg::L2RegClass, DestReg, RC, RI))
+			  TmpReg = Lemberg::R2_31;
+		  else if (inClass(Lemberg::L3RegClass, DestReg, RC, RI))
+			  TmpReg = Lemberg::R3_31;
+
 		  // __mem_emergency must be addressably with 11 bits
 		  BuildMI(MBB, I, DL, get(Lemberg::LOADsym11lo), DestReg)
 			  .addImm(-1).addReg(0)
@@ -224,7 +234,7 @@ LembergInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 			  .addReg(Lemberg::MEM).addImm(0);
 		  BuildMI(MBB, I, DL, get(Lemberg::STORE32ap))
 			  .addImm(-1).addReg(0)
-			  .addReg(TmpReg).addReg(DestReg);
+			  .addReg(TmpReg, RegState::Kill).addReg(DestReg);
 		  BuildMI(MBB, I, DL, get(Lemberg::LOAD32s_pseudo), DestReg)
 			  .addImm(0).addFrameIndex(FI);
 		  BuildMI(MBB, I, DL, get(Lemberg::LOAD32d_ga))
