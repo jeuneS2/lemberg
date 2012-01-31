@@ -100,6 +100,9 @@ begin  -- behavior
 		variable valid : std_logic;
 
 		variable ro0vec, ro1vec : rovec_type;
+
+		variable pc0_out_brind, pc1_out_brind : std_logic_vector(PC_WIDTH-1 downto 0);
+		variable pc0_out_ret, pc1_out_ret : std_logic_vector(PC_WIDTH-1 downto 0);
 		
 	begin  -- process async
 
@@ -158,6 +161,20 @@ begin  -- behavior
 		pc1_out_next <= pcoff & std_logic_vector(to_unsigned(FETCH_WIDTH/BYTE_WIDTH,
 															 PC_WIDTH-ICACHE_BLOCK_BITS));
 
+		pc0_out_brind := std_logic_vector(unsigned(op(idx).target0) +
+										  (unsigned(off_reg) &
+										   to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));		
+		pc1_out_brind := std_logic_vector(unsigned(op(idx).target1) +
+												 (unsigned(off_reg) &
+												  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
+
+		pc0_out_ret := std_logic_vector(unsigned(ro0_reg) +
+										(unsigned(pcoff) &
+										 to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
+		pc1_out_ret := std_logic_vector(unsigned(ro1_reg) +
+										(unsigned(pcoff) &
+										 to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
+
 		flush <= '0';
 		
 		case op(idx).op is
@@ -168,14 +185,6 @@ begin  -- behavior
 				flush <= valid and not op(idx).delayed;
 				pc0_out <= op(idx).target0;
 				pc1_out <= op(idx).target1;
-			when JMP_BRIND =>
-				pc_wr_next <= valid;
-				pc0_out_next <= std_logic_vector(unsigned(op(idx).target0) +
-												 (unsigned(off_reg) &
-												  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
-				pc1_out_next <= std_logic_vector(unsigned(op(idx).target1) +
-												 (unsigned(off_reg) &
-												  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
 			when JMP_BRZ =>
 				case op(idx).zop is
 					when BRZ_EQ => valid := zero(idx);
@@ -191,6 +200,11 @@ begin  -- behavior
 				flush <= valid and not op(idx).delayed;				
 				pc0_out <= op(idx).target0;
 				pc1_out <= op(idx).target1;
+			when JMP_BRIND =>
+				pc_wr <= valid;
+				flush <= valid;
+				pc0_out <= pc0_out_brind;
+				pc1_out <= pc1_out_brind;
 			when JMP_CALL =>
 				pc_wr_next <= valid;
 				fetch_next <= valid;
@@ -199,12 +213,8 @@ begin  -- behavior
 				end if;
 			when JMP_RET =>
 				pc_wr_next <= valid;
-				pc0_out_next <= std_logic_vector(unsigned(ro0_reg) +
-												 (unsigned(pcoff) &
-												  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
-				pc1_out_next <= std_logic_vector(unsigned(ro1_reg) +
-												 (unsigned(pcoff) &
-												  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
+				pc0_out_next <= pc0_out_ret;
+				pc1_out_next <= pc1_out_ret;
 				if valid = '1' then
 					off_next <= pcoff;
 				end if;
