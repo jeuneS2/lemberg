@@ -163,8 +163,8 @@ begin  -- behavior
 				when others => null;
 			end case;
 
-			addrvec(i) := std_logic_vector(unsigned(op(i).address)
-										   +unsigned(op(i).index));
+			addrvec(i) := std_logic_vector(signed(op(i).address)
+										   +signed(op(i).index));
 
 			-- addr+index must not cross memory area
 			-- addrvec(i)(ADDR_WIDTH-1+2 downto ADDR_WIDTH-AREAMUX_BITS+2) :=

@@ -97,9 +97,9 @@ begin  -- behavior
 		variable always_imm : std_logic;
 		variable imm        : std_logic_vector(DATA_WIDTH-1 downto 0);
 		variable imm_ldi    : std_logic_vector(2*REG_BITS downto 0);
-		variable idx_stm    : std_logic_vector(ADDR_WIDTH+1 downto 0);
-		variable idx_ldm    : std_logic_vector(ADDR_WIDTH+1 downto 0);
-		variable idx        : std_logic_vector(ADDR_WIDTH+1 downto 0);
+		variable idx_stm    : std_logic_vector(INDEX_WIDTH downto 0);
+		variable idx_ldm    : std_logic_vector(INDEX_WIDTH downto 0);
+		variable idx        : std_logic_vector(INDEX_WIDTH downto 0);
 		variable use_glob   : std_logic;
 		variable glob       : std_logic_vector(ADDR_WIDTH+1 downto 0);
 		variable target     : std_logic_vector(PC_WIDTH-1 downto 0);
@@ -156,10 +156,10 @@ begin  -- behavior
 			imm := std_logic_vector(resize(unsigned(bundle_reg(i).src2), DATA_WIDTH));
 			imm_ldi := bundle_reg(i).src2 & bundle_reg(i).dest & bundle_reg(i).imm;
 			
-			idx_stm := std_logic_vector(resize(unsigned(bundle_reg(i).dest), ADDR_WIDTH+2));
+			idx_stm := std_logic_vector(resize(unsigned(bundle_reg(i).dest), INDEX_WIDTH+1));
 			idx_ldm := std_logic_vector(resize(signed(bundle_reg(i).src2
 													  & bundle_reg(i).dest
-													  & bundle_reg(i).imm), ADDR_WIDTH+2));
+													  & bundle_reg(i).imm), INDEX_WIDTH+1));
 			idx := (others => '0');
 			
 			use_glob := '0';
@@ -393,7 +393,7 @@ begin  -- behavior
 					memop(i).op <= MEM_STM_A;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					idx(ADDR_WIDTH+1 downto 2) := idx_stm(ADDR_WIDTH-1 downto 0);
+					idx(INDEX_WIDTH downto 2) := idx_stm(INDEX_WIDTH-2 downto 0);
 					idx(1 downto 0) := "00";
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
 					stallop(i).op <= STALL_SOFTWAIT;
@@ -405,7 +405,7 @@ begin  -- behavior
 					memop(i).op <= MEM_STMH_A;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					idx(ADDR_WIDTH+1 downto 1) := idx_stm(ADDR_WIDTH downto 0);
+					idx(INDEX_WIDTH downto 1) := idx_stm(INDEX_WIDTH-1 downto 0);
 					idx(0) := '0';
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
 					stallop(i).op <= STALL_SOFTWAIT;
@@ -428,7 +428,7 @@ begin  -- behavior
 					memop(i).op <= MEM_STM_S;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					idx(ADDR_WIDTH+1 downto 2) := idx_stm(ADDR_WIDTH-1 downto 0);
+					idx(INDEX_WIDTH downto 2) := idx_stm(INDEX_WIDTH-2 downto 0);
 					idx(1 downto 0) := "00";
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
 					stallop(i).op <= STALL_SOFTWAIT;
@@ -440,7 +440,7 @@ begin  -- behavior
 					memop(i).op <= MEM_STMH_S;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					idx(ADDR_WIDTH+1 downto 1) := idx_stm(ADDR_WIDTH downto 0);
+					idx(INDEX_WIDTH downto 1) := idx_stm(INDEX_WIDTH-1 downto 0);
 					idx(0) := '0';
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
 					stallop(i).op <= STALL_SOFTWAIT;

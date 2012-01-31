@@ -146,12 +146,14 @@ package op_pack is
 					  MEM_CALL,
 					  MEM_RET);
 
+	constant INDEX_WIDTH      : integer := 2*REG_BITS+1;
+
 	type memop_type is
 	record
 		address : std_logic_vector(ADDR_WIDTH+1 downto 0);
 		rdaddrA : std_logic_vector(REG_BITS-1 downto 0);
 		fwdA    : std_logic;
-		index   : std_logic_vector(ADDR_WIDTH+1 downto 0);
+		index   : std_logic_vector(INDEX_WIDTH downto 0);
 		op	    : mem_type;
 		wrdata  : std_logic_vector(DATA_WIDTH-1 downto 0);
 		rdaddrD : std_logic_vector(REG_BITS-1 downto 0);
