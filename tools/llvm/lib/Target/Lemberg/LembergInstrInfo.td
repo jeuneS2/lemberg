@@ -270,6 +270,24 @@ multiclass OP3<SDNode opnode, string opstr, PatLeaf immtype> {
 		!strconcat("$p ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
 		[(set A:$dst, (opnode A:$src1, (i32 immtype:$src2)))],
 		IIAlu>;
+	let Constraints = "$src3 = $dst" in {
+	def aaat: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set A:$dst, (select C:$cond, (opnode A:$src1, A:$src2), A:$src3))],
+		IIAlu>;
+	def aaaf: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set A:$dst, (select C:$cond, A:$src3, (opnode A:$src1, A:$src2)))],
+		IIAlu>;
+	def aiat: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set A:$dst, (select C:$cond, (opnode A:$src1, (i32 immtype:$src2)), A:$src3))],
+		IIAlu>;
+	def aiaf: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set A:$dst, (select C:$cond, A:$src3, (opnode A:$src1, (i32 immtype:$src2))))],
+		IIAlu>;
+	}
 }
 
 multiclass OPCMP<PatFrag opnode, PatFrag revnode, string opstr, PatLeaf immtype> {
@@ -290,6 +308,40 @@ multiclass OPCMP<PatFrag opnode, PatFrag revnode, string opstr, PatLeaf immtype>
 		!strconcat("$p ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
 		[(set C:$dst, (revnode (i32 immtype:$src2), A:$src1))],
 		IIAlu>;
+	let Constraints = "$src3 = $dst" in {
+	def aact: F1<(outs C:$dst), (ins C:$cond, A:$src1, A:$src2, C:$src3),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set C:$dst, (select C:$cond, (opnode A:$src1, A:$src2), C:$src3))],
+		IIAlu>;
+	def aacf: F1<(outs C:$dst), (ins C:$cond, A:$src1, A:$src2, C:$src3),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set C:$dst, (select C:$cond, C:$src3, (opnode A:$src1, A:$src2)))],
+		IIAlu>;
+	def aict: F1<(outs C:$dst), (ins C:$cond, A:$src1, i32imm:$src2, C:$src3),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set C:$dst, (select C:$cond, (opnode A:$src1, (i32 immtype:$src2)), C:$src3))],
+		IIAlu>;
+	def aicf: F1<(outs C:$dst), (ins C:$cond, A:$src1, i32imm:$src2, C:$src3),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set C:$dst, (select C:$cond, C:$src3, (opnode A:$src1, (i32 immtype:$src2))))],
+		IIAlu>;
+	def aant: F1<(outs C:$dst), (ins C:$cond, A:$src1, A:$src2, C:$src3),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set C:$dst, (select C:$cond, (revnode A:$src2, A:$src1), C:$src3))],
+		IIAlu>;
+	def aanf: F1<(outs C:$dst), (ins C:$cond, A:$src1, A:$src2, C:$src3),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set C:$dst, (select C:$cond, C:$src3, (revnode A:$src2, A:$src1)))],
+		IIAlu>;
+	def aint: F1<(outs C:$dst), (ins C:$cond, A:$src1, i32imm:$src2, C:$src3),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set C:$dst, (select C:$cond, (revnode (i32 immtype:$src2), A:$src1), C:$src3))],
+		IIAlu>;
+	def ainf: F1<(outs C:$dst), (ins C:$cond, A:$src1, i32imm:$src2, C:$src3),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		[(set C:$dst, (select C:$cond, C:$src3, (revnode (i32 immtype:$src2), A:$src1)))],
+		IIAlu>;
+	}
 }
 
 multiclass OPST4<PatFrag opnode, string opstr> {
@@ -433,16 +485,18 @@ let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
 				    IIMem>;
 }
 
-// Pseudo-load from stack, to be expanded
-def LOAD32s_pseudo: Pseudo<(outs A:$dst), (ins mem:$ptr),
-						   "${:comment} LDM.S $ptr; LDX $$mem -> $dst",
-						   [(set A:$dst, (load addr:$ptr))]>;
-def LOAD32s_xpseudo: Pseudo<(outs X:$dst), (ins mem:$ptr),
-							"${:comment} LDM.S $ptr; LDX $$mem -> $dst",
-							[(set X:$dst, (load addr:$ptr))]>;
-def LOAD64s_xpseudo: Pseudo<(outs D:$dst), (ins mem:$ptr),
-							"${:comment} LDM.S $ptr; LDX $$mem -> $dst",
-							[(set D:$dst, (load addr:$ptr))]>;
+let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
+    // Pseudo-load from stack, to be expanded
+    def LOAD32s_pseudo: Pseudo<(outs A:$dst), (ins mem:$ptr),
+						       "${:comment} LDM.S $ptr; LDX $$mem -> $dst",
+						       [(set A:$dst, (load addr:$ptr))]>;
+    def LOAD32s_xpseudo: Pseudo<(outs X:$dst), (ins mem:$ptr),
+							    "${:comment} LDM.S $ptr; LDX $$mem -> $dst",
+							    [(set X:$dst, (load addr:$ptr))]>;
+    def LOAD64s_xpseudo: Pseudo<(outs D:$dst), (ins mem:$ptr),
+							    "${:comment} LDM.S $ptr; LDX $$mem -> $dst",
+							    [(set D:$dst, (load addr:$ptr))]>;
+}
 
 let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
   // Matching load from stack
@@ -475,19 +529,21 @@ let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
 	defm STORE8a: OPST1<LembergStore8, "stmb.a">;
 }
 
-// Pseudo stores to stack
-def STORE32s_pseudo: Pseudo<(outs), (ins A:$val, mem:$ptr),
-							"${:comment} STM.S $val, $ptr",
-							[(store A:$val, addr:$ptr)]>;
-def STORE32s_pseudo_imm: Pseudo<(outs), (ins i32imm:$val, mem:$ptr),
-							    "${:comment} STM.S $val, $ptr",
-							    [(store (i32 imm5:$val), addr:$ptr)]>;
-def STORE32s_xpseudo: Pseudo<(outs), (ins X:$val, mem:$ptr),
-							 "${:comment} STM.S $val, $ptr",
-							 [(store X:$val, addr:$ptr)]>;
-def STORE64s_xpseudo: Pseudo<(outs), (ins D:$val, mem:$ptr),
-							 "${:comment} STM.S $val, $ptr",
-							 [(store D:$val, addr:$ptr)]>;
+let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
+	// Pseudo stores to stack
+	def STORE32s_pseudo: Pseudo<(outs), (ins A:$val, mem:$ptr),
+	                            "${:comment} STM.S $val, $ptr",
+							    [(store A:$val, addr:$ptr)]>;
+    def STORE32s_pseudo_imm: Pseudo<(outs), (ins i32imm:$val, mem:$ptr),
+							        "${:comment} STM.S $val, $ptr",
+							        [(store (i32 imm5:$val), addr:$ptr)]>;
+    def STORE32s_xpseudo: Pseudo<(outs), (ins X:$val, mem:$ptr),
+							     "${:comment} STM.S $val, $ptr",
+							     [(store X:$val, addr:$ptr)]>;
+    def STORE64s_xpseudo: Pseudo<(outs), (ins D:$val, mem:$ptr),
+							     "${:comment} STM.S $val, $ptr",
+							     [(store D:$val, addr:$ptr)]>;
+}
 
 let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
 	// Matching stores to stack
@@ -792,6 +848,10 @@ def NXORCC: F1<(outs C:$dst), (ins pred:$p, C:$src1, C:$src2),
 			   "$p comb\txor $src1, !$src2 -> $dst",
 			   [(set C:$dst, (notcc (xor C:$src1, C:$src2)))],
 			   IIAlu>;
+
+// Alternative representation for NOT
+def : Pat <(xor C:$src1, (i1 -1)),
+		   (NOTCC C:$src1)>;
 
 // Alternative representations of XOR
 def : Pat<(add C:$src1, C:$src2),
@@ -1183,6 +1243,72 @@ def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src3,
 		  (MOVEtrue (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4)>;
 def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src3, A:$src4),
 		  (MOVEfalse (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4)>;
+
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (add A:$src3, A:$src4)),
+		  (ADDaaaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (add A:$src3, A:$src4)),
+		  (ADDaaat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (sub A:$src3, A:$src4)),
+		  (SUBaaaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (sub A:$src3, A:$src4)),
+		  (SUBaaat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (and A:$src3, A:$src4)),
+		  (ANDaaaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (and A:$src3, A:$src4)),
+		  (ANDaaat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (or A:$src3, A:$src4)),
+		  (ORaaaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (or A:$src3, A:$src4)),
+		  (ORaaat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (xor A:$src3, A:$src4)),
+		  (XORaaaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (xor A:$src3, A:$src4)),
+		  (XORaaat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (shl A:$src3, A:$src4)),
+		  (SLaaaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (shl A:$src3, A:$src4)),
+		  (SLaaat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (srl A:$src3, A:$src4)),
+		  (SRaaaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (srl A:$src3, A:$src4)),
+		  (SRaaat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (sra A:$src3, A:$src4)),
+		  (SRAaaaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (sra A:$src3, A:$src4)),
+		  (SRAaaat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4, A:$src5)>;
+
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (add A:$src3, uimm5:$src4)),
+		  (ADDaiaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (add A:$src3, uimm5:$src4)),
+		  (ADDaiat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (sub A:$src3, uimm5:$src4)),
+		  (SUBaiaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (sub A:$src3, uimm5:$src4)),
+		  (SUBaiat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (and A:$src3, uimm5:$src4)),
+		  (ANDaiaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (and A:$src3, uimm5:$src4)),
+		  (ANDaiat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (or A:$src3, uimm5:$src4)),
+		  (ORaiaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (or A:$src3, uimm5:$src4)),
+		  (ORaiat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (xor A:$src3, imm5:$src4)),
+		  (XORaiaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 imm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (xor A:$src3, imm5:$src4)),
+		  (XORaiat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 imm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (shl A:$src3, (i32 uimm5:$src4))),
+		  (SLaiaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (shl A:$src3, (i32 uimm5:$src4))),
+		  (SLaiat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (srl A:$src3, (i32 uimm5:$src4))),
+		  (SRaiaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (srl A:$src3, (i32 uimm5:$src4))),
+		  (SRaiat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (sra A:$src3, (i32 uimm5:$src4))),
+		  (SRAaiaf (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
+def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src5, (sra A:$src3, (i32 uimm5:$src4))),
+		  (SRAaiat (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, (i32 uimm5:$src4), A:$src5)>;
 
 // Pseudo instructions for calls
 let Defs = [R15], Uses = [R15] in {
