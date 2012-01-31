@@ -70,11 +70,11 @@ begin  -- behavior
 			
 			for i in 0 to CLUSTERS-1 loop
 				op_reg(i) <= OP_NOP;
+				memop_reg(i) <= MEMOP_NOP;
+				stallop_reg(i) <= STALLOP_NOP;				
+				jmpop_reg(i) <= JMPOP_NOP;				
 			end loop;  -- i
 
-			for i in 0 to CLUSTERS-1 loop
-				memop_reg(i) <= MEMOP_NOP;
-			end loop;  -- i
 			-- first thing to do is to call boot procedure
 			memop_reg(0).op <= MEM_CALL;
 			memop_reg(0).cond <= COND_TRUE;
@@ -83,14 +83,6 @@ begin  -- behavior
 			-- boot ROM is at bottom of IO space
 			memop_reg(0).address <= (others => '0');
 			memop_reg(0).address(ADDR_WIDTH-1+2 downto ADDR_WIDTH-AREAMUX_BITS+2) <= IO_SELECT;
-
-			for i in 0 to CLUSTERS-1 loop
-				stallop_reg(i) <= STALLOP_NOP;				
-			end loop;  -- i			
-
-			for i in 0 to CLUSTERS-1 loop
-				jmpop_reg(i) <= JMPOP_NOP;				
-			end loop;  -- i
 
 		elsif clk'event and clk = '1' then  -- rising clock edge
 

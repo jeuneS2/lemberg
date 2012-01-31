@@ -46,7 +46,7 @@ begin  -- behavior
 			flags(0) <= '1';  			-- flag zero is always true
 		elsif clk'event and clk = '1' then  -- rising clock edge
 			for i in 0 to CLUSTERS-1 loop
-				for k in 0 to FLAG_COUNT-1 loop
+				for k in 1 to FLAG_COUNT-1 loop
 					if wren(i)(k) = '1' and ena = '1' then
 						flags(k) <= wrdata(i)(k);
 					end if;
