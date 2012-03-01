@@ -12,8 +12,8 @@ OBJS = divsi3.o modsi3.o udivsi3.o umodsi3.o \
 	addsf3.o mulsf3.o divsf3.o comparesf2.o \
 	adddf3.o muldf3.o divdf3.o comparedf2.o \
 	truncdfsf2.o extendsfdf2.o \
-	floatsisf.o floatsidf.o \
-	fixsfsi.o fixdfsi.o
+	floatsisf.o floatsidf.o floatunsidf.o \
+	fixsfsi.o fixdfsi.o fixunsdfsi.o
 
 all: libll.a libllsyms.o
 
