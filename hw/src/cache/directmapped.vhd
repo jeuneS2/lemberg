@@ -71,7 +71,7 @@ architecture rtl of directmapped is
 	
 	signal rddata_reg, next_rddata : std_logic_vector(DATA_WIDTH-1 downto 0);
 	
-	type STATE_TYPE is (idle, rd0, rd1, wr0);
+	type STATE_TYPE is (idle, rd0, rd1, rd2, wr0);
 	signal state, next_state : STATE_TYPE;
 
 begin
@@ -181,11 +181,15 @@ begin
 					next_rddata <= ram_dout.data;
 					next_state <= idle;					
 				else
-					mem_out.rd <= '1';
 					next_state <= rd1;
 				end if;
 
 			when rd1 =>
+				cpu_in.rdy_cnt <= "11";
+				mem_out.rd <= '1';
+				next_state <= rd2;
+	
+			when rd2 =>
 				cpu_in.rdy_cnt <= "11";
 
 				ram_din.data <= mem_in.rd_data;

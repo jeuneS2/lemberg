@@ -66,7 +66,7 @@ architecture rtl of lru is
 	signal int_reset : std_logic;
 	
 	-- what state we're in
-	type STATE_TYPE is (idle, rd0, rd1);
+	type STATE_TYPE is (idle, rd0, rd1, rd2);
 	signal state, next_state : state_type;
 	
 	-- enabling data shifting
@@ -246,15 +246,20 @@ begin
 			when idle => null; 			-- handled below
 
 			-- memory read sequence, updating cache
-			when rd0 =>  				-- wait for memory
+			when rd0 =>
+				cpu_in.rdy_cnt <= "11";
+				mem_out.rd <= '1';
+				next_state <= rd1;
+
+			when rd1 =>  				-- wait for memory
 				cpu_in.rdy_cnt <= "11";
 				if mem_in.rdy_cnt <= 1 then
-					next_state <= rd1;
+					next_state <= rd2;
 				else
-					next_state <= rd0;
+					next_state <= rd1;
 				end if;
 
-			when rd1 =>  				-- write back data to cache
+			when rd2 =>  				-- write back data to cache
 				-- shift in new data
 				enable <= (others => '1');
 
@@ -309,7 +314,6 @@ begin
 				else
 
 					-- trigger a read
-					mem_out.rd <= '1';
 					cpu_in.rdy_cnt <= "11";
 					next_state <= rd0;
 				end if;
