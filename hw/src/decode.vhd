@@ -59,7 +59,7 @@ architecture behavior of decode is
 	signal op_cnt : op_cnt_type := (others => (others => 0));
 	signal ena_cnt : integer := 0;
 	signal flush_cnt : integer := 0;
-	signal br_cnt : integer := 0;
+	signal br_cnt, br_uncond_cnt : integer := 0;
 	--pragma synthesis on
 	
 begin  -- behavior
@@ -720,6 +720,11 @@ begin  -- behavior
 					if bundle_reg(i).op = "011100"
 						or bundle_reg(i).op = "011101" then
 						br_cnt <= br_cnt + 1;
+					end if;
+					if bundle_reg(i).op = "011100" and
+						bundle_reg(i).flag = "00" and
+						bundle_reg(i).cond = '1' then
+						br_uncond_cnt <= br_uncond_cnt + 1;
 					end if;
 				end loop;  -- i
 				if flush = '1' then
