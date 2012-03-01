@@ -42,31 +42,44 @@ architecture behavior of g_regfile is
 
 	signal regfile : g_reg_regfile_type := (others => (others => '0'));
 	signal rdaddr_reg : g_reg_rdaddr_type;
+
+	signal wren_reg   : g_reg_wren_type;
+	signal wraddr_reg : g_reg_wraddr_type;
+	signal wrdata_reg : g_reg_wrdata_type;
 	
 begin  -- behavior
 
 	sync: process (clk, reset)
 	begin  -- process sync
 		if clk'event and clk = '1' then  -- rising clock edge
+			-- latch read addresses
 			for i in 0 to REG_RDPORTS-1 loop
-				-- latch read addresses
 				if rden(i) = '1' then
 					rdaddr_reg <= rdaddr;
 				end if;
-			end loop;  -- i			
+			end loop;  -- i
+			-- latch writes
+			wren_reg <= wren;
+			wraddr_reg <= wraddr;
+			wrdata_reg <= wrdata;
 			for i in 0 to REG_WRPORTS-1 loop
-				-- latch writes
-				if wren(i) = '1' then
-					regfile(to_integer(unsigned(wraddr(i)))) <= wrdata(i);
+				if wren_reg(i) = '1' then
+					regfile(to_integer(unsigned(wraddr_reg(i)))) <= wrdata_reg(i);
 				end if;
 			end loop;  -- i			
 		end if;
 	end process sync;
 
-	async: process (regfile, rdaddr_reg)
+	async: process (regfile, rdaddr_reg,
+					wren_reg, wraddr_reg, wrdata_reg)
 	begin  -- process async
 		for i in 0 to REG_RDPORTS-1 loop
 			rddata(i) <= regfile(to_integer(unsigned(rdaddr_reg(i))));
+			for k in 0 to REG_WRPORTS-1 loop
+				if wren_reg(k) = '1' and wraddr_reg(k) = rdaddr_reg(i) then
+					rddata(i) <= wrdata_reg(k);
+				end if;
+			end loop;  -- k
 		end loop;  -- i		
 	end process async;
 	
@@ -104,6 +117,10 @@ architecture behavior of l_regfile is
 	signal rdaddr0_reg : std_logic_vector(L_REG_BITS-1 downto 0);
 	signal rdaddr1_reg : std_logic_vector(L_REG_BITS-1 downto 0);
 
+	signal wren_reg   : std_logic;
+	signal wraddr_reg : std_logic_vector(L_REG_BITS-1 downto 0);
+	signal wrdata_reg : std_logic_vector(DATA_WIDTH-1 downto 0);
+	
 begin  -- behavior
 
 	sync: process (clk, reset)
@@ -115,16 +132,26 @@ begin  -- behavior
 				rdaddr1_reg <= rdaddr1;
 			end if;
 			-- latch writes
-			if wren = '1' and ena = '1' then
-				regfile(to_integer(unsigned(wraddr))) <= wrdata;
+			wren_reg <= wren and ena;
+			wraddr_reg <= wraddr;
+			wrdata_reg <= wrdata;
+			if wren_reg = '1' then
+				regfile(to_integer(unsigned(wraddr_reg))) <= wrdata_reg;
 			end if;  -- i
 		end if;
 	end process sync;
 	
-	async: process (regfile, rdaddr0_reg, rdaddr1_reg)
+	async: process (regfile, rdaddr0_reg, rdaddr1_reg,
+					wren_reg, wraddr_reg, wrdata_reg)
 	begin  -- process async
 		rddata0 <= regfile(to_integer(unsigned(rdaddr0_reg)));
+		if wren_reg = '1' and wraddr_reg = rdaddr0_reg then
+			rddata0 <= wrdata_reg;
+		end if;
 		rddata1 <= regfile(to_integer(unsigned(rdaddr1_reg)));
+		if wren_reg = '1' and wraddr_reg = rdaddr1_reg then
+			rddata1 <= wrdata_reg;
+		end if;
 	end process async;
 
 end behavior;
