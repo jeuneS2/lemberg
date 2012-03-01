@@ -55,7 +55,7 @@ architecture behavior of alu is
 
 	signal mul_reg, mul_next : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal add_tmp, sub_tmp: std_logic_vector(DATA_WIDTH downto 0);
-	signal eq_tmp : std_logic;
+	signal eq_tmp, lt_tmp : std_logic;
 	
 begin  -- behavior
 
@@ -77,7 +77,7 @@ begin  -- behavior
 	end process sync;
 	
 	alu: process (op, fl_in, mul_reg, rb_in, ro_in, ba, memdata,
-				  add_tmp, sub_tmp, eq_tmp, fpu_rddata)
+				  add_tmp, sub_tmp, eq_tmp, lt_tmp, fpu_rddata)
 		variable valid : std_logic;
 		variable mul_tmp : std_logic_vector(2*DATA_WIDTH-1 downto 0);
 		variable popcnt : integer range 0 to 32;
@@ -115,6 +115,7 @@ begin  -- behavior
 		ro_out <= op.rddata0(PC_WIDTH-1 downto 0);
 		
 		mul_next <= mul_reg;
+		mul_tmp := std_logic_vector(unsigned(op.rddata0) * unsigned(op.rddata1));
 
 		if unsigned(op.rddata0) = 0 then
 			zero <= '1';
@@ -164,7 +165,6 @@ begin  -- behavior
 						  (ROTATE_LEFT(unsigned(op.rddata0),
 									   to_integer(unsigned(op.rddata1(DATA_WIDTH_BITS-1 downto 0)))));
 			when ALU_MUL =>
-				mul_tmp := std_logic_vector(unsigned(op.rddata0) * unsigned(op.rddata1));
 				mul_next <= mul_tmp(DATA_WIDTH-1 downto 0);
 			when ALU_CARR =>
 				wren <= valid;
@@ -242,18 +242,13 @@ begin  -- behavior
 				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
 				fl_out <= (others => '0');
 				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
-					<= (op.rddata0(DATA_WIDTH-1) and not op.rddata1(DATA_WIDTH-1))
-					or (sub_tmp(DATA_WIDTH-1)
-						and (op.rddata0(DATA_WIDTH-1) xnor op.rddata1(DATA_WIDTH-1)));
+					<= lt_tmp;
 			when ALU_CMPLE =>
 				fl_wren <= (others => '0');
 				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
 				fl_out <= (others => '0');
 				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
-					<= (op.rddata0(DATA_WIDTH-1) and not op.rddata1(DATA_WIDTH-1))
-					or (sub_tmp(DATA_WIDTH-1)
-						and (op.rddata0(DATA_WIDTH-1) xnor op.rddata1(DATA_WIDTH-1)))
-					or eq_tmp;
+					<= lt_tmp or eq_tmp;
 			when ALU_CMPULT =>
 				fl_wren <= (others => '0');
 				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
@@ -402,6 +397,12 @@ begin  -- behavior
 									+ resize(unsigned(op.rddata1), DATA_WIDTH+1));
 		sub_tmp <= std_logic_vector(resize(unsigned(op.rddata0), DATA_WIDTH+1)
 									- resize(unsigned(op.rddata1), DATA_WIDTH+1));
+
+		lt_tmp <= '0';
+		if signed(op.rddata0) < signed(op.rddata1) then
+			lt_tmp <= '1';
+		end if;
+
 		eq_tmp <= '0';
 		if op.rddata0 = op.rddata1 then
 			eq_tmp <= '1';
