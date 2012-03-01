@@ -102,10 +102,11 @@ begin  -- behavior
 
 				if flush = '1' then
 					for i in 0 to CLUSTERS-1 loop
-						op_reg(i) <= OP_NOP;
-						memop_reg(i) <= MEMOP_NOP;
-						stallop_reg(i) <= STALLOP_NOP;				
-						jmpop_reg(i) <= JMPOP_NOP;				
+						op_reg(i).flag <= (others => '0');
+						memop_reg(i).flag <= (others => '0');
+						stallop_reg(i).flag <= (others => '0');
+						-- not all jumps use the flags
+						jmpop_reg(i).op <= JMP_NOP;
 					end loop;  -- i
 				end if;			
 			end if;
