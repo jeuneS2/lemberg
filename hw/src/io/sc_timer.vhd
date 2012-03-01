@@ -40,6 +40,8 @@ end sc_timer;
 
 architecture rtl of sc_timer is
 
+	signal rd_data_buf : std_logic_vector(DATA_WIDTH-1 downto 0);
+	
 	signal cycles      : std_logic_vector(2*DATA_WIDTH-1 downto 0);
 
 	signal usecs        : std_logic_vector(19 downto 0);
@@ -60,11 +62,13 @@ begin  -- rtl
 
 	assert addr_width = 3 report "Wrong address width" severity failure;
 
-	rdy_cnt <= "00";
-
 	sync: process (clk, reset)
 	begin  -- process sync
 		if reset = '0' then  			-- asynchronous reset (active low)
+
+			rdy_cnt <= "00";
+			rd_data <= (others => '0');
+			rd_data_buf <= (others => '0');
 			
 			cycles <= (others => '0');
 			usecs <= (others => '0');
@@ -76,26 +80,29 @@ begin  -- rtl
 			
 		elsif clk'event and clk = '1' then  -- rising clock edge
 			
+			rdy_cnt <= '0' & rd;
+			rd_data <= rd_data_buf;
+
 			if rd = '1' then
 				case address(2 downto 0) is
 					when "000" =>
-						rd_data <= cycles(DATA_WIDTH-1 downto 0);
+						rd_data_buf <= cycles(DATA_WIDTH-1 downto 0);
 						hireg   <= cycles(2*DATA_WIDTH-1 downto DATA_WIDTH);
 					when "001" =>
-						rd_data <= hireg;
+						rd_data_buf <= hireg;
 					when "010" =>
-						rd_data <= nanos(DATA_WIDTH+NANO_PREC-1 downto NANO_PREC);
+						rd_data_buf <= nanos(DATA_WIDTH+NANO_PREC-1 downto NANO_PREC);
 						hireg   <= nanos(2*DATA_WIDTH+NANO_PREC-1 downto DATA_WIDTH+NANO_PREC);
 					when "011" =>
-						rd_data <= hireg;
+						rd_data_buf <= hireg;
 					when "100" =>
-						rd_data <= (others => '0');
-						rd_data(19 downto 0) <= usecs;
+						rd_data_buf <= (others => '0');
+						rd_data_buf(19 downto 0) <= usecs;
 						hireg <= secs;
 					when "101" =>
-						rd_data <= hireg;						
+						rd_data_buf <= hireg;						
 					when others =>
-						rd_data <= hireg;
+						rd_data_buf <= (others => '0');
 				end case;
 			end if;
 			
