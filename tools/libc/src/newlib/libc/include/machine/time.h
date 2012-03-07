@@ -9,6 +9,10 @@
 #endif
 #endif /* !__rtems__ */
 
+#if defined(__lemberg__)
+#define _CLOCKS_PER_SEC_ 1000000
+#endif
+
 #ifdef __SPU__
 #include <sys/types.h>
 int nanosleep (const struct timespec *, struct timespec *);
