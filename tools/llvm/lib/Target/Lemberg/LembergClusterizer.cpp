@@ -88,6 +88,15 @@ namespace {
 					&& classes[rhs] == Lemberg::MulRegisterClass) {
 					return true;
 				}
+				// big immediates come next
+				if (classes[lhs] == Lemberg::AImmRegisterClass
+					&& classes[rhs] != Lemberg::AImmRegisterClass) {
+					return false;
+				}
+				if (classes[lhs] != Lemberg::AImmRegisterClass
+					&& classes[rhs] == Lemberg::AImmRegisterClass) {
+					return true;
+				}
 				// prefer registers with fewer neighbors
 				if (hood[lhs]->size() != hood[rhs]->size()) {
 					return hood[lhs]->size() > hood[rhs]->size();
