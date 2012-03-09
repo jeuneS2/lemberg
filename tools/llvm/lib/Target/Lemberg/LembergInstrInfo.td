@@ -600,12 +600,29 @@ def MULai: F1<(outs Mul:$dst), (ins pred:$p, A:$src1, i32imm:$src2),
               "$p mul\t$src1, $src2 -> $$$dst", 
 			  [(set Mul:$dst, (LembergMul A:$src1, imm5:$src2))],
 			  IIAlu>;
-
-// Avoid spilling for multiplication registers
+// Keep loading to general purpose register close
 def : Pat<(mul A:$src1, A:$src2),
- 		  (COPY_TO_REGCLASS (MULaa A:$src1, A:$src2), A)>;
+  		  (COPY_TO_REGCLASS (MULaa A:$src1, A:$src2), A)>;
 def : Pat<(mul A:$src1, imm5:$src2),
- 		  (COPY_TO_REGCLASS (MULai A:$src1, imm5:$src2), A)>;
+  		  (COPY_TO_REGCLASS (MULai A:$src1, imm5:$src2), A)>;
+// Multiply-accumulate when loading multiplication result
+def MACa: F1<(outs A:$dst), (ins pred:$p, Mul:$src1, A:$src2),
+			 "$p ldx\t$$$src1, $src2 -> $dst",
+			 [(set A:$dst, (add Mul:$src1, A:$src2))],
+			 IIAlu>;
+def MACi: F1<(outs A:$dst), (ins pred:$p, Mul:$src1, i32imm:$src2),
+			 "$p ldx\t$$$src1, $src2 -> $dst",
+			 [(set A:$dst, (add Mul:$src1, uimm5:$src2))],
+			 IIAlu>;
+// Match MAC patterns
+def : Pat<(add (mul A:$src1, A:$src2), A:$src3),
+		  (MACa (MULaa A:$src1, A:$src2), A:$src3)>;
+def : Pat<(add (mul A:$src1, imm5:$src2), A:$src3),
+		  (MACa (MULai A:$src1, imm5:$src2), A:$src3)>;
+def : Pat<(add (mul A:$src1, A:$src2), uimm5:$src3),
+		  (MACi (MULaa A:$src1, A:$src2), uimm5:$src3)>;
+def : Pat<(add (mul A:$src1, imm5:$src2), uimm5:$src3),
+		  (MACi (MULai A:$src1, imm5:$src2), uimm5:$src3)>;
 
 // Logic operations
 defm AND: OP3<and, "and", uimm5>;
@@ -1331,8 +1348,9 @@ let isCall=1, hasDelaySlot=1,
 			R0_20, R1_20, R2_20, R3_20,
 			R0_21, R1_21, R2_21, R3_21,
 			R0_22, R1_22, R2_22, R3_22,
-			C0, C1, C2, C3,
-			MUL0, MUL1, MUL2, MUL3,
+			C1, C2, C3,
+			MUL0_0, MUL1_0, MUL2_0, MUL3_0,
+			MUL0_1, MUL1_1, MUL2_1, MUL3_1,
 			MEM, MEMHU, MEMHS, MEMBU, MEMBS,
 			F0, F1, F2, F3,
 			F4, F5, F6, F7, F8, F9,

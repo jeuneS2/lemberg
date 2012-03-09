@@ -468,7 +468,7 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.op = $2;
 		  $$.fmt.B.src1 = $3;
 		  $$.fmt.B.src2.imm = $5;
-		  $$.fmt.B.dest = 0; /* destinition is implicit */
+		  $$.fmt.B.dest = $7;
 		  $$.fmt.B.imm = 1;
 		  $$.fmt.B.cond = $1;
       }
@@ -477,7 +477,7 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.op = $2;
 		  $$.fmt.B.src1 = $3;
 		  $$.fmt.B.src2.reg = $5;
-		  $$.fmt.B.dest = 0; /* destinition is implicit */
+		  $$.fmt.B.dest = $7;
 		  $$.fmt.B.imm = 0;
 		  $$.fmt.B.cond = $1;
       }

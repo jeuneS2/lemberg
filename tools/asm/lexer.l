@@ -246,23 +246,28 @@ $membs {
 	return EXT;
   }
 
-$mul[0-9] {
+$mul[0-9]\.0 {
 	yylval.intval = 9;
 	return EXT;
   }
 
-$rb {
+$mul[0-9]\.1 {
 	yylval.intval = 10;
 	return EXT;
   }
 
-$ro {
+$rb {
 	yylval.intval = 11;
 	return EXT;
   }
 
-$ba {
+$ro {
 	yylval.intval = 12;
+	return EXT;
+  }
+
+$ba {
+	yylval.intval = 13;
 	return EXT;
   }
 

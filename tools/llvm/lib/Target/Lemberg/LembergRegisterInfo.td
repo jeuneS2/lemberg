@@ -147,10 +147,14 @@ let Namespace = "Lemberg" in {
   def MEMBS : LembergGlobalReg< 8, "membs">, DwarfRegNum<[88]>;
 
   // Local special registers
-  def MUL0 : LembergLocalReg< 9, 0, "mul0">, DwarfRegNum<[89]>;
-  def MUL1 : LembergLocalReg< 9, 1, "mul1">, DwarfRegNum<[89]>;
-  def MUL2 : LembergLocalReg< 9, 2, "mul2">, DwarfRegNum<[89]>;
-  def MUL3 : LembergLocalReg< 9, 3, "mul3">, DwarfRegNum<[89]>;
+  def MUL0_0 : LembergLocalReg< 9, 0, "mul0.0">, DwarfRegNum<[89]>;
+  def MUL1_0 : LembergLocalReg< 9, 1, "mul1.0">, DwarfRegNum<[89]>;
+  def MUL2_0 : LembergLocalReg< 9, 2, "mul2.0">, DwarfRegNum<[89]>;
+  def MUL3_0 : LembergLocalReg< 9, 3, "mul3.0">, DwarfRegNum<[89]>;
+  def MUL0_1 : LembergLocalReg< 9, 0, "mul0.1">, DwarfRegNum<[90]>;
+  def MUL1_1 : LembergLocalReg< 9, 1, "mul1.1">, DwarfRegNum<[90]>;
+  def MUL2_1 : LembergLocalReg< 9, 2, "mul2.1">, DwarfRegNum<[90]>;
+  def MUL3_1 : LembergLocalReg< 9, 3, "mul3.1">, DwarfRegNum<[90]>;
 
   // Global special registers for call/return
   def RB   : LembergGlobalReg< 10, "rb">,   DwarfRegNum<[90]>;
@@ -489,13 +493,15 @@ let CopyCost = -1 in {
   }
 
   // Multiplication results
-  def Mul : RegisterClass<"Lemberg", [i32], 32, [MUL0, MUL1, MUL2, MUL3] >;
+  def Mul : RegisterClass<"Lemberg", [i32], 32,
+  [MUL0_0, MUL1_0, MUL2_0, MUL3_0,
+   MUL0_1, MUL1_1, MUL2_1, MUL3_1]>;
 
   // Classes for clusterizing multiplication results
-  def M0 : RegisterClass<"Lemberg", [i32], 32, [MUL0] >;
-  def M1 : RegisterClass<"Lemberg", [i32], 32, [MUL1] >;
-  def M2 : RegisterClass<"Lemberg", [i32], 32, [MUL2] >;
-  def M3 : RegisterClass<"Lemberg", [i32], 32, [MUL3] >;
+  def M0 : RegisterClass<"Lemberg", [i32], 32, [MUL0_0, MUL0_1] >;
+  def M1 : RegisterClass<"Lemberg", [i32], 32, [MUL1_0, MUL1_1] >;
+  def M2 : RegisterClass<"Lemberg", [i32], 32, [MUL2_0, MUL2_1] >;
+  def M3 : RegisterClass<"Lemberg", [i32], 32, [MUL3_0, MUL3_1] >;
 
   // Class for memory result
   def Mem : RegisterClass<"Lemberg", [i32], 32, [MEM, MEMHU, MEMHS, MEMBU, MEMBS] >
@@ -529,7 +535,8 @@ let CopyCost = -1 in {
 
   // All registers that are loaded through ldx
   def X : RegisterClass<"Lemberg", [i32], 32,
-    [MUL0, MUL1, MUL2, MUL3,
+    [MUL0_0, MUL1_0, MUL2_0, MUL3_0,
+	 MUL0_1, MUL1_1, MUL2_1, MUL3_1,
 	 C1, C2, C3,
 	 F0, F1, F2, F3, F4, F5, F6, F7,
 	 F8, F9, F10, F11, F12, F13, F14, F15,

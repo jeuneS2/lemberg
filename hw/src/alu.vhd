@@ -53,7 +53,8 @@ end alu;
 
 architecture behavior of alu is
 
-	signal mul_reg, mul_next : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal mul0_reg, mul0_next : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal mul1_reg, mul1_next : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal add_tmp, sub_tmp: std_logic_vector(DATA_WIDTH downto 0);
 	signal eq_tmp, lt_tmp : std_logic;
 	
@@ -68,15 +69,17 @@ begin  -- behavior
 	sync: process (clk, reset)
 	begin  -- process sync
 		if reset = '0' then  			-- asynchronous reset (active low)
-			mul_reg <= (others => '0');
+			mul0_reg <= (others => '0');
+			mul1_reg <= (others => '0');
 		elsif clk'event and clk = '1' then  -- rising clock edge
 			if ena = '1' then
-				mul_reg <= mul_next;
+				mul0_reg <= mul0_next;
+				mul1_reg <= mul1_next;
 			end if;
 		end if;
 	end process sync;
 	
-	alu: process (op, fl_in, mul_reg, rb_in, ro_in, ba, memdata,
+	alu: process (op, fl_in, mul0_reg, mul1_reg, rb_in, ro_in, ba, memdata,
 				  add_tmp, sub_tmp, eq_tmp, lt_tmp, fpu_rddata)
 		variable valid : std_logic;
 		variable mul_tmp : std_logic_vector(2*DATA_WIDTH-1 downto 0);
@@ -114,7 +117,8 @@ begin  -- behavior
 		ro_wren <= '0';
 		ro_out <= op.rddata0(PC_WIDTH-1 downto 0);
 		
-		mul_next <= mul_reg;
+		mul0_next <= mul0_reg;
+		mul1_next <= mul1_reg;
 		mul_tmp := std_logic_vector(unsigned(op.rddata0) * unsigned(op.rddata1));
 
 		if unsigned(op.rddata0) = 0 then
@@ -165,7 +169,11 @@ begin  -- behavior
 						  (ROTATE_LEFT(unsigned(op.rddata0),
 									   to_integer(unsigned(op.rddata1(DATA_WIDTH_BITS-1 downto 0)))));
 			when ALU_MUL =>
-				mul_next <= mul_tmp(DATA_WIDTH-1 downto 0);
+				if op.wraddr(0) = '1' then
+					mul0_next <= mul_tmp(DATA_WIDTH-1 downto 0);
+				else
+					mul1_next <= mul_tmp(DATA_WIDTH-1 downto 0);
+				end if;
 			when ALU_CARR =>
 				wren <= valid;
 				wrdata <= (others => '0');
@@ -353,7 +361,11 @@ begin  -- behavior
 				end case;
 			when ALU_LDMUL =>
 				wren <= valid;
-				wrdata <= mul_reg;
+				if op.rdaddr0(0) = '1' then
+					wrdata <= std_logic_vector(unsigned(mul0_reg)+unsigned(op.rddata1));
+				else
+					wrdata <= std_logic_vector(unsigned(mul1_reg)+unsigned(op.rddata1));
+				end if;
 			when ALU_LDFP =>
 				-- just fetch data, actual reading is done in FPU
 				wren <= valid;
@@ -365,7 +377,11 @@ begin  -- behavior
 				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= op.rddata0(0);
 			when ALU_STMUL =>
 				if valid = '1' then
-					mul_next <= op.rddata0;
+					if op.wraddr(0) = '1' then
+						mul0_next <= op.rddata0;
+					else
+						mul1_next <= op.rddata0;
+					end if;
 				end if;
 			when ALU_STFP =>
 				-- just deliver data, actual writing is done in FPU

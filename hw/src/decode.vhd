@@ -529,10 +529,10 @@ begin  -- behavior
 						when "00110" => op(i).op <= ALU_LDMEMHS;
 						when "00111" => op(i).op <= ALU_LDMEMBU;
 						when "01000" => op(i).op <= ALU_LDMEMBS;
-						when "01001" => op(i).op <= ALU_LDMUL;
-						when "01010" => op(i).op <= ALU_LDRB;
-						when "01011" => op(i).op <= ALU_LDRO;
-						when "01100" => op(i).op <= ALU_LDBA;
+						when "01001" | "01010" => op(i).op <= ALU_LDMUL;
+						when "01011" => op(i).op <= ALU_LDRB;
+						when "01100" => op(i).op <= ALU_LDRO;
+						when "01101" => op(i).op <= ALU_LDBA;
 						when "10000" | "10001" | "10010" | "10011" |
 							 "10100" | "10101" | "10110" | "10111" |
 							 "11000" | "11001" | "11010" | "11011" |
@@ -563,9 +563,9 @@ begin  -- behavior
 				when "101101" =>  		-- STX
 					case bundle_reg(i).dest is
 						when "00000" | "00001" | "00010" | "00011" => op(i).op <= ALU_STCOND;
-						when "01001" => op(i).op <= ALU_STMUL;
-						when "01010" => op(i).op <= ALU_STRB;
-						when "01011" => op(i).op <= ALU_STRO;
+						when "01001" | "01010" => op(i).op <= ALU_STMUL;
+						when "01011" => op(i).op <= ALU_STRB;
+						when "01100" => op(i).op <= ALU_STRO;
 						when "10000" | "10001" | "10010" | "10011" |
 							 "10100" | "10101" | "10110" | "10111" |
 							 "11000" | "11001" | "11010" | "11011" |
