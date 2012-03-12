@@ -3,7 +3,7 @@ include /usr/local/lemberg/etc/Makefile.rules
 CFLAGS=-O3
 LLVM_LDFLAGS=
 OPTFLAGS=-O3
-LLCFLAGS=-O3 -code-model=small
+LLCFLAGS=-O3 -code-model=small -regalloc=pbqp
 
 all: md5.bin md5.dat
 
