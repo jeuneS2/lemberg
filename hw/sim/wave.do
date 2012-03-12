@@ -17,7 +17,7 @@ add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/decode/rf
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/decode/rf/g_wren
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/decode/rf/rdaddr
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/decode/rf/rddata
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/decode/rf/g_regfile/regfile
+add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/core/decode/rf/g_regfile/regfile
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/decode/rf/gen_l_regfile__0/l_regfile/regfile
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/decode/rf/gen_l_regfile__1/l_regfile/regfile
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/decode/rf/gen_l_regfile__2/l_regfile/regfile
@@ -81,11 +81,11 @@ add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/inflate/n
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/inflate/nop_cnt_next
 add wave -noupdate -divider jumpunit
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/jumpunit/fl_in
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/jumpunit/op(0)
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/jumpunit/op
 add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/core/jumpunit/pc_wr
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/jumpunit/pc_in
 add wave -noupdate -format Logic /cpu_tb/cpu/core/jumpunit/ena
+add wave -noupdate -format Logic /cpu_tb/cpu/core/jumpunit/flush
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/jumpunit/pc0_out
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/jumpunit/pc1_out
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/jumpunit/pcoff
@@ -122,6 +122,8 @@ add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/memunit/b
 add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/core/memunit/mem_in
 add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/core/memunit/mem_out
 add wave -noupdate -format Logic /cpu_tb/cpu/core/memunit/ena
+add wave -noupdate -format Logic /cpu_tb/cpu/core/memunit/ena_init
+add wave -noupdate -format Logic /cpu_tb/cpu/core/memunit/ena_int
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/memunit/op
 add wave -noupdate -divider icache
 add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/core/memunit/icache_clear
@@ -139,8 +141,6 @@ add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/memunit/i
 add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/core/memunit/icache/clear
 add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/core/memunit/icache/update
 add wave -noupdate -divider datacache
-add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/core/datacache/bp_fetch
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/bp_rd_data
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/cpu_in
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/cpu_out
 add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/core/datacache/cmp_stack/ram_wren_tag
@@ -149,15 +149,9 @@ add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/dm_mem_out
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/fa_cpu_in
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/fa_mem_out
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/in_mux_reg
 add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/core/datacache/inval
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/mem_in
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/mem_out
-add wave -noupdate -format Logic -radix hexadecimal /cpu_tb/cpu/core/datacache/next_bp_fetch
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/next_bp_rd_data
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/next_in_mux
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/next_out_mux
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/out_mux_reg
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/stack_cpu_in
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/core/datacache/stack_mem_out
 add wave -noupdate -divider mem_if
@@ -169,12 +163,8 @@ add wave -noupdate -divider ram
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/ram_inout
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/ram_out
 add wave -noupdate -divider iomux
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/cntmux_next
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/cntmux_reg
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/cpu_in
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/cpu_out
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/datamux_next
-add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/datamux_reg
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/dram_in
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/dram_out
 add wave -noupdate -format Literal -radix hexadecimal /cpu_tb/cpu/iomux/flash_in
@@ -190,11 +180,17 @@ add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/sc_io/
 add wave -noupdate -format Literal -radix hexadecimal -expand /cpu_tb/cpu/sc_io/uart_out
 add wave -noupdate -divider Timer
 add wave -noupdate -format Literal -radix decimal /cpu_tb/cpu/sc_io/sc_timer/cycles
-add wave -noupdate -format Literal -radix decimal -expand /cpu_tb/cpu/sc_io/sc_timer/nanos_pipe
 add wave -noupdate -format Literal -radix decimal /cpu_tb/cpu/sc_io/sc_timer/secs
 add wave -noupdate -format Literal -radix decimal /cpu_tb/cpu/sc_io/sc_timer/usecs
+add wave -noupdate -format Literal /cpu_tb/cpu/core/decode/ena_cnt
+add wave -noupdate -format Literal /cpu_tb/cpu/core/decode/br_cnt
+add wave -noupdate -format Literal /cpu_tb/cpu/core/inflate/nop_cnt
+add wave -noupdate -format Literal /cpu_tb/cpu/core/decode/flush_cnt
+add wave -noupdate -format Literal -expand /cpu_tb/cpu/core/decode/op_cnt
+add wave -noupdate -format Literal /cpu_tb/cpu/core/datacache/cmp_fa/hit_cnt_sum
+add wave -noupdate -format Literal /cpu_tb/cpu/core/datacache/cmp_fa/fast_cnt
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 3} {160 ns} 0} {{Cursor 2} {6126000 ns} 0}
+WaveRestoreCursors {{Cursor 2} {342202 ns} 0}
 configure wave -namecolwidth 382
 configure wave -valuecolwidth 325
 configure wave -justifyvalue left
@@ -209,4 +205,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {159 ns} {161 ns}
+WaveRestoreZoom {0 ns} {902723827 ns}
