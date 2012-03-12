@@ -313,13 +313,13 @@ Index & Name & Purpose \\
   7 & \$membu & Memory load result as 4 $\times$ uint8\_t, read only, global \\
   8 & \$membs & Memory load result as 4 $\times$ int8\_t, read only, global \\
   \cmidrule{1-3}
-  9 & \$mul & Multiplication result, per-cluster \\
+  9 & \$mul0 & Multiplication result 0, per-cluster \\
+  10 & \$mul1 & Multiplication result 1, per-cluster \\
   \cmidrule{1-3}
-  10 & \$rb & Return base, global \\
-  11 & \$ro & Return offset, global \\
-  12 & \$ba & Base address, read only, global \\
+  11 & \$rb & Return base, global \\
+  12 & \$ro & Return offset, global \\
+  13 & \$ba & Base address, read only, global \\
   \cmidrule{1-3}
-  13 & ? & \\
   14 & ? & \\
   15 & ? & \\
   \cmidrule{1-3}
@@ -573,6 +573,7 @@ Result Bit & Semantics \\
   write-through. Stores do not pull data into the caches (no write allocation).
 \item Support for floating-point operations is optional.
 \item Branches use a delay-slot if bit \texttt{d} is set, and do not use a delay slot if it is cleared
+\item Loading from \texttt{\$mul} registers adds \texttt{src2} to the value.
 \end{itemize}
 
 \end{document}
