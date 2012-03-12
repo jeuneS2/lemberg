@@ -22,7 +22,7 @@ use ieee.std_logic_1164.all;
 package core_pack is
 
 	-- version number
-	constant VERSION : std_logic_vector(31 downto 0) := X"20120126";
+	constant VERSION : std_logic_vector(31 downto 0) := X"20120312";
 	-- speed
 	constant CLOCK_FREQ : integer := 66666667;
 

@@ -46,7 +46,7 @@ set_global_assignment -name USE_GENERATED_PHYSICAL_CONSTRAINTS OFF -section_id e
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
-set_global_assignment -name MUX_RESTRUCTURE ON
+set_global_assignment -name MUX_RESTRUCTURE OFF
 set_global_assignment -name ADV_NETLIST_OPT_SYNTH_WYSIWYG_REMAP ON
 set_global_assignment -name REMOVE_REDUNDANT_LOGIC_CELLS ON
 set_global_assignment -name ALLOW_ANY_ROM_SIZE_FOR_RECOGNITION ON
@@ -113,7 +113,7 @@ set_global_assignment -name SYNTH_PROTECT_SDC_CONSTRAINT ON
 set_global_assignment -name ENABLE_DA_RULE "C101, C102, C103, C104, C105, C106, R101, R102, R103, R104, R105, T101, T102, A101, A102, A103, A104, A105, A106, A107, A108, A109, A110, S101, S102, S103, S104, D101, D102, D103, M101, M102, M103, M104, M105"
 set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER ON
 set_global_assignment -name STATE_MACHINE_PROCESSING AUTO
-set_global_assignment -name PRE_MAPPING_RESYNTHESIS OFF
+set_global_assignment -name PRE_MAPPING_RESYNTHESIS ON
 set_global_assignment -name POWER_USE_INPUT_FILES ON
 set_global_assignment -name POWER_DEFAULT_INPUT_IO_TOGGLE_RATE "12.5 %"
 set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim (VHDL)"
@@ -284,4 +284,7 @@ set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/conversions.vhd -section_
 set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/sim_ssram_512x36.vhd -section_id cpu_rtl_tb
 set_global_assignment -name EDA_TEST_BENCH_FILE ../sim/cpu_tb.vhd -section_id cpu_rtl_tb
 set_global_assignment -name IGNORE_MODE_FOR_MERGE OFF
+set_global_assignment -name ENABLE_BENEFICIAL_SKEW_OPTIMIZATION ON
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to sram_pin_inout.*
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to sram_pin_inout.*
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

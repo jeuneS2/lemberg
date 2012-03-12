@@ -17,11 +17,11 @@ begin
 process(a) begin
 	case a is
 		when X"00" => d <= X"00000014";
-		when X"01" => d <= X"17800000";
-		when X"02" => d <= X"031601ff";
-		when X"03" => d <= X"2019c000";
-		when X"04" => d <= X"201b0800";
-		when X"05" => d <= X"600f0000";
+		when X"01" => d <= X"17c00000";
+		when X"02" => d <= X"00000016";
+		when X"03" => d <= X"01ff2019";
+		when X"04" => d <= X"c000201b";
+		when X"05" => d <= X"0800600f";
 		when others => d <= (others => '0');
 	end case;
 end process;
