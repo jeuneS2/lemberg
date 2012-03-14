@@ -44,18 +44,18 @@ architecture rtl of sc_timer is
 	
 	signal cycles      : std_logic_vector(2*DATA_WIDTH-1 downto 0);
 
+	constant NANO_PREC : integer := 20;
+	constant NANOS_PER_CYCLE  : integer :=
+		(10**3*2**NANO_PREC+((clk_freq+10**3/2)/10**3)/2)/((clk_freq+10**3/2)/10**3)*10**3;
+	
+	signal nanos : std_logic_vector(2*DATA_WIDTH+NANO_PREC-1 downto 0);
+	
 	signal usecs        : std_logic_vector(19 downto 0);
-	signal us_modcycles : integer range 0 to clk_freq/1000;
+	signal us_modcycles : std_logic_vector(11+NANO_PREC-1 downto 0);
 
 	signal secs         : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal s_modcycles  : integer range 0 to clk_freq;
 
-	constant NANO_PREC : integer := 20;
-	constant NANOS_PER_CYCLE  : integer :=
-		(10**3*2**NANO_PREC+(clk_freq/10**6)/2)/(clk_freq/10**6);
-	
-	signal nanos : std_logic_vector(2*DATA_WIDTH+NANO_PREC-1 downto 0);
-	
 	signal hireg       : std_logic_vector(DATA_WIDTH-1 downto 0);
 	
 begin  -- rtl
@@ -72,7 +72,7 @@ begin  -- rtl
 			
 			cycles <= (others => '0');
 			usecs <= (others => '0');
-			us_modcycles <= 0;
+			us_modcycles <= (others => '0');
 			secs <= (others => '0');
 			s_modcycles <= 0;
 			nanos <= (others => '0');
@@ -110,10 +110,10 @@ begin  -- rtl
 						
 			nanos <= std_logic_vector(unsigned(nanos)+NANOS_PER_CYCLE);
 			
-			us_modcycles <= us_modcycles+1;
-			if us_modcycles = clk_freq/1000000-1 then
+			us_modcycles <=  std_logic_vector(unsigned(us_modcycles)+NANOS_PER_CYCLE);
+			if unsigned(us_modcycles(11+NANO_PREC-1 downto NANO_PREC)) >= 1000 then
 				usecs <= std_logic_vector(unsigned(usecs)+1);
-				us_modcycles <= 0;
+				us_modcycles <= std_logic_vector(unsigned(us_modcycles)+NANOS_PER_CYCLE-1000*2**NANO_PREC);
 			end if;
 			
 			s_modcycles <= s_modcycles+1;
@@ -121,7 +121,7 @@ begin  -- rtl
 				secs <= std_logic_vector(unsigned(secs)+1);
 				s_modcycles <= 0;
 				usecs <= (others => '0');
-				us_modcycles <= 0;
+				us_modcycles <= (others => '0');
 			end if;			
 		end if;
 	end process sync;
