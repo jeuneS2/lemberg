@@ -122,19 +122,17 @@ begin  -- behavior
 		jmpop_out <= jmpop_reg;
 
 		for i in 0 to CLUSTERS-1 loop
-			if op_reg(i).fwd0 = '1' then
-				if op_reg(i).rdaddr0(REG_BITS-1) = '1' then
-					if wren_reg(i) = '1' and wraddr_reg(i) = op_reg(i).rdaddr0 then
-						op_out(i).rddata0 <= wrdata_reg(i);
+			if op_reg(i).rdaddr0(REG_BITS-1) = '1' then
+				if wren_reg(i) = '1' and wraddr_reg(i) = op_reg(i).rdaddr0 then
+					op_out(i).rddata0 <= wrdata_reg(i);
+				end if;
+			else
+				for k in 0 to CLUSTERS-1 loop
+					if wren_reg(k) = '1' and wraddr_reg(k) = op_reg(i).rdaddr0 then
+						op_out(i).rddata0 <= wrdata_reg(k);
 					end if;
-				else
-					for k in 0 to CLUSTERS-1 loop
-						if wren_reg(k) = '1' and wraddr_reg(k) = op_reg(i).rdaddr0 then
-							op_out(i).rddata0 <= wrdata_reg(k);
-						end if;
-					end loop;  -- k
-				end if; 
-			end if;
+				end loop;  -- k
+			end if; 
 			if op_reg(i).fwd1 = '1' then
 				if op_reg(i).rdaddr1(REG_BITS-1) = '1' then
 					if wren_reg(i) = '1' and wraddr_reg(i) = op_reg(i).rdaddr1 then
@@ -184,10 +182,10 @@ begin  -- behavior
 					for k in 0 to CLUSTERS-1 loop
 						if wren_reg(k) = '1' and wraddr_reg(k) = jmpop_reg(i).rdaddr then
 							jmpop_out(i).target0 <= wrdata_reg(k)(PC_WIDTH-1 downto 0);
-							jmpop_out(i).target1 <= wrdata_jmp_reg(k)(PC_WIDTH-1 downto 0);
+							jmpop_out(i).target1 <= wrdata_jmp_reg(k)(PC_WIDTH-1 downto 0);	
 						end if;
 					end loop;  -- k
-				end if; 
+				end if;
 			end if;
 		end loop;  -- i
 		

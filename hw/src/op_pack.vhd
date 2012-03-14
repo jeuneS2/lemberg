@@ -112,7 +112,6 @@ package op_pack is
 	record
 		rddata0 : std_logic_vector(DATA_WIDTH-1 downto 0);
 		rdaddr0 : std_logic_vector(REG_BITS-1 downto 0);
-		fwd0    : std_logic;
 		rddata1 : std_logic_vector(DATA_WIDTH-1 downto 0);
 		rdaddr1 : std_logic_vector(REG_BITS-1 downto 0);
 		fwd1    : std_logic;
@@ -123,7 +122,7 @@ package op_pack is
 	end record;
 
 	constant OP_NOP : op_type :=
-		((others => '0'), (others => '0'), '0',
+		((others => '0'), (others => '0'),
 		 (others => '0'), (others => '0'), '0',
 		 ALU_OR,
 		 (others => '0'),

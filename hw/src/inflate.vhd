@@ -158,9 +158,11 @@ begin  -- behavior
 	begin  -- process
 		if clk'event and clk = '1' then  -- rising clock edge
 			if ena = '1' then
-				if raw(0 to CLUSTERS-1) = "0000" or
-					(ENABLE_XNOP and nop_cnt_reg /= 0) then
-					nop_cnt <= nop_cnt + 1;
+				if flush = '0' then
+					if raw(0 to CLUSTERS-1) = "0000" or
+						(ENABLE_XNOP and nop_cnt_reg /= 0) then
+						nop_cnt <= nop_cnt + 1;
+					end if;
 				end if;
 			else
 				ena_cnt <= ena_cnt + 1;
