@@ -60,4 +60,4 @@ vcom $OPTIONS gen_utils.vhd
 vcom $OPTIONS sim_ssram_512x36.vhd
 vcom $OPTIONS cpu_tb.vhd
 
-vsim -coverage -voptargs="+cover=bcesfx" -i -do sim.do cpu_tb
+vsim -voptargs="+cover=bcesfx" -i -t 100ps -do sim.do cpu_tb
