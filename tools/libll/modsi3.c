@@ -14,6 +14,9 @@
 
 #include "int_lib.h"
 
+si_int
+__divsi3(si_int a, si_int b);
+
 /* Returns: a % b */
 
 si_int

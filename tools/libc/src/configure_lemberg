@@ -3,6 +3,6 @@
 export AR_FOR_TARGET="llvm-ar"
 export RANLIB_FOR_TARGET="llvm-ranlib"
 export AS_FOR_TARGET="llvm-as"
-export CC_FOR_TARGET="llvm-gcc -emit-llvm -U__i386__ -D__lemberg__"
+export CC_FOR_TARGET="llvm-clang -ccc-host-triple i386-unknown-none -U__i386__ -D__lemberg__ -emit-llvm"
 export LD_FOR_TARGET="llvm-ld"
 ./configure --target=lemberg

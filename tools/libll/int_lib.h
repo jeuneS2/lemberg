@@ -19,9 +19,18 @@
 /* Assumption:  signed integral is 2's complement */
 /* Assumption:  right shift of signed negative is arithmetic shift */
 
-#include <limits.h>
+#define CHAR_BIT 8
+#define UINT32_C(c) c ## U
+#define UINT64_C(c) c ## ULL
+
+typedef int int32_t;
+typedef unsigned int uint32_t;
+typedef long long int64_t;
+typedef unsigned long long uint64_t;
+
+typedef int bool;
+
 #include "endianness.h"
-#include <math.h>
 
 /* If compiling for kernel use, call panic() instead of abort(). */
 #ifdef KERNEL_USE
