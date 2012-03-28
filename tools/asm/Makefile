@@ -1,4 +1,4 @@
-CFLAGS=-ansi -pedantic -Wall -g -Wno-long-long -D_XOPEN_SOURCE=600
+CFLAGS=-ansi -pedantic -Wall -g -Wno-long-long -D_XOPEN_SOURCE=600 -O2
 YFLAGS=-d
 LFLAGS=
 

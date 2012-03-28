@@ -9,7 +9,7 @@ LLVM_LD=llvm-ld -b $@ $^ \
 	-internalize-public-api-list=${LIBLLSYMS},main
 
 %.bc : %.c
-	llvm-gcc -U__i386__ -D__lemberg__ ${CFLAGS} --emit-llvm -c -I ${PREFIX}/include -o $@ $<
+	llvm-clang -ccc-host-triple i386-unknown-none -U__i386__ -D__lemberg__ ${CFLAGS} -emit-llvm -c -I ${PREFIX}/include -o $@ $<
 
 %.opt.bc : %.linked.bc
 	opt -disable-simplify-libcalls ${OPTFLAGS} -o $@ $<

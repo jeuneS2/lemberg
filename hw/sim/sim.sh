@@ -1,6 +1,6 @@
 #! /bin/sh
 
-OPTIONS="-93 -quiet +acc +cover=bcesfx -coveropt 1"
+OPTIONS="-93 -quiet"
 
 rm -rf rtl_work
 vlib rtl_work
@@ -60,4 +60,4 @@ vcom $OPTIONS gen_utils.vhd
 vcom $OPTIONS sim_ssram_512x36.vhd
 vcom $OPTIONS cpu_tb.vhd
 
-vsim -voptargs="+cover=bcesfx" -i -t 100ps -do sim.do cpu_tb
+vsim -i -t 100ps -do sim.do cpu_tb

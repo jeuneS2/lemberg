@@ -2,7 +2,7 @@ all: libll.a
 
 PREFIX=/usr/local/lemberg
 
-CC = llvm-gcc -emit-llvm -O3
+CC = llvm-clang -ccc-host-triple i386-unknown-none -U__i386__ -D__lemberg__ -O3 -emit-llvm
 AS = llvm-as
 
 OBJS = divsi3.o modsi3.o udivsi3.o umodsi3.o \
