@@ -456,6 +456,9 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
 			  MI.addOperand(MachineOperand::CreateReg(Lemberg::MEM, false));
 			  MI.addOperand(MachineOperand::CreateImm(0));
+			  while (MI.getNumOperands() > MI.getNumExplicitOperands()) {
+			   	MI.RemoveOperand(MI.getNumOperands()-1);
+			  }
 			  break;
 		  case Lemberg::LOAD32s_xpseudo:
 			  CopyReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
@@ -471,6 +474,9 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateImm(-1));
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
 			  MI.addOperand(MachineOperand::CreateReg(CopyReg, false, false, true));
+			  while (MI.getNumOperands() > MI.getNumExplicitOperands()) {
+			   	MI.RemoveOperand(MI.getNumOperands()-1);
+			  }
 			  break;
 		  case Lemberg::STORE32s_pseudo:
 		  case Lemberg::STORE32s_pseudo_imm:
@@ -525,6 +531,9 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
 			  MI.addOperand(MachineOperand::CreateReg(Lemberg::MEM, false));
 			  MI.addOperand(MachineOperand::CreateImm(0));
+			  while (MI.getNumOperands() > MI.getNumExplicitOperands()) {
+			   	MI.RemoveOperand(MI.getNumOperands()-1);
+			  }
 			  LastLargeFrame->Killer = prior(II);
 			  LastLargeFrame->Boundary = *II;
 			  break;
@@ -540,6 +549,9 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateImm(-1));
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
 			  MI.addOperand(MachineOperand::CreateReg(CopyReg, false, false, true));
+			  while (MI.getNumOperands() > MI.getNumExplicitOperands()) {
+			   	MI.RemoveOperand(MI.getNumOperands()-1);
+			  }
 			  LastLargeFrame->Killer = prior(II, 2);
 			  LastLargeFrame->Boundary = *II;
 			  break;
@@ -628,6 +640,9 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  MI.addOperand(MachineOperand::CreateImm(-1));
 		  MI.addOperand(MachineOperand::CreateReg(0, false));
 		  MI.addOperand(MachineOperand::CreateReg(CopyRegB, false, false, true));
+		  while (MI.getNumOperands() > MI.getNumExplicitOperands()) {
+			MI.RemoveOperand(MI.getNumOperands()-1);
+		  }
 		  LastLargeFrame->Killer = prior(II, 2);
 		  LastLargeFrame->Boundary = *II;
 		  break;
