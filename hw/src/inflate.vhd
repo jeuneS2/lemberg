@@ -46,6 +46,8 @@ architecture behavior of inflate is
 	--pragma synthesis off
 	signal nop_cnt : integer := 0;
 	signal ena_cnt : integer := 0;
+    type bundle_cnt_type is array (0 to CLUSTERS) of integer;
+    signal bundle_cnt : bundle_cnt_type := (others => 0);    
 	--pragma synthesis on
 	
 begin  -- behavior	
@@ -163,6 +165,19 @@ begin  -- behavior
 						(ENABLE_XNOP and nop_cnt_reg /= 0) then
 						nop_cnt <= nop_cnt + 1;
 					end if;
+                    case raw_reg(0 to CLUSTERS-1) is
+                        when "0000" =>
+                            bundle_cnt(0) <= bundle_cnt(0)+1;
+                        when "0001" | "0010" | "0100" | "1000" =>
+                            bundle_cnt(1) <= bundle_cnt(1)+1;
+                        when "0011" | "0101" | "1001" | "0110" | "1010" | "1100" =>
+                            bundle_cnt(2) <= bundle_cnt(2)+1;
+                        when "0111" | "1011" | "1101" | "1110" =>
+                            bundle_cnt(3) <= bundle_cnt(3)+1;
+                        when "1111" =>
+                            bundle_cnt(4) <= bundle_cnt(4)+1;
+                        when others => null;                            
+                    end case;
 				end if;
 			else
 				ena_cnt <= ena_cnt + 1;
