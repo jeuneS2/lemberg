@@ -130,7 +130,7 @@ begin  -- behavior
 		end loop;  -- i
 
 		ro0_next <= ro0_reg;
-		ro1_next <= ro1_reg;
+		ro1_next <= std_logic_vector(unsigned(ro0_reg)+FETCH_WIDTH/BYTE_WIDTH);
 		off_next <= off_reg;
 
 		for i in CLUSTERS-1 downto 0 loop
@@ -144,11 +144,6 @@ begin  -- behavior
 			ro0_next <= std_logic_vector(unsigned(pc_in) -
 										 (unsigned(off_prev) &
 										  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
-			ro1_next <= std_logic_vector(unsigned(pc_in) -
-										 (unsigned(off_prev) &
-										  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)
-										  - FETCH_WIDTH/BYTE_WIDTH));
-			
 		end if;
 		fetch_next <= '0';
 		
@@ -161,12 +156,12 @@ begin  -- behavior
 		pc1_out_next <= pcoff & std_logic_vector(to_unsigned(FETCH_WIDTH/BYTE_WIDTH,
 															 PC_WIDTH-ICACHE_BLOCK_BITS));
 
-		pc0_out_brind := std_logic_vector(unsigned(op(idx).target0) +
+		pc0_out_brind := std_logic_vector(unsigned(op(idx).rddata) +
 										  (unsigned(off_reg) &
 										   to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));		
-		pc1_out_brind := std_logic_vector(unsigned(op(idx).target1) +
+		pc1_out_brind := std_logic_vector(unsigned(op(idx).rddata) +
 												 (unsigned(off_reg) &
-												  to_unsigned(0, PC_WIDTH-ICACHE_BLOCK_BITS)));
+												  to_unsigned(FETCH_WIDTH/BYTE_WIDTH, PC_WIDTH-ICACHE_BLOCK_BITS)));
 
 		pc0_out_ret := std_logic_vector(unsigned(ro0_reg) +
 										(unsigned(pcoff) &

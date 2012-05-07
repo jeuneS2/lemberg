@@ -207,8 +207,8 @@ package op_pack is
 	record
 		target0 : std_logic_vector(PC_WIDTH-1 downto 0);
 		target1 : std_logic_vector(PC_WIDTH-1 downto 0);
+        rddata  : std_logic_vector(PC_WIDTH-1 downto 0);
 		rdaddr  : std_logic_vector(REG_BITS-1 downto 0);
-		fwd     : std_logic;
 		op	    : jmp_type;
 		zop     : brz_type;
 		delayed : std_logic;
@@ -217,7 +217,7 @@ package op_pack is
 	end record;
 
 	constant JMPOP_NOP : jmpop_type :=
-		((others => '0'), (others => '0'), (others => '0'), '0',
+		((others => '0'), (others => '0'), (others => '0'), (others => '0'),
 		 JMP_NOP, BRZ_EQ,
 		 '0', COND_FALSE, (others => '0'));
 

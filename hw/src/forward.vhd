@@ -51,7 +51,6 @@ architecture behavior of forward is
 	signal wren_reg : reg_wren_type;
 	signal wraddr_reg : reg_wraddr_type;
 	signal wrdata_reg : reg_wrdata_type;
-	signal wrdata_jmp_reg : reg_wrdata_type;
 	signal op_reg : op_arr_type;
 	signal memop_reg : memop_arr_type;
 	signal stallop_reg : stallop_arr_type;
@@ -66,7 +65,6 @@ begin  -- behavior
 			wren_reg <= (others => '0');
 			wraddr_reg <= (others => (others => '0'));
 			wrdata_reg <= (others => (others => '0'));
-			wrdata_jmp_reg <= (others => (others => '0'));
 			
 			for i in 0 to CLUSTERS-1 loop
 				op_reg(i) <= OP_NOP;
@@ -90,10 +88,6 @@ begin  -- behavior
 				wren_reg <= wren;
 				wraddr_reg <= wraddr;
 				wrdata_reg <= wrdata;
-				for i in 0 to CLUSTERS-1 loop
-					wrdata_jmp_reg(i) <= std_logic_vector(unsigned(wrdata(i))
-														  +FETCH_WIDTH/BYTE_WIDTH);
-				end loop;  -- i
 
 				op_reg <= op_in;
 				memop_reg <= memop_in;
@@ -113,7 +107,7 @@ begin  -- behavior
 		end if;
 	end process sync;
 
-	async: process (wren_reg, wraddr_reg, wrdata_reg, wrdata_jmp_reg,
+	async: process (wren_reg, wraddr_reg, wrdata_reg,
 					op_reg, memop_reg, stallop_reg, jmpop_reg)
 	begin  -- process async
 		op_out <= op_reg;
@@ -172,21 +166,17 @@ begin  -- behavior
 					end loop;  -- k
 				end if; 
 			end if;
-			if jmpop_reg(i).fwd = '1' then
-				if jmpop_reg(i).rdaddr(REG_BITS-1) = '1' then
-					if wren_reg(i) = '1' and wraddr_reg(i) = jmpop_reg(i).rdaddr then
-						jmpop_out(i).target0 <= wrdata_reg(i)(PC_WIDTH-1 downto 0);
-						jmpop_out(i).target1 <= wrdata_jmp_reg(i)(PC_WIDTH-1 downto 0);
-					end if;
-				else
-					for k in 0 to CLUSTERS-1 loop
-						if wren_reg(k) = '1' and wraddr_reg(k) = jmpop_reg(i).rdaddr then
-							jmpop_out(i).target0 <= wrdata_reg(k)(PC_WIDTH-1 downto 0);
-							jmpop_out(i).target1 <= wrdata_jmp_reg(k)(PC_WIDTH-1 downto 0);	
-						end if;
-					end loop;  -- k
-				end if;
-			end if;
+            if jmpop_reg(i).rdaddr(REG_BITS-1) = '1' then
+                if wren_reg(i) = '1' and wraddr_reg(i) = jmpop_reg(i).rdaddr then
+                    jmpop_out(i).rddata <= wrdata_reg(i)(PC_WIDTH-1 downto 0);
+                end if;
+            else
+                for k in 0 to CLUSTERS-1 loop
+                    if wren_reg(k) = '1' and wraddr_reg(k) = jmpop_reg(i).rdaddr then
+                        jmpop_out(i).rddata <= wrdata_reg(k)(PC_WIDTH-1 downto 0);
+                    end if;
+                end loop;  -- k
+            end if;
 		end loop;  -- i
 		
 	end process async;

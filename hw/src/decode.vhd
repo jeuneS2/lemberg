@@ -139,10 +139,6 @@ begin  -- behavior
 			jmpop(i).cond <= COND_FALSE;
 			jmpop(i).flag <= (others => '0');
 			jmpop(i).rdaddr <= bundle_reg(i).src1;
-			jmpop(i).target0 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))+0);
-			jmpop(i).target1 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))
-												 +FETCH_WIDTH/BYTE_WIDTH);
-			jmpop(i).fwd <= '0';
 			
 			fpop(i).op <= FPU_NOP;
 			fpop(i).wraddr <= raw_op(15 downto 12);
@@ -179,6 +175,10 @@ begin  -- behavior
 			ztarget := std_logic_vector(signed(pc_reg)
 										+ resize(signed(bundle_reg(i).src2)
 												 & signed(bundle_reg(i).dest), PC_WIDTH));
+
+            jmpop(i).target0 <= std_logic_vector(unsigned(target)+0);
+            jmpop(i).target1 <= std_logic_vector(unsigned(target)
+                                                 +FETCH_WIDTH/BYTE_WIDTH);
 
 			case bundle_reg(i).op is
 				when "000000" =>
@@ -352,7 +352,6 @@ begin  -- behavior
 					case bundle_reg(i).src2 is
 						when "00000" =>
 							jmpop(i).op <= JMP_BRIND;
-							jmpop(i).fwd <= '1';
 						when "00001" | "00010" =>
 							if bundle_reg(i).src2 = "00001" then
 								jmpop(i).op <= JMP_CALL;
@@ -689,6 +688,8 @@ begin  -- behavior
 			else
 				memop(i).wrdata <= rddata(2*i+1);
 			end if;			
+
+            jmpop(i).rddata <= rddata(2*i)(PC_WIDTH-1 downto 0);
 
 		end loop;  -- i
 	end process decode;
