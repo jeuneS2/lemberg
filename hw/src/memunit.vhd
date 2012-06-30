@@ -410,7 +410,7 @@ begin  -- behavior
 				when others => null;
 			end case;
 
-			if mem_in.rdy_cnt(0) <= unsigned(stallop(i).value)(0)
+			if (mem_in.rdy_cnt(0) = '0' or stallop(i).value(0) = '1')
                 and mem_in.rdy_cnt(1) = '0' then
 				readyvec(i) := '1';
 			end if;
