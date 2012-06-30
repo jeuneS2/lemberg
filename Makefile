@@ -2,7 +2,7 @@ PROJECT_DIR=examples/helloworld
 PROJECT_NAME=helloworld
 
 SERDEV=/dev/ttyUSB0
-FPGACABLE="UsbBlaster ftdi 9fb:6001"
+FPGACABLE="UsbBlaster"
 
 # RAW=RAW
 
