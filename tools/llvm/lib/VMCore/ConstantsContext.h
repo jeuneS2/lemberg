@@ -15,6 +15,8 @@
 #ifndef LLVM_CONSTANTSCONTEXT_H
 #define LLVM_CONSTANTSCONTEXT_H
 
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/Hashing.h"
 #include "llvm/InlineAsm.h"
 #include "llvm/Instructions.h"
 #include "llvm/Operator.h"
@@ -30,13 +32,14 @@ struct ConstantTraits;
 /// UnaryConstantExpr - This class is private to Constants.cpp, and is used
 /// behind the scenes to implement unary constant exprs.
 class UnaryConstantExpr : public ConstantExpr {
+  virtual void anchor();
   void *operator new(size_t, unsigned);  // DO NOT IMPLEMENT
 public:
   // allocate space for exactly one operand
   void *operator new(size_t s) {
     return User::operator new(s, 1);
   }
-  UnaryConstantExpr(unsigned Opcode, Constant *C, const Type *Ty)
+  UnaryConstantExpr(unsigned Opcode, Constant *C, Type *Ty)
     : ConstantExpr(Ty, Opcode, &Op<0>(), 1) {
     Op<0>() = C;
   }
@@ -46,6 +49,7 @@ public:
 /// BinaryConstantExpr - This class is private to Constants.cpp, and is used
 /// behind the scenes to implement binary constant exprs.
 class BinaryConstantExpr : public ConstantExpr {
+  virtual void anchor();
   void *operator new(size_t, unsigned);  // DO NOT IMPLEMENT
 public:
   // allocate space for exactly two operands
@@ -66,6 +70,7 @@ public:
 /// SelectConstantExpr - This class is private to Constants.cpp, and is used
 /// behind the scenes to implement select constant exprs.
 class SelectConstantExpr : public ConstantExpr {
+  virtual void anchor();
   void *operator new(size_t, unsigned);  // DO NOT IMPLEMENT
 public:
   // allocate space for exactly three operands
@@ -86,6 +91,7 @@ public:
 /// Constants.cpp, and is used behind the scenes to implement
 /// extractelement constant exprs.
 class ExtractElementConstantExpr : public ConstantExpr {
+  virtual void anchor();
   void *operator new(size_t, unsigned);  // DO NOT IMPLEMENT
 public:
   // allocate space for exactly two operands
@@ -106,6 +112,7 @@ public:
 /// Constants.cpp, and is used behind the scenes to implement
 /// insertelement constant exprs.
 class InsertElementConstantExpr : public ConstantExpr {
+  virtual void anchor();
   void *operator new(size_t, unsigned);  // DO NOT IMPLEMENT
 public:
   // allocate space for exactly three operands
@@ -127,6 +134,7 @@ public:
 /// Constants.cpp, and is used behind the scenes to implement
 /// shufflevector constant exprs.
 class ShuffleVectorConstantExpr : public ConstantExpr {
+  virtual void anchor();
   void *operator new(size_t, unsigned);  // DO NOT IMPLEMENT
 public:
   // allocate space for exactly three operands
@@ -151,6 +159,7 @@ public:
 /// Constants.cpp, and is used behind the scenes to implement
 /// extractvalue constant exprs.
 class ExtractValueConstantExpr : public ConstantExpr {
+  virtual void anchor();
   void *operator new(size_t, unsigned);  // DO NOT IMPLEMENT
 public:
   // allocate space for exactly one operand
@@ -159,7 +168,7 @@ public:
   }
   ExtractValueConstantExpr(Constant *Agg,
                            const SmallVector<unsigned, 4> &IdxList,
-                           const Type *DestTy)
+                           Type *DestTy)
     : ConstantExpr(DestTy, Instruction::ExtractValue, &Op<0>(), 1),
       Indices(IdxList) {
     Op<0>() = Agg;
@@ -176,6 +185,7 @@ public:
 /// Constants.cpp, and is used behind the scenes to implement
 /// insertvalue constant exprs.
 class InsertValueConstantExpr : public ConstantExpr {
+  virtual void anchor();
   void *operator new(size_t, unsigned);  // DO NOT IMPLEMENT
 public:
   // allocate space for exactly one operand
@@ -184,7 +194,7 @@ public:
   }
   InsertValueConstantExpr(Constant *Agg, Constant *Val,
                           const SmallVector<unsigned, 4> &IdxList,
-                          const Type *DestTy)
+                          Type *DestTy)
     : ConstantExpr(DestTy, Instruction::InsertValue, &Op<0>(), 2),
       Indices(IdxList) {
     Op<0>() = Agg;
@@ -202,12 +212,13 @@ public:
 /// GetElementPtrConstantExpr - This class is private to Constants.cpp, and is
 /// used behind the scenes to implement getelementpr constant exprs.
 class GetElementPtrConstantExpr : public ConstantExpr {
-  GetElementPtrConstantExpr(Constant *C, const std::vector<Constant*> &IdxList,
-                            const Type *DestTy);
+  virtual void anchor();
+  GetElementPtrConstantExpr(Constant *C, ArrayRef<Constant*> IdxList,
+                            Type *DestTy);
 public:
   static GetElementPtrConstantExpr *Create(Constant *C,
-                                           const std::vector<Constant*>&IdxList,
-                                           const Type *DestTy,
+                                           ArrayRef<Constant*> IdxList,
+                                           Type *DestTy,
                                            unsigned Flags) {
     GetElementPtrConstantExpr *Result =
       new(IdxList.size() + 1) GetElementPtrConstantExpr(C, IdxList, DestTy);
@@ -221,14 +232,16 @@ public:
 // CompareConstantExpr - This class is private to Constants.cpp, and is used
 // behind the scenes to implement ICmp and FCmp constant expressions. This is
 // needed in order to store the predicate value for these instructions.
-struct CompareConstantExpr : public ConstantExpr {
+class CompareConstantExpr : public ConstantExpr {
+  virtual void anchor();
   void *operator new(size_t, unsigned);  // DO NOT IMPLEMENT
+public:
   // allocate space for exactly two operands
   void *operator new(size_t s) {
     return User::operator new(s, 2);
   }
   unsigned short predicate;
-  CompareConstantExpr(const Type *ty, Instruction::OtherOps opc,
+  CompareConstantExpr(Type *ty, Instruction::OtherOps opc,
                       unsigned short pred,  Constant* LHS, Constant* RHS)
     : ConstantExpr(ty, opc, &Op<0>(), 2), predicate(pred) {
     Op<0>() = LHS;
@@ -301,20 +314,18 @@ struct OperandTraits<CompareConstantExpr> :
 DEFINE_TRANSPARENT_OPERAND_ACCESSORS(CompareConstantExpr, Value)
 
 struct ExprMapKeyType {
-  typedef SmallVector<unsigned, 4> IndexList;
-
   ExprMapKeyType(unsigned opc,
-      const std::vector<Constant*> &ops,
+      ArrayRef<Constant*> ops,
       unsigned short flags = 0,
       unsigned short optionalflags = 0,
-      const IndexList &inds = IndexList())
+      ArrayRef<unsigned> inds = ArrayRef<unsigned>())
         : opcode(opc), subclassoptionaldata(optionalflags), subclassdata(flags),
-        operands(ops), indices(inds) {}
+        operands(ops.begin(), ops.end()), indices(inds.begin(), inds.end()) {}
   uint8_t opcode;
   uint8_t subclassoptionaldata;
   uint16_t subclassdata;
   std::vector<Constant*> operands;
-  IndexList indices;
+  SmallVector<unsigned, 4> indices;
   bool operator==(const ExprMapKeyType& that) const {
     return this->opcode == that.opcode &&
            this->subclassdata == that.subclassdata &&
@@ -394,8 +405,15 @@ struct ConstantTraits<Constant *> {
 
 template<class ConstantClass, class TypeClass, class ValType>
 struct ConstantCreator {
-  static ConstantClass *create(const TypeClass *Ty, const ValType &V) {
+  static ConstantClass *create(TypeClass *Ty, const ValType &V) {
     return new(ConstantTraits<ValType>::uses(V)) ConstantClass(Ty, V);
+  }
+};
+
+template<class ConstantClass, class TypeClass>
+struct ConstantArrayCreator {
+  static ConstantClass *create(TypeClass *Ty, ArrayRef<Constant*> V) {
+    return new(V.size()) ConstantClass(Ty, V);
   }
 };
 
@@ -409,7 +427,7 @@ struct ConstantKeyData {
 
 template<>
 struct ConstantCreator<ConstantExpr, Type, ExprMapKeyType> {
-  static ConstantExpr *create(const Type *Ty, const ExprMapKeyType &V,
+  static ConstantExpr *create(Type *Ty, const ExprMapKeyType &V,
       unsigned short pred = 0) {
     if (Instruction::isCast(V.opcode))
       return new UnaryConstantExpr(V.opcode, V.operands[0], Ty);
@@ -449,7 +467,6 @@ struct ConstantCreator<ConstantExpr, Type, ExprMapKeyType> {
       return new CompareConstantExpr(Ty, Instruction::FCmp, V.subclassdata,
                                      V.operands[0], V.operands[1]);
     llvm_unreachable("Invalid ConstantExpr!");
-    return 0;
   }
 };
 
@@ -465,97 +482,13 @@ struct ConstantKeyData<ConstantExpr> {
         CE->isCompare() ? CE->getPredicate() : 0,
         CE->getRawSubclassOptionalData(),
         CE->hasIndices() ?
-          CE->getIndices() : SmallVector<unsigned, 4>());
-  }
-};
-
-// ConstantAggregateZero does not take extra "value" argument...
-template<class ValType>
-struct ConstantCreator<ConstantAggregateZero, Type, ValType> {
-  static ConstantAggregateZero *create(const Type *Ty, const ValType &V){
-    return new ConstantAggregateZero(Ty);
-  }
-};
-
-template<>
-struct ConstantKeyData<ConstantVector> {
-  typedef std::vector<Constant*> ValType;
-  static ValType getValType(ConstantVector *CP) {
-    std::vector<Constant*> Elements;
-    Elements.reserve(CP->getNumOperands());
-    for (unsigned i = 0, e = CP->getNumOperands(); i != e; ++i)
-      Elements.push_back(CP->getOperand(i));
-    return Elements;
-  }
-};
-
-template<>
-struct ConstantKeyData<ConstantAggregateZero> {
-  typedef char ValType;
-  static ValType getValType(ConstantAggregateZero *C) {
-    return 0;
-  }
-};
-
-template<>
-struct ConstantKeyData<ConstantArray> {
-  typedef std::vector<Constant*> ValType;
-  static ValType getValType(ConstantArray *CA) {
-    std::vector<Constant*> Elements;
-    Elements.reserve(CA->getNumOperands());
-    for (unsigned i = 0, e = CA->getNumOperands(); i != e; ++i)
-      Elements.push_back(cast<Constant>(CA->getOperand(i)));
-    return Elements;
-  }
-};
-
-template<>
-struct ConstantKeyData<ConstantStruct> {
-  typedef std::vector<Constant*> ValType;
-  static ValType getValType(ConstantStruct *CS) {
-    std::vector<Constant*> Elements;
-    Elements.reserve(CS->getNumOperands());
-    for (unsigned i = 0, e = CS->getNumOperands(); i != e; ++i)
-      Elements.push_back(cast<Constant>(CS->getOperand(i)));
-    return Elements;
-  }
-};
-
-// ConstantPointerNull does not take extra "value" argument...
-template<class ValType>
-struct ConstantCreator<ConstantPointerNull, PointerType, ValType> {
-  static ConstantPointerNull *create(const PointerType *Ty, const ValType &V){
-    return new ConstantPointerNull(Ty);
-  }
-};
-
-template<>
-struct ConstantKeyData<ConstantPointerNull> {
-  typedef char ValType;
-  static ValType getValType(ConstantPointerNull *C) {
-    return 0;
-  }
-};
-
-// UndefValue does not take extra "value" argument...
-template<class ValType>
-struct ConstantCreator<UndefValue, Type, ValType> {
-  static UndefValue *create(const Type *Ty, const ValType &V) {
-    return new UndefValue(Ty);
-  }
-};
-
-template<>
-struct ConstantKeyData<UndefValue> {
-  typedef char ValType;
-  static ValType getValType(UndefValue *C) {
-    return 0;
+          CE->getIndices() : ArrayRef<unsigned>());
   }
 };
 
 template<>
 struct ConstantCreator<InlineAsm, PointerType, InlineAsmKeyType> {
-  static InlineAsm *create(const PointerType *Ty, const InlineAsmKeyType &Key) {
+  static InlineAsm *create(PointerType *Ty, const InlineAsmKeyType &Key) {
     return new InlineAsm(Ty, Key.asm_string, Key.constraints,
                          Key.has_side_effects, Key.is_align_stack);
   }
@@ -570,15 +503,13 @@ struct ConstantKeyData<InlineAsm> {
   }
 };
 
-template<class ValType, class TypeClass, class ConstantClass,
+template<class ValType, class ValRefType, class TypeClass, class ConstantClass,
          bool HasLargeKey = false /*true for arrays and structs*/ >
-class ConstantUniqueMap : public AbstractTypeUser {
+class ConstantUniqueMap {
 public:
-  typedef std::pair<const TypeClass*, ValType> MapKey;
+  typedef std::pair<TypeClass*, ValType> MapKey;
   typedef std::map<MapKey, ConstantClass *> MapTy;
   typedef std::map<ConstantClass *, typename MapTy::iterator> InverseMapTy;
-  typedef std::map<const DerivedType*, typename MapTy::iterator>
-    AbstractTypeMapTy;
 private:
   /// Map - This is the main map from the element descriptor to the Constants.
   /// This is the primary way we avoid creating two of the same shape
@@ -591,10 +522,6 @@ private:
   /// through the map with very large keys.
   InverseMapTy InverseMap;
 
-  /// AbstractTypeMap - Map for abstract type constants.
-  ///
-  AbstractTypeMapTy AbstractTypeMap;
-    
 public:
   typename MapTy::iterator map_begin() { return Map.begin(); }
   typename MapTy::iterator map_end() { return Map.end(); }
@@ -631,7 +558,7 @@ private:
     }
       
     typename MapTy::iterator I =
-      Map.find(MapKey(static_cast<const TypeClass*>(CP->getRawType()),
+      Map.find(MapKey(static_cast<TypeClass*>(CP->getType()),
                       ConstantKeyData<ConstantClass>::getValType(CP)));
     if (I == Map.end() || I->second != CP) {
       // FIXME: This should not use a linear scan.  If this gets to be a
@@ -641,24 +568,8 @@ private:
     }
     return I;
   }
-    
-  void AddAbstractTypeUser(const Type *Ty, typename MapTy::iterator I) {
-    // If the type of the constant is abstract, make sure that an entry
-    // exists for it in the AbstractTypeMap.
-    if (Ty->isAbstract()) {
-      const DerivedType *DTy = static_cast<const DerivedType *>(Ty);
-      typename AbstractTypeMapTy::iterator TI = AbstractTypeMap.find(DTy);
 
-      if (TI == AbstractTypeMap.end()) {
-        // Add ourselves to the ATU list of the type.
-        cast<DerivedType>(DTy)->addAbstractTypeUser(this);
-
-        AbstractTypeMap.insert(TI, std::make_pair(DTy, I));
-      }
-    }
-  }
-
-  ConstantClass* Create(const TypeClass *Ty, const ValType &V,
+  ConstantClass *Create(TypeClass *Ty, ValRefType V,
                         typename MapTy::iterator I) {
     ConstantClass* Result =
       ConstantCreator<ConstantClass,TypeClass,ValType>::create(Ty, V);
@@ -669,15 +580,13 @@ private:
     if (HasLargeKey)  // Remember the reverse mapping if needed.
       InverseMap.insert(std::make_pair(Result, I));
 
-    AddAbstractTypeUser(Ty, I);
-      
     return Result;
   }
 public:
     
   /// getOrCreate - Return the specified constant from the map, creating it if
   /// necessary.
-  ConstantClass *getOrCreate(const TypeClass *Ty, const ValType &V) {
+  ConstantClass *getOrCreate(TypeClass *Ty, ValRefType V) {
     MapKey Lookup(Ty, V);
     ConstantClass* Result = 0;
     
@@ -694,43 +603,6 @@ public:
     return Result;
   }
 
-  void UpdateAbstractTypeMap(const DerivedType *Ty,
-                             typename MapTy::iterator I) {
-    assert(AbstractTypeMap.count(Ty) &&
-           "Abstract type not in AbstractTypeMap?");
-    typename MapTy::iterator &ATMEntryIt = AbstractTypeMap[Ty];
-    if (ATMEntryIt == I) {
-      // Yes, we are removing the representative entry for this type.
-      // See if there are any other entries of the same type.
-      typename MapTy::iterator TmpIt = ATMEntryIt;
-
-      // First check the entry before this one...
-      if (TmpIt != Map.begin()) {
-        --TmpIt;
-        if (TmpIt->first.first != Ty) // Not the same type, move back...
-          ++TmpIt;
-      }
-
-      // If we didn't find the same type, try to move forward...
-      if (TmpIt == ATMEntryIt) {
-        ++TmpIt;
-        if (TmpIt == Map.end() || TmpIt->first.first != Ty)
-          --TmpIt;   // No entry afterwards with the same type
-      }
-
-      // If there is another entry in the map of the same abstract type,
-      // update the AbstractTypeMap entry now.
-      if (TmpIt != ATMEntryIt) {
-        ATMEntryIt = TmpIt;
-      } else {
-        // Otherwise, we are removing the last instance of this type
-        // from the table.  Remove from the ATM, and from user list.
-        cast<DerivedType>(Ty)->removeAbstractTypeUser(this);
-        AbstractTypeMap.erase(Ty);
-      }
-    }
-  }
-
   void remove(ConstantClass *CP) {
     typename MapTy::iterator I = FindExistingElement(CP);
     assert(I != Map.end() && "Constant not found in constant table!");
@@ -738,12 +610,6 @@ public:
 
     if (HasLargeKey)  // Remember the reverse mapping if needed.
       InverseMap.erase(CP);
-      
-    // Now that we found the entry, make sure this isn't the entry that
-    // the AbstractTypeMap points to.
-    const TypeClass *Ty = I->first.first;
-    if (Ty->isAbstract())
-      UpdateAbstractTypeMap(static_cast<const DerivedType *>(Ty), I);
 
     Map.erase(I);
   }
@@ -757,22 +623,7 @@ public:
     assert(OldI != Map.end() && "Constant not found in constant table!");
     assert(OldI->second == C && "Didn't find correct element?");
       
-    // If this constant is the representative element for its abstract type,
-    // update the AbstractTypeMap so that the representative element is I.
-    //
-    // This must use getRawType() because if the type is under refinement, we
-    // will get the refineAbstractType callback below, and we don't want to
-    // kick union find in on the constant.
-    if (C->getRawType()->isAbstract()) {
-      typename AbstractTypeMapTy::iterator ATI =
-          AbstractTypeMap.find(cast<DerivedType>(C->getRawType()));
-      assert(ATI != AbstractTypeMap.end() &&
-             "Abstract type not in AbstractTypeMap?");
-      if (ATI->second == OldI)
-        ATI->second = I;
-    }
-      
-    // Remove the old entry from the map.
+     // Remove the old entry from the map.
     Map.erase(OldI);
     
     // Update the inverse map so that we know that this constant is now
@@ -782,57 +633,128 @@ public:
       InverseMap[C] = I;
     }
   }
-    
-  void refineAbstractType(const DerivedType *OldTy, const Type *NewTy) {
-    typename AbstractTypeMapTy::iterator I = AbstractTypeMap.find(OldTy);
 
-    assert(I != AbstractTypeMap.end() &&
-           "Abstract type not in AbstractTypeMap?");
+  void dump() const {
+    DEBUG(dbgs() << "Constant.cpp: ConstantUniqueMap\n");
+  }
+};
 
-    // Convert a constant at a time until the last one is gone.  The last one
-    // leaving will remove() itself, causing the AbstractTypeMapEntry to be
-    // eliminated eventually.
-    do {
-      ConstantClass *C = I->second->second;
-      MapKey Key(cast<TypeClass>(NewTy),
-                 ConstantKeyData<ConstantClass>::getValType(C));
-
-      std::pair<typename MapTy::iterator, bool> IP =
-        Map.insert(std::make_pair(Key, C));
-      if (IP.second) {
-        // The map didn't previously have an appropriate constant in the
-        // new type.
-        
-        // Remove the old entry.
-        typename MapTy::iterator OldI =
-          Map.find(MapKey(cast<TypeClass>(OldTy), IP.first->first.second));
-        assert(OldI != Map.end() && "Constant not in map!");
-        UpdateAbstractTypeMap(OldTy, OldI);
-        Map.erase(OldI);
-
-        // Set the constant's type. This is done in place!
-        setType(C, NewTy);
-
-        // Update the inverse map so that we know that this constant is now
-        // located at descriptor I.
-        if (HasLargeKey)
-          InverseMap[C] = IP.first;
-
-        AddAbstractTypeUser(NewTy, IP.first);
-      } else {
-        // The map already had an appropriate constant in the new type, so
-        // there's no longer a need for the old constant.
-        C->uncheckedReplaceAllUsesWith(IP.first->second);
-        C->destroyConstant();    // This constant is now dead, destroy it.
+// Unique map for aggregate constants
+template<class TypeClass, class ConstantClass>
+class ConstantAggrUniqueMap {
+public:
+  typedef ArrayRef<Constant*> Operands;
+  typedef std::pair<TypeClass*, Operands> LookupKey;
+private:
+  struct MapInfo {
+    typedef DenseMapInfo<ConstantClass*> ConstantClassInfo;
+    typedef DenseMapInfo<Constant*> ConstantInfo;
+    typedef DenseMapInfo<TypeClass*> TypeClassInfo;
+    static inline ConstantClass* getEmptyKey() {
+      return ConstantClassInfo::getEmptyKey();
+    }
+    static inline ConstantClass* getTombstoneKey() {
+      return ConstantClassInfo::getTombstoneKey();
+    }
+    static unsigned getHashValue(const ConstantClass *CP) {
+      SmallVector<Constant*, 8> CPOperands;
+      CPOperands.reserve(CP->getNumOperands());
+      for (unsigned I = 0, E = CP->getNumOperands(); I < E; ++I)
+        CPOperands.push_back(CP->getOperand(I));
+      return getHashValue(LookupKey(CP->getType(), CPOperands));
+    }
+    static bool isEqual(const ConstantClass *LHS, const ConstantClass *RHS) {
+      return LHS == RHS;
+    }
+    static unsigned getHashValue(const LookupKey &Val) {
+      return hash_combine(Val.first, hash_combine_range(Val.second.begin(),
+                                                        Val.second.end()));
+    }
+    static bool isEqual(const LookupKey &LHS, const ConstantClass *RHS) {
+      if (RHS == getEmptyKey() || RHS == getTombstoneKey())
+        return false;
+      if (LHS.first != RHS->getType()
+          || LHS.second.size() != RHS->getNumOperands())
+        return false;
+      for (unsigned I = 0, E = RHS->getNumOperands(); I < E; ++I) {
+        if (LHS.second[I] != RHS->getOperand(I))
+          return false;
       }
-      I = AbstractTypeMap.find(OldTy);
-    } while (I != AbstractTypeMap.end());
+      return true;
+    }
+  };
+public:
+  typedef DenseMap<ConstantClass *, char, MapInfo> MapTy;
+
+private:
+  /// Map - This is the main map from the element descriptor to the Constants.
+  /// This is the primary way we avoid creating two of the same shape
+  /// constant.
+  MapTy Map;
+
+public:
+  typename MapTy::iterator map_begin() { return Map.begin(); }
+  typename MapTy::iterator map_end() { return Map.end(); }
+
+  void freeConstants() {
+    for (typename MapTy::iterator I=Map.begin(), E=Map.end();
+         I != E; ++I) {
+      // Asserts that use_empty().
+      delete I->first;
+    }
   }
 
-  // If the type became concrete without being refined to any other existing
-  // type, we just remove ourselves from the ATU list.
-  void typeBecameConcrete(const DerivedType *AbsTy) {
-    AbsTy->removeAbstractTypeUser(this);
+private:
+  typename MapTy::iterator findExistingElement(ConstantClass *CP) {
+    return Map.find(CP);
+  }
+
+  ConstantClass *Create(TypeClass *Ty, Operands V, typename MapTy::iterator I) {
+    ConstantClass* Result =
+      ConstantArrayCreator<ConstantClass,TypeClass>::create(Ty, V);
+
+    assert(Result->getType() == Ty && "Type specified is not correct!");
+    Map[Result] = '\0';
+
+    return Result;
+  }
+public:
+
+  /// getOrCreate - Return the specified constant from the map, creating it if
+  /// necessary.
+  ConstantClass *getOrCreate(TypeClass *Ty, Operands V) {
+    LookupKey Lookup(Ty, V);
+    ConstantClass* Result = 0;
+
+    typename MapTy::iterator I = Map.find_as(Lookup);
+    // Is it in the map?
+    if (I != Map.end())
+      Result = I->first;
+
+    if (!Result) {
+      // If no preexisting value, create one now...
+      Result = Create(Ty, V, I);
+    }
+
+    return Result;
+  }
+
+  /// Find the constant by lookup key.
+  typename MapTy::iterator find(LookupKey Lookup) {
+    return Map.find_as(Lookup);
+  }
+
+  /// Insert the constant into its proper slot.
+  void insert(ConstantClass *CP) {
+    Map[CP] = '\0';
+  }
+
+  /// Remove this constant from the map
+  void remove(ConstantClass *CP) {
+    typename MapTy::iterator I = findExistingElement(CP);
+    assert(I != Map.end() && "Constant not found in constant table!");
+    assert(I->first == CP && "Didn't find correct element?");
+    Map.erase(I);
   }
 
   void dump() const {

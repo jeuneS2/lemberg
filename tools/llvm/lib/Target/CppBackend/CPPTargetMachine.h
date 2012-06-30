@@ -22,14 +22,15 @@ namespace llvm {
 class formatted_raw_ostream;
 
 struct CPPTargetMachine : public TargetMachine {
-  CPPTargetMachine(const Target &T, const std::string &TT,
-                   const std::string &FS)
-    : TargetMachine(T) {}
+  CPPTargetMachine(const Target &T, StringRef TT,
+                   StringRef CPU, StringRef FS, const TargetOptions &Options,
+                   Reloc::Model RM, CodeModel::Model CM,
+                   CodeGenOpt::Level OL)
+    : TargetMachine(T, TT, CPU, FS, Options) {}
 
   virtual bool addPassesToEmitFile(PassManagerBase &PM,
                                    formatted_raw_ostream &Out,
                                    CodeGenFileType FileType,
-                                   CodeGenOpt::Level OptLevel,
                                    bool DisableVerify);
 
   virtual const TargetData *getTargetData() const { return 0; }

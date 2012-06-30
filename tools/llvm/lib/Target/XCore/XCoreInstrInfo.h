@@ -1,4 +1,4 @@
-//===- XCoreInstrInfo.h - XCore Instruction Information ---------*- C++ -*-===//
+//===-- XCoreInstrInfo.h - XCore Instruction Information --------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -14,12 +14,15 @@
 #ifndef XCOREINSTRUCTIONINFO_H
 #define XCOREINSTRUCTIONINFO_H
 
-#include "llvm/Target/TargetInstrInfo.h"
 #include "XCoreRegisterInfo.h"
+#include "llvm/Target/TargetInstrInfo.h"
+
+#define GET_INSTRINFO_HEADER
+#include "XCoreGenInstrInfo.inc"
 
 namespace llvm {
 
-class XCoreInstrInfo : public TargetInstrInfoImpl {
+class XCoreInstrInfo : public XCoreGenInstrInfo {
   const XCoreRegisterInfo RI;
 public:
   XCoreInstrInfo();
@@ -75,6 +78,11 @@ public:
                                     const TargetRegisterClass *RC,
                                     const TargetRegisterInfo *TRI) const;
 
+  virtual MachineInstr *emitFrameIndexDebugValue(MachineFunction &MF,
+                                                 int FrameIx,
+                                                 uint64_t Offset,
+                                                 const MDNode *MDPtr,
+                                                 DebugLoc DL) const;
 
   virtual bool ReverseBranchCondition(
                             SmallVectorImpl<MachineOperand> &Cond) const;

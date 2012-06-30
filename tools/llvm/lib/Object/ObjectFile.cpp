@@ -21,18 +21,10 @@
 using namespace llvm;
 using namespace object;
 
-ObjectFile::ObjectFile(MemoryBuffer *Object)
-  : MapFile(Object) {
-  assert(MapFile && "Must be a valid MemoryBuffer!");
-  base = reinterpret_cast<const uint8_t *>(MapFile->getBufferStart());
-}
+void ObjectFile::anchor() { }
 
-ObjectFile::~ObjectFile() {
-  delete MapFile;
-}
-
-StringRef ObjectFile::getFilename() const {
-  return MapFile->getBufferIdentifier();
+ObjectFile::ObjectFile(unsigned int Type, MemoryBuffer *source, error_code &ec)
+  : Binary(Type, source) {
 }
 
 ObjectFile *ObjectFile::createObjectFile(MemoryBuffer *Object) {
@@ -55,7 +47,8 @@ ObjectFile *ObjectFile::createObjectFile(MemoryBuffer *Object) {
     case sys::Mach_O_DynamicLinker_FileType:
     case sys::Mach_O_Bundle_FileType:
     case sys::Mach_O_DynamicallyLinkedSharedLibStub_FileType:
-      return 0;
+    case sys::Mach_O_DSYMCompanion_FileType:
+      return createMachOObjectFile(Object);
     case sys::COFF_FileType:
       return createCOFFObjectFile(Object);
     default:
@@ -65,7 +58,7 @@ ObjectFile *ObjectFile::createObjectFile(MemoryBuffer *Object) {
 
 ObjectFile *ObjectFile::createObjectFile(StringRef ObjectPath) {
   OwningPtr<MemoryBuffer> File;
-  if (error_code ec = MemoryBuffer::getFile(ObjectPath, File))
+  if (MemoryBuffer::getFile(ObjectPath, File))
     return NULL;
   return createObjectFile(File.take());
 }

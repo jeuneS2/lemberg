@@ -15,11 +15,11 @@
 #ifndef MBlazeISELLOWERING_H
 #define MBlazeISELLOWERING_H
 
+#include "MBlaze.h"
+#include "MBlazeSubtarget.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/CodeGen/SelectionDAG.h"
 #include "llvm/Target/TargetLowering.h"
-#include "MBlaze.h"
-#include "MBlazeSubtarget.h"
 
 namespace llvm {
   namespace MBlazeCC {
@@ -102,9 +102,8 @@ namespace llvm {
     virtual const char *getTargetNodeName(unsigned Opcode) const;
 
     /// getSetCCResultType - get the ISD::SETCC result ValueType
-    MVT::SimpleValueType getSetCCResultType(EVT VT) const;
+    EVT getSetCCResultType(EVT VT) const;
 
-    virtual unsigned getFunctionAlignment(const Function *F) const;
   private:
     // Subtarget Info
     const MBlazeSubtarget *Subtarget;
@@ -135,7 +134,7 @@ namespace llvm {
     virtual SDValue
       LowerCall(SDValue Chain, SDValue Callee,
                 CallingConv::ID CallConv, bool isVarArg,
-                bool &isTailCall,
+                bool doesNotRet, bool &isTailCall,
                 const SmallVectorImpl<ISD::OutputArg> &Outs,
                 const SmallVectorImpl<SDValue> &OutVals,
                 const SmallVectorImpl<ISD::InputArg> &Ins,
@@ -172,10 +171,6 @@ namespace llvm {
 
     std::pair<unsigned, const TargetRegisterClass*>
               getRegForInlineAsmConstraint(const std::string &Constraint,
-              EVT VT) const;
-
-    std::vector<unsigned>
-    getRegClassForInlineAsmConstraint(const std::string &Constraint,
               EVT VT) const;
 
     virtual bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const;

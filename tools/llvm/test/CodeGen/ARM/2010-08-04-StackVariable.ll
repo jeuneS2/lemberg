@@ -1,5 +1,5 @@
-; RUN: llc -O0 -mtriple=arm-apple-darwin < %s | grep DW_OP_fbreg
-; Use DW_OP_fbreg in variable's location expression if the variable is in a stack slot.
+; RUN: llc -O0 -mtriple=arm-apple-darwin < %s | grep DW_OP_breg
+; Use DW_OP_breg in variable's location expression if the variable is in a stack slot.
 
 %struct.SVal = type { i8*, i32 }
 
@@ -31,7 +31,7 @@ return:                                           ; preds = %bb2
   ret i32 %.0, !dbg !29
 }
 
-define linkonce_odr void @_ZN4SValC1Ev(%struct.SVal* %this) nounwind ssp align 2 {
+define linkonce_odr void @_ZN4SValC1Ev(%struct.SVal* %this) nounwind ssp align 2  {
 entry:
   %"alloca point" = bitcast i32 0 to i32          ; <i32> [#uses=0]
   call void @llvm.dbg.value(metadata !{%struct.SVal* %this}, i64 0, metadata !31), !dbg !34

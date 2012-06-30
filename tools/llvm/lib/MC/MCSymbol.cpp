@@ -54,23 +54,17 @@ const MCSymbol &MCSymbol::AliasedSymbol() const {
 void MCSymbol::setVariableValue(const MCExpr *Value) {
   assert(!IsUsed && "Cannot set a variable that has already been used.");
   assert(Value && "Invalid variable value!");
-  assert((isUndefined() || (isAbsolute() && isa<MCConstantExpr>(Value))) &&
-         "Invalid redefinition!");
   this->Value = Value;
 
-  // Mark the variable as absolute as appropriate.
-  if (isa<MCConstantExpr>(Value))
-    setAbsolute();
+  // Variables should always be marked as in the same "section" as the value.
+  const MCSection *Section = Value->FindAssociatedSection();
+  if (Section)
+    setSection(*Section);
+  else
+    setUndefined();
 }
 
 void MCSymbol::print(raw_ostream &OS) const {
-
-  // The variable value is more interesting than the name
-  if (isVariable()) {		
-    OS << *Value;
-    return;
-  }
-
   // The name for this MCSymbol is required to be a valid target name.  However,
   // some targets support quoting names with funny characters.  If the name
   // contains a funny character, then print it quoted.

@@ -7,8 +7,9 @@
 
 ; CHECK: foo:
 ; CHECK-NEXT: testb $1, %dil
-; CHECK-NEXT: je
+; CHECK-NEXT: jne
 ; CHECK-NEXT: divsd
+; CHECK-NEXT: movaps
 ; CHECK-NEXT: ret
 ; CHECK:      divsd
 
@@ -25,10 +26,10 @@ define double @foo(double %x, double %y, i1 %c) nounwind {
 
 ; CHECK: split:
 ; CHECK-NEXT: testb $1, %dil
-; CHECK-NEXT: je
-; CHECK-NEXT: divsd
+; CHECK-NEXT: jne
+; CHECK-NEXT: movaps
 ; CHECK-NEXT: ret
-; CHECK:      movaps
+; CHECK:      divsd
 ; CHECK-NEXT: ret
 define double @split(double %x, double %y, i1 %c) nounwind {
   %a = fdiv double %x, 3.2
@@ -102,6 +103,7 @@ entry:
   br label %bb60
 
 bb:                                               ; preds = %bb60
+  %i.0 = phi i32 [ 0, %bb60 ]                    ; <i32> [#uses=2]
   %0 = bitcast float* %x_addr.0 to <4 x float>*   ; <<4 x float>*> [#uses=1]
   %1 = load <4 x float>* %0, align 16             ; <<4 x float>> [#uses=4]
   %tmp20 = bitcast <4 x float> %1 to <4 x i32>    ; <<4 x i32>> [#uses=1]
@@ -129,15 +131,14 @@ bb:                                               ; preds = %bb60
   %5 = getelementptr float* %x_addr.0, i64 4      ; <float*> [#uses=1]
   %6 = getelementptr float* %y_addr.0, i64 4      ; <float*> [#uses=1]
   %7 = add i32 %i.0, 4                            ; <i32> [#uses=1]
-  br label %bb60
+  %8 = load i32* %n, align 4                      ; <i32> [#uses=1]
+  %9 = icmp sgt i32 %8, %7                        ; <i1> [#uses=1]
+  br i1 %9, label %bb60, label %return
 
 bb60:                                             ; preds = %bb, %entry
-  %i.0 = phi i32 [ 0, %entry ], [ %7, %bb ]       ; <i32> [#uses=2]
   %x_addr.0 = phi float* [ %x, %entry ], [ %5, %bb ] ; <float*> [#uses=2]
   %y_addr.0 = phi float* [ %y, %entry ], [ %6, %bb ] ; <float*> [#uses=2]
-  %8 = load i32* %n, align 4                      ; <i32> [#uses=1]
-  %9 = icmp sgt i32 %8, %i.0                      ; <i1> [#uses=1]
-  br i1 %9, label %bb, label %return
+  br label %bb
 
 return:                                           ; preds = %bb60
   ret void

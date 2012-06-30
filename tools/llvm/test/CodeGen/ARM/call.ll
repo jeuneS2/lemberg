@@ -1,6 +1,6 @@
-; RUN: llc < %s -march=arm | FileCheck %s -check-prefix=CHECKV4
+; RUN: llc < %s -march=arm -mattr=+v4t | FileCheck %s -check-prefix=CHECKV4
 ; RUN: llc < %s -march=arm -mattr=+v5t | FileCheck %s -check-prefix=CHECKV5
-; RUN: llc < %s -march=arm -mtriple=arm-linux-gnueabi\
+; RUN: llc < %s -mtriple=armv6-linux-gnueabi\
 ; RUN:   -relocation-model=pic | FileCheck %s -check-prefix=CHECKELF
 
 @t = weak global i32 ()* null           ; <i32 ()**> [#uses=1]
@@ -26,7 +26,7 @@ define i32* @m_231b(i32, i32, i32*, i32*, i32*) nounwind {
 ; CHECKV4: bx r{{.*}}
 BB0:
   %5 = inttoptr i32 %0 to i32*                    ; <i32*> [#uses=1]
-  %t35 = volatile load i32* %5                    ; <i32> [#uses=1]
+  %t35 = load volatile i32* %5                    ; <i32> [#uses=1]
   %6 = inttoptr i32 %t35 to i32**                 ; <i32**> [#uses=1]
   %7 = getelementptr i32** %6, i32 86             ; <i32**> [#uses=1]
   %8 = load i32** %7                              ; <i32*> [#uses=1]

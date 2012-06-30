@@ -66,9 +66,6 @@ FunctionPass *llvm::createLembergISelDag(LembergTargetMachine &TM,
 }
 
 SDNode *LembergDAGToDAGISel::Select(SDNode *N) {
-  DebugLoc DL = N->getDebugLoc();
-  EVT VT = N->getValueType(0);
-
   if (N->isMachineOpcode())
     return NULL;   // Already selected.
 

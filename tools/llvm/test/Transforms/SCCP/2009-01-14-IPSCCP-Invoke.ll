@@ -7,6 +7,8 @@ define i32 @main() {
 			to label %UnifiedReturnBlock unwind label %lpad
 
 lpad:
+        %val = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+                 cleanup
 	unreachable
 
 UnifiedReturnBlock:
@@ -18,10 +20,6 @@ define internal i32 @f() {
 }
 
 declare i8* @__cxa_begin_catch(i8*) nounwind
-
-declare i8* @llvm.eh.exception() nounwind
-
-declare i32 @llvm.eh.selector.i32(i8*, i8*, ...) nounwind
 
 declare void @__cxa_end_catch()
 

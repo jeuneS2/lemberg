@@ -25,8 +25,10 @@ using namespace llvm;
 // Include the auto-generated portion of the assembly writer.
 #include "MSP430GenAsmWriter.inc"
 
-void MSP430InstPrinter::printInst(const MCInst *MI, raw_ostream &O) {
+void MSP430InstPrinter::printInst(const MCInst *MI, raw_ostream &O,
+                                  StringRef Annot) {
   printInstruction(MI, O);
+  printAnnotation(O, Annot);
 }
 
 void MSP430InstPrinter::printPCRelImmOperand(const MCInst *MI, unsigned OpNo,
@@ -90,7 +92,6 @@ void MSP430InstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
   switch (CC) {
   default:
    llvm_unreachable("Unsupported CC code");
-   break;
   case MSP430CC::COND_E:
    O << "eq";
    break;

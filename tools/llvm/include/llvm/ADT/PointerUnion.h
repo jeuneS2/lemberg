@@ -108,7 +108,11 @@ namespace llvm {
     
     /// isNull - Return true if the pointer held in the union is null,
     /// regardless of which type it is.
-    bool isNull() const { return Val.getPointer() == 0; }
+    bool isNull() const {
+      // Convert from the void* to one of the pointer types, to make sure that
+      // we recursively strip off low bits if we have a nested PointerUnion.
+      return !PointerLikeTypeTraits<PT1>::getFromVoidPointer(Val.getPointer());
+    }
     operator bool() const { return !isNull(); }
 
     /// is<T>() return true if the Union currently holds the type matching T.
@@ -138,16 +142,19 @@ namespace llvm {
       return T();
     }
 
-    /// \brief If the union is set to the first pointer type we can get an
-    /// address pointing to it.
-    template <typename T>
-    PT1 const *getAddrOf() const {
+    /// \brief If the union is set to the first pointer type get an address
+    /// pointing to it.
+    PT1 const *getAddrOfPtr1() const {
+      return const_cast<PointerUnion *>(this)->getAddrOfPtr1();
+    }
+
+    /// \brief If the union is set to the first pointer type get an address
+    /// pointing to it.
+    PT1 *getAddrOfPtr1() {
       assert(is<PT1>() && "Val is not the first pointer");
       assert(get<PT1>() == Val.getPointer() &&
          "Can't get the address because PointerLikeTypeTraits changes the ptr");
-      T const *can_only_get_address_of_first_pointer_type
-                        = reinterpret_cast<PT1 const *>(Val.getAddrOfPointer());
-      return can_only_get_address_of_first_pointer_type;
+      return (PT1 *)Val.getAddrOfPointer();
     }
     
     /// Assignment operators - Allow assigning into this union from either
@@ -259,7 +266,7 @@ namespace llvm {
         ::llvm::PointerUnionTypeSelector<PT1, T, IsInnerUnion,
           ::llvm::PointerUnionTypeSelector<PT2, T, IsInnerUnion, IsPT3 >
                                                                    >::Return Ty;
-      return Ty(Val).is<T>();
+      return Ty(Val).template is<T>();
     }
     
     /// get<T>() - Return the value of the specified pointer type. If the
@@ -272,7 +279,7 @@ namespace llvm {
         ::llvm::PointerUnionTypeSelector<PT1, T, IsInnerUnion,
           ::llvm::PointerUnionTypeSelector<PT2, T, IsInnerUnion, IsPT3 >
                                                                    >::Return Ty;
-      return Ty(Val).get<T>();
+      return Ty(Val).template get<T>();
     }
     
     /// dyn_cast<T>() - If the current value is of the specified pointer type,

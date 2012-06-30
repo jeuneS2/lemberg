@@ -1,5 +1,5 @@
-; RUN: llc < %s -mtriple=armv7-apple-darwin -mcpu=cortex-a8 | FileCheck %s -check-prefix=SOFT
-; RUN: llc < %s -mtriple=armv7-gnueabi -float-abi=hard -mcpu=cortex-a8 | FileCheck %s -check-prefix=HARD
+; RUN: llc < %s -disable-post-ra -mtriple=armv7-apple-darwin -mcpu=cortex-a8 | FileCheck %s -check-prefix=SOFT
+; RUN: llc < %s -disable-post-ra -mtriple=armv7-gnueabi -float-abi=hard -mcpu=cortex-a8 | FileCheck %s -check-prefix=HARD
 
 ; rdar://8984306
 define float @test1(float %x, float %y) nounwind {
@@ -10,7 +10,7 @@ entry:
 
 ; HARD: test1:
 ; HARD: vmov.i32 [[REG1:(d[0-9]+)]], #0x80000000
-; HARD: vbsl [[REG1]], d2, d0
+; HARD: vbsl [[REG1]], d
   %0 = tail call float @copysignf(float %x, float %y) nounwind
   ret float %0
 }
@@ -40,19 +40,21 @@ entry:
   ret double %1
 }
 
-; rdar://9059537
-define i32 @test4() ssp {
+; rdar://9287902
+define float @test4() nounwind {
 entry:
 ; SOFT: test4:
-; SOFT: vcvt.f32.f64 s0, 
-; SOFT: vmov.i32 [[REG4:(d[0-9]+)]], #0x80000000
-; SOFT: vbic [[REG5:(d[0-9]+)]], d0, [[REG4]]
-; SOFT: vorr d0, [[REG4]], [[REG5]]
-  %call80 = tail call double @copysign(double 1.000000e+00, double undef)
-  %conv81 = fptrunc double %call80 to float
-  %tmp88 = bitcast float %conv81 to i32
-  ret i32 %tmp88
+; SOFT: vmov [[REG7:(d[0-9]+)]], r0, r1
+; SOFT: vmov.i32 [[REG6:(d[0-9]+)]], #0x80000000
+; SOFT: vshr.u64 [[REG7]], [[REG7]], #32
+; SOFT: vbsl [[REG6]], [[REG7]], 
+  %0 = tail call double (...)* @bar() nounwind
+  %1 = fptrunc double %0 to float
+  %2 = tail call float @copysignf(float 5.000000e-01, float %1) nounwind readnone
+  %3 = fadd float %1, %2
+  ret float %3
 }
 
+declare double @bar(...)
 declare double @copysign(double, double) nounwind
 declare float @copysignf(float, float) nounwind

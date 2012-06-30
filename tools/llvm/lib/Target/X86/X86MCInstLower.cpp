@@ -12,12 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "InstPrinter/X86ATTInstPrinter.h"
 #include "X86MCInstLower.h"
 #include "X86AsmPrinter.h"
 #include "X86COFFMachineModuleInfo.h"
-#include "X86MCAsmInfo.h"
+#include "InstPrinter/X86ATTInstPrinter.h"
+#include "llvm/Type.h"
 #include "llvm/CodeGen/MachineModuleInfoImpls.h"
+#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
@@ -26,7 +27,6 @@
 #include "llvm/Target/Mangler.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/ADT/SmallString.h"
-#include "llvm/Type.h"
 using namespace llvm;
 
 X86MCInstLower::X86MCInstLower(Mangler *mang, const MachineFunction &mf,
@@ -154,6 +154,7 @@ MCOperand X86MCInstLower::LowerSymbolOperand(const MachineOperand &MO,
                                                            Ctx),
                                    Ctx);
     break;
+  case X86II::MO_SECREL:    RefKind = MCSymbolRefExpr::VK_SECREL; break;
   case X86II::MO_TLSGD:     RefKind = MCSymbolRefExpr::VK_TLSGD; break;
   case X86II::MO_GOTTPOFF:  RefKind = MCSymbolRefExpr::VK_GOTTPOFF; break;
   case X86II::MO_INDNTPOFF: RefKind = MCSymbolRefExpr::VK_INDNTPOFF; break;
@@ -230,7 +231,8 @@ static void LowerUnaryToTwoAddr(MCInst &OutMI, unsigned NewOpc) {
 /// a short fixed-register form.
 static void SimplifyShortImmForm(MCInst &Inst, unsigned Opcode) {
   unsigned ImmOp = Inst.getNumOperands() - 1;
-  assert(Inst.getOperand(0).isReg() && Inst.getOperand(ImmOp).isImm() &&
+  assert(Inst.getOperand(0).isReg() &&
+         (Inst.getOperand(ImmOp).isImm() || Inst.getOperand(ImmOp).isExpr()) &&
          ((Inst.getNumOperands() == 3 && Inst.getOperand(1).isReg() &&
            Inst.getOperand(0).getReg() == Inst.getOperand(1).getReg()) ||
           Inst.getNumOperands() == 2) && "Unexpected instruction!");
@@ -335,6 +337,9 @@ void X86MCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
       MCOp = LowerSymbolOperand(MO,
                      AsmPrinter.GetBlockAddressSymbol(MO.getBlockAddress()));
       break;
+    case MachineOperand::MO_RegisterMask:
+      // Ignore call clobbers.
+      continue;
     }
     
     OutMI.addOperand(MCOp);
@@ -355,10 +360,6 @@ ReSimplify:
     assert(OutMI.getOperand(1+X86::AddrSegmentReg).getReg() == 0 &&
            "LEA has segment specified!");
     break;
-  case X86::MOVZX16rr8:   LowerSubReg32_Op0(OutMI, X86::MOVZX32rr8); break;
-  case X86::MOVZX16rm8:   LowerSubReg32_Op0(OutMI, X86::MOVZX32rm8); break;
-  case X86::MOVSX16rr8:   LowerSubReg32_Op0(OutMI, X86::MOVSX32rr8); break;
-  case X86::MOVSX16rm8:   LowerSubReg32_Op0(OutMI, X86::MOVSX32rm8); break;
   case X86::MOVZX64rr32:  LowerSubReg32_Op0(OutMI, X86::MOV32rr); break;
   case X86::MOVZX64rm32:  LowerSubReg32_Op0(OutMI, X86::MOV32rm); break;
   case X86::MOV64ri64i32: LowerSubReg32_Op0(OutMI, X86::MOV32ri); break;
@@ -372,19 +373,12 @@ ReSimplify:
   case X86::SETB_C64r:    LowerUnaryToTwoAddr(OutMI, X86::SBB64rr); break;
   case X86::MOV8r0:       LowerUnaryToTwoAddr(OutMI, X86::XOR8rr); break;
   case X86::MOV32r0:      LowerUnaryToTwoAddr(OutMI, X86::XOR32rr); break;
-  case X86::FsFLD0SS:      LowerUnaryToTwoAddr(OutMI, X86::PXORrr); break;
-  case X86::FsFLD0SD:      LowerUnaryToTwoAddr(OutMI, X86::PXORrr); break;
-  case X86::VFsFLD0SS:     LowerUnaryToTwoAddr(OutMI, X86::VPXORrr); break;
-  case X86::VFsFLD0SD:     LowerUnaryToTwoAddr(OutMI, X86::VPXORrr); break;
-  case X86::V_SET0PS:      LowerUnaryToTwoAddr(OutMI, X86::XORPSrr); break;
-  case X86::V_SET0PD:      LowerUnaryToTwoAddr(OutMI, X86::XORPDrr); break;
-  case X86::V_SET0PI:      LowerUnaryToTwoAddr(OutMI, X86::PXORrr); break;
   case X86::V_SETALLONES:  LowerUnaryToTwoAddr(OutMI, X86::PCMPEQDrr); break;
-  case X86::AVX_SET0PS:    LowerUnaryToTwoAddr(OutMI, X86::VXORPSrr); break;
   case X86::AVX_SET0PSY:   LowerUnaryToTwoAddr(OutMI, X86::VXORPSYrr); break;
-  case X86::AVX_SET0PD:    LowerUnaryToTwoAddr(OutMI, X86::VXORPDrr); break;
   case X86::AVX_SET0PDY:   LowerUnaryToTwoAddr(OutMI, X86::VXORPDYrr); break;
-  case X86::AVX_SET0PI:    LowerUnaryToTwoAddr(OutMI, X86::VPXORrr); break;
+  case X86::AVX_SETALLONES:  LowerUnaryToTwoAddr(OutMI, X86::VPCMPEQDrr); break;
+  case X86::AVX2_SETALLONES: LowerUnaryToTwoAddr(OutMI, X86::VPCMPEQDYrr);break;
+  case X86::AVX2_SET0:     LowerUnaryToTwoAddr(OutMI, X86::VPXORYrr); break;
 
   case X86::MOV16r0:
     LowerSubReg32_Op0(OutMI, X86::MOV32r0);   // MOV16r0 -> MOV32r0
@@ -395,14 +389,12 @@ ReSimplify:
     LowerUnaryToTwoAddr(OutMI, X86::XOR32rr); // MOV32r0 -> XOR32rr
     break;
 
-  // TAILJMPr64, [WIN]CALL64r, [WIN]CALL64pcrel32 - These instructions have
-  // register inputs modeled as normal uses instead of implicit uses.  As such,
-  // truncate off all but the first operand (the callee).  FIXME: Change isel.
+  // TAILJMPr64, CALL64r, CALL64pcrel32 - These instructions have register
+  // inputs modeled as normal uses instead of implicit uses.  As such, truncate
+  // off all but the first operand (the callee).  FIXME: Change isel.
   case X86::TAILJMPr64:
   case X86::CALL64r:
-  case X86::CALL64pcrel32:
-  case X86::WINCALL64r:
-  case X86::WINCALL64pcrel32: {
+  case X86::CALL64pcrel32: {
     unsigned Opcode = OutMI.getOpcode();
     MCOperand Saved = OutMI.getOperand(0);
     OutMI = MCInst();
@@ -424,7 +416,7 @@ ReSimplify:
   case X86::TAILJMPd64: {
     unsigned Opcode;
     switch (OutMI.getOpcode()) {
-    default: assert(0 && "Invalid opcode");
+    default: llvm_unreachable("Invalid opcode");
     case X86::TAILJMPr: Opcode = X86::JMP32r; break;
     case X86::TAILJMPd:
     case X86::TAILJMPd64: Opcode = X86::JMP_1; break;
@@ -471,6 +463,18 @@ ReSimplify:
   case X86::JGE_4: OutMI.setOpcode(X86::JGE_1); break;
   case X86::JLE_4: OutMI.setOpcode(X86::JLE_1); break;
   case X86::JG_4:  OutMI.setOpcode(X86::JG_1); break;
+
+  // Atomic load and store require a separate pseudo-inst because Acquire
+  // implies mayStore and Release implies mayLoad; fix these to regular MOV
+  // instructions here
+  case X86::ACQUIRE_MOV8rm:  OutMI.setOpcode(X86::MOV8rm); goto ReSimplify;
+  case X86::ACQUIRE_MOV16rm: OutMI.setOpcode(X86::MOV16rm); goto ReSimplify;
+  case X86::ACQUIRE_MOV32rm: OutMI.setOpcode(X86::MOV32rm); goto ReSimplify;
+  case X86::ACQUIRE_MOV64rm: OutMI.setOpcode(X86::MOV64rm); goto ReSimplify;
+  case X86::RELEASE_MOV8mr:  OutMI.setOpcode(X86::MOV8mr); goto ReSimplify;
+  case X86::RELEASE_MOV16mr: OutMI.setOpcode(X86::MOV16mr); goto ReSimplify;
+  case X86::RELEASE_MOV32mr: OutMI.setOpcode(X86::MOV32mr); goto ReSimplify;
+  case X86::RELEASE_MOV64mr: OutMI.setOpcode(X86::MOV64mr); goto ReSimplify;
 
   // We don't currently select the correct instruction form for instructions
   // which have a short %eax, etc. form. Handle this by custom lowering, for
@@ -524,6 +528,22 @@ ReSimplify:
   case X86::XOR16ri:    SimplifyShortImmForm(OutMI, X86::XOR16i16);  break;
   case X86::XOR32ri:    SimplifyShortImmForm(OutMI, X86::XOR32i32);  break;
   case X86::XOR64ri32:  SimplifyShortImmForm(OutMI, X86::XOR64i32);  break;
+
+  case X86::MORESTACK_RET:
+    OutMI.setOpcode(X86::RET);
+    break;
+
+  case X86::MORESTACK_RET_RESTORE_R10: {
+    MCInst retInst;
+
+    OutMI.setOpcode(X86::MOV64rr);
+    OutMI.addOperand(MCOperand::CreateReg(X86::R10));
+    OutMI.addOperand(MCOperand::CreateReg(X86::RAX));
+
+    retInst.setOpcode(X86::RET);
+    AsmPrinter.OutStreamer.EmitInstruction(retInst);
+    break;
+  }
   }
 }
 
@@ -589,6 +609,8 @@ static void LowerTlsAddr(MCStreamer &OutStreamer,
 }
 
 void X86AsmPrinter::EmitInstruction(const MachineInstr *MI) {
+  OutStreamer.EmitCodeRegion();
+
   X86MCInstLower MCInstLowering(Mang, *MF, *this);
   switch (MI->getOpcode()) {
   case TargetOpcode::DBG_VALUE:
@@ -605,7 +627,7 @@ void X86AsmPrinter::EmitInstruction(const MachineInstr *MI) {
     if (OutStreamer.hasRawTextSupport())
       OutStreamer.EmitRawText(StringRef("\t#MEMBARRIER"));
     return;
-        
+
 
   case X86::EH_RETURN:
   case X86::EH_RETURN64: {

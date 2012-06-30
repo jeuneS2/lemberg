@@ -42,12 +42,12 @@ entry:
   ]
 
 bb:                                               ; preds = %entry
-  volatile store i32 11, i32* @var_tls, align 4
-  volatile store double 2.200000e+01, double* @var_tls_double, align 8
-  volatile store i32 33, i32* @var_static, align 4
-  volatile store double 4.400000e+01, double* @var_static_double, align 8
-  volatile store i32 55, i32* @var_global, align 4
-  volatile store double 6.600000e+01, double* @var_global_double, align 8
+  store volatile i32 11, i32* @var_tls, align 4
+  store volatile double 2.200000e+01, double* @var_tls_double, align 8
+  store volatile i32 33, i32* @var_static, align 4
+  store volatile double 4.400000e+01, double* @var_static_double, align 8
+  store volatile i32 55, i32* @var_global, align 4
+  store volatile double 6.600000e+01, double* @var_global_double, align 8
   br label %bb3
 
 bb2:                                              ; preds = %entry
@@ -60,12 +60,11 @@ bb3:                                              ; preds = %bb, %entry
 
 declare void @exit(i32) noreturn nounwind
 
+;; OBJ:          Relocation 1
+;; OBJ-NEXT:     'r_offset', 
+;; OBJ-NEXT:     'r_sym', 0x000002
+;; OBJ-NEXT:     'r_type', 0x2b
 
-;; OBJ:         Symbol 0x00000002
+;; OBJ:         Symbol 2
 ;; OBJ-NEXT:    '_MergedGlobals'
 ;; OBJ-NEXT:    'st_value', 0x00000010
-
-;; OBJ:          Relocation 0x00000001
-;; OBJ-NEXT:     'r_offset', 
-;; OBJ-NEXT:     'r_sym', 0x00000002
-;; OBJ-NEXT:     'r_type', 0x0000002b

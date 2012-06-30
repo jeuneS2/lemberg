@@ -25,8 +25,8 @@
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/Target/Mangler.h"
-#include "llvm/Target/TargetRegistry.h"
 #include "llvm/Target/TargetLoweringObjectFile.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/raw_ostream.h"
@@ -65,13 +65,13 @@ void LembergAsmPrinter::printOperand(const MachineInstr *MI, int opNum, raw_ostr
     O << MO.getImm();
     break;
   case MachineOperand::MO_MachineBasicBlock:	  
-	  O << *MO.getMBB()->getSymbol();
+	O << *MO.getMBB()->getSymbol();
     return;
   case MachineOperand::MO_GlobalAddress:
     O << *Mang->getSymbol(MO.getGlobal());
     break;
   case MachineOperand::MO_BlockAddress:
-	  O << *GetBlockAddressSymbol(MO.getBlockAddress());
+	O << *GetBlockAddressSymbol(MO.getBlockAddress());
     break;
   case MachineOperand::MO_ExternalSymbol:
     O << *GetExternalSymbolSymbol(MO.getSymbolName());
@@ -116,8 +116,8 @@ void LembergAsmPrinter::printCluster(const MachineInstr *MI, raw_ostream &O) {
 		const InstrItinerary *IITab = IID.Itineraries;
 		const InstrStage *IIStages = IID.Stages;
 		
-		const TargetInstrDesc &TID = MI->getDesc();
-		unsigned SchedClass = TID.getSchedClass();
+		const MCInstrDesc &MID = MI->getDesc();
+		unsigned SchedClass = MID.getSchedClass();
 		
 		unsigned FirstUnit = IIStages[IITab[SchedClass].FirstStage].getUnits();
 		if (FirstUnit == LST->getFuncUnit(LembergFU::SLOT0)) {
@@ -141,7 +141,7 @@ void LembergAsmPrinter::EmitFunctionBodyStart() {
   // Emit function size size
   SmallString<128> Str;
   raw_svector_ostream OS(Str);
-  OS << "\t.size\t" << *CurrentFnSym << "_end-" << *CurrentFnSym << "\n";
+  OS << "\t.funsz\t" << *CurrentFnSym << "_end-" << *CurrentFnSym << "\n";
   OS << *CurrentFnSym << "_start:\n";
   OutStreamer.EmitRawText(OS.str());
 }

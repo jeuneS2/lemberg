@@ -1,4 +1,4 @@
-//===- MipsRegisterInfo.h - Mips Register Information Impl ------*- C++ -*-===//
+//===-- MipsRegisterInfo.h - Mips Register Information Impl -----*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -16,7 +16,9 @@
 
 #include "Mips.h"
 #include "llvm/Target/TargetRegisterInfo.h"
-#include "MipsGenRegisterInfo.h.inc"
+
+#define GET_REGINFO_HEADER
+#include "MipsGenRegisterInfo.inc"
 
 namespace llvm {
 class MipsSubtarget;
@@ -40,9 +42,12 @@ struct MipsRegisterInfo : public MipsGenRegisterInfo {
   void adjustMipsStackFrame(MachineFunction &MF) const;
 
   /// Code Generation virtual methods...
-  const unsigned *getCalleeSavedRegs(const MachineFunction* MF = 0) const;
+  const uint16_t *getCalleeSavedRegs(const MachineFunction* MF = 0) const;
+  const uint32_t *getCallPreservedMask(CallingConv::ID) const;
 
   BitVector getReservedRegs(const MachineFunction &MF) const;
+
+  virtual bool requiresRegisterScavenging(const MachineFunction &MF) const;
 
   void eliminateCallFramePseudoInstr(MachineFunction &MF,
                                      MachineBasicBlock &MBB,
@@ -55,14 +60,11 @@ struct MipsRegisterInfo : public MipsGenRegisterInfo {
   void processFunctionBeforeFrameFinalized(MachineFunction &MF) const;
 
   /// Debug information queries.
-  unsigned getRARegister() const;
   unsigned getFrameRegister(const MachineFunction &MF) const;
 
   /// Exception handling queries.
   unsigned getEHExceptionRegister() const;
   unsigned getEHHandlerRegister() const;
-
-  int getDwarfRegNum(unsigned RegNum, bool isEH) const;
 };
 
 } // end namespace llvm

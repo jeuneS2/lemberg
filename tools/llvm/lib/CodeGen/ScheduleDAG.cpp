@@ -19,10 +19,19 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetInstrInfo.h"
 #include "llvm/Target/TargetRegisterInfo.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include <climits>
 using namespace llvm;
+
+#ifndef NDEBUG
+static cl::opt<bool> StressSchedOpt(
+  "stress-sched", cl::Hidden, cl::init(false),
+  cl::desc("Stress test instruction scheduling"));
+#endif
+
+void SchedulingPriorityQueue::anchor() { }
 
 ScheduleDAG::ScheduleDAG(MachineFunction &mf)
   : TM(mf.getTarget()),
@@ -30,46 +39,24 @@ ScheduleDAG::ScheduleDAG(MachineFunction &mf)
     TRI(TM.getRegisterInfo()),
     MF(mf), MRI(mf.getRegInfo()),
     EntrySU(), ExitSU() {
+#ifndef NDEBUG
+  StressSched = StressSchedOpt;
+#endif
 }
 
 ScheduleDAG::~ScheduleDAG() {}
 
-/// getInstrDesc helper to handle SDNodes.
-const TargetInstrDesc *ScheduleDAG::getNodeDesc(const SDNode *Node) const {
-  if (!Node || !Node->isMachineOpcode()) return NULL;
-  return &TII->get(Node->getMachineOpcode());
-}
-
-/// dump - dump the schedule.
-void ScheduleDAG::dumpSchedule() const {
-  for (unsigned i = 0, e = Sequence.size(); i != e; i++) {
-    if (SUnit *SU = Sequence[i])
-      SU->dump(this);
-    else
-      dbgs() << "**** NOOP ****\n";
-  }
-}
-
-
-/// Run - perform scheduling.
-///
-void ScheduleDAG::Run(MachineBasicBlock *bb,
-                      MachineBasicBlock::iterator insertPos) {
-  BB = bb;
-  InsertPos = insertPos;
-
+/// Clear the DAG state (e.g. between scheduling regions).
+void ScheduleDAG::clearDAG() {
   SUnits.clear();
-  Sequence.clear();
   EntrySU = SUnit();
   ExitSU = SUnit();
+}
 
-  Schedule();
-
-  DEBUG({
-      dbgs() << "*** Final schedule ***\n";
-      dumpSchedule();
-      dbgs() << '\n';
-    });
+/// getInstrDesc helper to handle SDNodes.
+const MCInstrDesc *ScheduleDAG::getNodeDesc(const SDNode *Node) const {
+  if (!Node || !Node->isMachineOpcode()) return NULL;
+  return &TII->get(Node->getMachineOpcode());
 }
 
 /// addPred - This adds the specified edge as a pred of the current node if
@@ -130,6 +117,7 @@ void SUnit::removePred(const SDep &D) {
           break;
         }
       assert(FoundSucc && "Mismatching preds / succs lists!");
+      (void)FoundSucc;
       Preds.erase(I);
       // Update the bookkeeping.
       if (P.getKind() == SDep::Data) {
@@ -302,11 +290,12 @@ void SUnit::dumpAll(const ScheduleDAG *G) const {
       case SDep::Output:      dbgs() << "out "; break;
       case SDep::Order:       dbgs() << "ch  "; break;
       }
-      dbgs() << "#";
-      dbgs() << I->getSUnit() << " - SU(" << I->getSUnit()->NodeNum << ")";
+      dbgs() << "SU(" << I->getSUnit()->NodeNum << ")";
       if (I->isArtificial())
         dbgs() << " *";
       dbgs() << ": Latency=" << I->getLatency();
+      if (I->isAssignedRegDep())
+        dbgs() << " Reg=" << PrintReg(I->getReg(), G->TRI);
       dbgs() << "\n";
     }
   }
@@ -321,8 +310,7 @@ void SUnit::dumpAll(const ScheduleDAG *G) const {
       case SDep::Output:      dbgs() << "out "; break;
       case SDep::Order:       dbgs() << "ch  "; break;
       }
-      dbgs() << "#";
-      dbgs() << I->getSUnit() << " - SU(" << I->getSUnit()->NodeNum << ")";
+      dbgs() << "SU(" << I->getSUnit()->NodeNum << ")";
       if (I->isArtificial())
         dbgs() << " *";
       dbgs() << ": Latency=" << I->getLatency();
@@ -333,13 +321,12 @@ void SUnit::dumpAll(const ScheduleDAG *G) const {
 }
 
 #ifndef NDEBUG
-/// VerifySchedule - Verify that all SUnits were scheduled and that
-/// their state is consistent.
+/// VerifyScheduledDAG - Verify that all SUnits were scheduled and that
+/// their state is consistent. Return the number of scheduled nodes.
 ///
-void ScheduleDAG::VerifySchedule(bool isBottomUp) {
+unsigned ScheduleDAG::VerifyScheduledDAG(bool isBottomUp) {
   bool AnyNotSched = false;
   unsigned DeadNodes = 0;
-  unsigned Noops = 0;
   for (unsigned i = 0, e = SUnits.size(); i != e; ++i) {
     if (!SUnits[i].isScheduled) {
       if (SUnits[i].NumPreds == 0 && SUnits[i].NumSuccs == 0) {
@@ -380,12 +367,8 @@ void ScheduleDAG::VerifySchedule(bool isBottomUp) {
       }
     }
   }
-  for (unsigned i = 0, e = Sequence.size(); i != e; ++i)
-    if (!Sequence[i])
-      ++Noops;
   assert(!AnyNotSched);
-  assert(Sequence.size() + DeadNodes - Noops == SUnits.size() &&
-         "The number of nodes scheduled doesn't match the expected number!");
+  return SUnits.size() - DeadNodes;
 }
 #endif
 
@@ -472,7 +455,7 @@ void ScheduleDAGTopologicalSort::InitDAGTopologicalSorting() {
 #endif
 }
 
-/// AddPred - Updates the topological ordering to accomodate an edge
+/// AddPred - Updates the topological ordering to accommodate an edge
 /// to be added from SUnit X to SUnit Y.
 void ScheduleDAGTopologicalSort::AddPred(SUnit *Y, SUnit *X) {
   int UpperBound, LowerBound;
@@ -490,7 +473,7 @@ void ScheduleDAGTopologicalSort::AddPred(SUnit *Y, SUnit *X) {
   }
 }
 
-/// RemovePred - Updates the topological ordering to accomodate an
+/// RemovePred - Updates the topological ordering to accommodate an
 /// an edge to be removed from the specified node N from the predecessors
 /// of the current node M.
 void ScheduleDAGTopologicalSort::RemovePred(SUnit *M, SUnit *N) {

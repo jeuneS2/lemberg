@@ -15,21 +15,21 @@
 #ifndef LLVM_LLVMCONTEXT_IMPL_H
 #define LLVM_LLVMCONTEXT_IMPL_H
 
+#include "llvm/LLVMContext.h"
 #include "ConstantsContext.h"
 #include "LeaksContext.h"
-#include "TypesContext.h"
-#include "llvm/LLVMContext.h"
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/Metadata.h"
-#include "llvm/Assembly/Writer.h"
 #include "llvm/Support/ValueHandle.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/StringMap.h"
+#include "llvm/ADT/Hashing.h"
 #include <vector>
 
 namespace llvm {
@@ -43,8 +43,8 @@ class Value;
 struct DenseMapAPIntKeyInfo {
   struct KeyTy {
     APInt val;
-    const Type* type;
-    KeyTy(const APInt& V, const Type* Ty) : val(V), type(Ty) {}
+    Type* type;
+    KeyTy(const APInt& V, Type* Ty) : val(V), type(Ty) {}
     KeyTy(const KeyTy& that) : val(that.val), type(that.type) {}
     bool operator==(const KeyTy& that) const {
       return type == that.type && this->val == that.val;
@@ -52,12 +52,14 @@ struct DenseMapAPIntKeyInfo {
     bool operator!=(const KeyTy& that) const {
       return !this->operator==(that);
     }
+    friend hash_code hash_value(const KeyTy &Key) {
+      return hash_combine(Key.type, Key.val);
+    }
   };
   static inline KeyTy getEmptyKey() { return KeyTy(APInt(1,0), 0); }
   static inline KeyTy getTombstoneKey() { return KeyTy(APInt(1,1), 0); }
   static unsigned getHashValue(const KeyTy &Key) {
-    return DenseMapInfo<void*>::getHashValue(Key.type) ^ 
-      Key.val.getHashValue();
+    return static_cast<unsigned>(hash_value(Key));
   }
   static bool isEqual(const KeyTy &LHS, const KeyTy &RHS) {
     return LHS == RHS;
@@ -75,6 +77,9 @@ struct DenseMapAPFloatKeyInfo {
     bool operator!=(const KeyTy& that) const {
       return !this->operator==(that);
     }
+    friend hash_code hash_value(const KeyTy &Key) {
+      return hash_combine(Key.val);
+    }
   };
   static inline KeyTy getEmptyKey() { 
     return KeyTy(APFloat(APFloat::Bogus,1));
@@ -83,10 +88,129 @@ struct DenseMapAPFloatKeyInfo {
     return KeyTy(APFloat(APFloat::Bogus,2)); 
   }
   static unsigned getHashValue(const KeyTy &Key) {
-    return Key.val.getHashValue();
+    return static_cast<unsigned>(hash_value(Key));
   }
   static bool isEqual(const KeyTy &LHS, const KeyTy &RHS) {
     return LHS == RHS;
+  }
+};
+
+struct AnonStructTypeKeyInfo {
+  struct KeyTy {
+    ArrayRef<Type*> ETypes;
+    bool isPacked;
+    KeyTy(const ArrayRef<Type*>& E, bool P) :
+      ETypes(E), isPacked(P) {}
+    KeyTy(const KeyTy& that) :
+      ETypes(that.ETypes), isPacked(that.isPacked) {}
+    KeyTy(const StructType* ST) :
+      ETypes(ArrayRef<Type*>(ST->element_begin(), ST->element_end())),
+      isPacked(ST->isPacked()) {}
+    bool operator==(const KeyTy& that) const {
+      if (isPacked != that.isPacked)
+        return false;
+      if (ETypes != that.ETypes)
+        return false;
+      return true;
+    }
+    bool operator!=(const KeyTy& that) const {
+      return !this->operator==(that);
+    }
+  };
+  static inline StructType* getEmptyKey() {
+    return DenseMapInfo<StructType*>::getEmptyKey();
+  }
+  static inline StructType* getTombstoneKey() {
+    return DenseMapInfo<StructType*>::getTombstoneKey();
+  }
+  static unsigned getHashValue(const KeyTy& Key) {
+    return hash_combine(hash_combine_range(Key.ETypes.begin(),
+                                           Key.ETypes.end()),
+                        Key.isPacked);
+  }
+  static unsigned getHashValue(const StructType *ST) {
+    return getHashValue(KeyTy(ST));
+  }
+  static bool isEqual(const KeyTy& LHS, const StructType *RHS) {
+    if (RHS == getEmptyKey() || RHS == getTombstoneKey())
+      return false;
+    return LHS == KeyTy(RHS);
+  }
+  static bool isEqual(const StructType *LHS, const StructType *RHS) {
+    return LHS == RHS;
+  }
+};
+
+struct FunctionTypeKeyInfo {
+  struct KeyTy {
+    const Type *ReturnType;
+    ArrayRef<Type*> Params;
+    bool isVarArg;
+    KeyTy(const Type* R, const ArrayRef<Type*>& P, bool V) :
+      ReturnType(R), Params(P), isVarArg(V) {}
+    KeyTy(const KeyTy& that) :
+      ReturnType(that.ReturnType),
+      Params(that.Params),
+      isVarArg(that.isVarArg) {}
+    KeyTy(const FunctionType* FT) :
+      ReturnType(FT->getReturnType()),
+      Params(ArrayRef<Type*>(FT->param_begin(), FT->param_end())),
+      isVarArg(FT->isVarArg()) {}
+    bool operator==(const KeyTy& that) const {
+      if (ReturnType != that.ReturnType)
+        return false;
+      if (isVarArg != that.isVarArg)
+        return false;
+      if (Params != that.Params)
+        return false;
+      return true;
+    }
+    bool operator!=(const KeyTy& that) const {
+      return !this->operator==(that);
+    }
+  };
+  static inline FunctionType* getEmptyKey() {
+    return DenseMapInfo<FunctionType*>::getEmptyKey();
+  }
+  static inline FunctionType* getTombstoneKey() {
+    return DenseMapInfo<FunctionType*>::getTombstoneKey();
+  }
+  static unsigned getHashValue(const KeyTy& Key) {
+    return hash_combine(Key.ReturnType,
+                        hash_combine_range(Key.Params.begin(),
+                                           Key.Params.end()),
+                        Key.isVarArg);
+  }
+  static unsigned getHashValue(const FunctionType *FT) {
+    return getHashValue(KeyTy(FT));
+  }
+  static bool isEqual(const KeyTy& LHS, const FunctionType *RHS) {
+    if (RHS == getEmptyKey() || RHS == getTombstoneKey())
+      return false;
+    return LHS == KeyTy(RHS);
+  }
+  static bool isEqual(const FunctionType *LHS, const FunctionType *RHS) {
+    return LHS == RHS;
+  }
+};
+
+// Provide a FoldingSetTrait::Equals specialization for MDNode that can use a
+// shortcut to avoid comparing all operands.
+template<> struct FoldingSetTrait<MDNode> : DefaultFoldingSetTrait<MDNode> {
+  static bool Equals(const MDNode &X, const FoldingSetNodeID &ID,
+                     unsigned IDHash, FoldingSetNodeID &TempID) {
+    assert(!X.isNotUniqued() && "Non-uniqued MDNode in FoldingSet?");
+    // First, check if the cached hashes match.  If they don't we can skip the
+    // expensive operand walk.
+    if (X.Hash != IDHash)
+      return false;
+
+    // If they match we have to compare the operands.
+    X.Profile(TempID);
+    return TempID == ID;
+  }
+  static unsigned ComputeHash(const MDNode &X, FoldingSetNodeID &) {
+    return X.Hash; // Return cached hash.
   }
 };
 
@@ -130,7 +254,7 @@ public:
                          DenseMapAPFloatKeyInfo> FPMapTy;
   FPMapTy FPConstants;
   
-  StringMap<MDString*> MDStringCache;
+  StringMap<Value*> MDStringCache;
   
   FoldingSet<MDNode> MDNodeSet;
   // MDNodes may be uniqued or not uniqued.  When they're not uniqued, they
@@ -139,27 +263,30 @@ public:
   // on Context destruction.
   SmallPtrSet<MDNode*, 1> NonUniquedMDNodes;
   
-  ConstantUniqueMap<char, Type, ConstantAggregateZero> AggZeroConstants;
+  DenseMap<Type*, ConstantAggregateZero*> CAZConstants;
 
-  typedef ConstantUniqueMap<std::vector<Constant*>, ArrayType,
-    ConstantArray, true /*largekey*/> ArrayConstantsTy;
+  typedef ConstantAggrUniqueMap<ArrayType, ConstantArray> ArrayConstantsTy;
   ArrayConstantsTy ArrayConstants;
   
-  typedef ConstantUniqueMap<std::vector<Constant*>, StructType,
-    ConstantStruct, true /*largekey*/> StructConstantsTy;
+  typedef ConstantAggrUniqueMap<StructType, ConstantStruct> StructConstantsTy;
   StructConstantsTy StructConstants;
   
-  typedef ConstantUniqueMap<std::vector<Constant*>, VectorType,
-                            ConstantVector> VectorConstantsTy;
+  typedef ConstantAggrUniqueMap<VectorType, ConstantVector> VectorConstantsTy;
   VectorConstantsTy VectorConstants;
   
-  ConstantUniqueMap<char, PointerType, ConstantPointerNull> NullPtrConstants;
-  ConstantUniqueMap<char, Type, UndefValue> UndefValueConstants;
+  DenseMap<PointerType*, ConstantPointerNull*> CPNConstants;
+
+  DenseMap<Type*, UndefValue*> UVConstants;
+  
+  StringMap<ConstantDataSequential*> CDSConstants;
+
   
   DenseMap<std::pair<Function*, BasicBlock*> , BlockAddress*> BlockAddresses;
-  ConstantUniqueMap<ExprMapKeyType, Type, ConstantExpr> ExprConstants;
+  ConstantUniqueMap<ExprMapKeyType, const ExprMapKeyType&, Type, ConstantExpr>
+    ExprConstants;
 
-  ConstantUniqueMap<InlineAsmKeyType, PointerType, InlineAsm> InlineAsms;
+  ConstantUniqueMap<InlineAsmKeyType, const InlineAsmKeyType&, PointerType,
+                    InlineAsm> InlineAsms;
   
   ConstantInt *TheTrueVal;
   ConstantInt *TheFalseVal;
@@ -167,41 +294,28 @@ public:
   LeakDetectorImpl<Value> LLVMObjects;
   
   // Basic type instances.
-  const Type VoidTy;
-  const Type LabelTy;
-  const Type FloatTy;
-  const Type DoubleTy;
-  const Type MetadataTy;
-  const Type X86_FP80Ty;
-  const Type FP128Ty;
-  const Type PPC_FP128Ty;
-  const Type X86_MMXTy;
-  const IntegerType Int1Ty;
-  const IntegerType Int8Ty;
-  const IntegerType Int16Ty;
-  const IntegerType Int32Ty;
-  const IntegerType Int64Ty;
+  Type VoidTy, LabelTy, HalfTy, FloatTy, DoubleTy, MetadataTy;
+  Type X86_FP80Ty, FP128Ty, PPC_FP128Ty, X86_MMXTy;
+  IntegerType Int1Ty, Int8Ty, Int16Ty, Int32Ty, Int64Ty;
 
-  // Concrete/Abstract TypeDescriptions - We lazily calculate type descriptions
-  // for types as they are needed.  Because resolution of types must invalidate
-  // all of the abstract type descriptions, we keep them in a seperate map to 
-  // make this easy.
-  TypePrinting ConcreteTypeDescriptions;
-  TypePrinting AbstractTypeDescriptions;
   
-  TypeMap<ArrayValType, ArrayType> ArrayTypes;
-  TypeMap<VectorValType, VectorType> VectorTypes;
-  TypeMap<PointerValType, PointerType> PointerTypes;
-  TypeMap<FunctionValType, FunctionType> FunctionTypes;
-  TypeMap<StructValType, StructType> StructTypes;
-  TypeMap<IntegerValType, IntegerType> IntegerTypes;
-
-  // Opaque types are not structurally uniqued, so don't use TypeMap.
-  typedef SmallPtrSet<const OpaqueType*, 8> OpaqueTypesTy;
-  OpaqueTypesTy OpaqueTypes;
-
-  /// Used as an abstract type that will never be resolved.
-  OpaqueType *const AlwaysOpaqueTy;
+  /// TypeAllocator - All dynamically allocated types are allocated from this.
+  /// They live forever until the context is torn down.
+  BumpPtrAllocator TypeAllocator;
+  
+  DenseMap<unsigned, IntegerType*> IntegerTypes;
+  
+  typedef DenseMap<FunctionType*, bool, FunctionTypeKeyInfo> FunctionTypeMap;
+  FunctionTypeMap FunctionTypes;
+  typedef DenseMap<StructType*, bool, AnonStructTypeKeyInfo> StructTypeMap;
+  StructTypeMap AnonStructTypes;
+  StringMap<StructType*> NamedStructTypes;
+  unsigned NamedStructTypesUniqueID;
+    
+  DenseMap<std::pair<Type *, uint64_t>, ArrayType*> ArrayTypes;
+  DenseMap<std::pair<Type *, unsigned>, VectorType*> VectorTypes;
+  DenseMap<Type*, PointerType*> PointerTypes;  // Pointers in AddrSpace = 0
+  DenseMap<std::pair<Type*, unsigned>, PointerType*> ASPointerTypes;
 
 
   /// ValueHandles - This map keeps track of all of the value handles that are

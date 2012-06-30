@@ -1,4 +1,4 @@
-; RUN: llc < %s -mtriple=thumbv6-apple-darwin -relocation-model=pic -disable-fp-elim -mattr=+v6 | FileCheck %s
+; RUN: llc < %s -mtriple=thumbv6-apple-darwin -relocation-model=pic -disable-fp-elim -mattr=+v6 -verify-machineinstrs | FileCheck %s
 ; rdar://7157006
 
 %struct.FILE = type { i8*, i32, i32, i16, i16, %struct.__sbuf, i32, i8*, i32 (i8*)*, i32 (i8*, i8*, i32)*, i64 (i8*, i64, i32)*, i32 (i8*, i8*, i32)*, %struct.__sbuf, %struct.__sFILEX*, i32, [3 x i8], [1 x i8], %struct.__sbuf, i32, i64 }
@@ -11,7 +11,7 @@
 
 define i32 @t(%struct.asl_file_t* %s, i64 %off, i64* %out) nounwind optsize {
 ; CHECK: t:
-; CHECK: adds r0, #8
+; CHECK: adds {{r[0-7]}}, #8
 entry:
   %val = alloca i64, align 4                      ; <i64*> [#uses=3]
   %0 = icmp eq %struct.asl_file_t* %s, null       ; <i1> [#uses=1]

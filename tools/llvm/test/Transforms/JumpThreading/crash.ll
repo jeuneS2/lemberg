@@ -18,7 +18,7 @@ bb13:		; preds = %bb
 	br label %bb
 
 bb110:		; preds = %bb
-	%mrv_gr124 = getresult %struct.system__secondary_stack__mark_id %tmp120, 1		; <i64> [#uses=0]
+	%mrv_gr124 = extractvalue %struct.system__secondary_stack__mark_id %tmp120, 1		; <i64> [#uses=0]
 	unreachable
 }
 
@@ -399,7 +399,7 @@ if.then237:
   br label %lbl_664
 
 lbl_596:                                          ; preds = %lbl_664, %for.end37
-  volatile store i64 undef, i64* undef, align 4
+  store volatile i64 undef, i64* undef, align 4
   br label %for.cond111
 
 for.cond111:                                      ; preds = %safe_sub_func_int64_t_s_s.exit, %lbl_596

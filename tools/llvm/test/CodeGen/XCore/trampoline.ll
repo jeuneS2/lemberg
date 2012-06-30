@@ -5,13 +5,14 @@
 define void @f() nounwind {
 entry:
 ; CHECK: f:
-; CHECK ldap r11, g.1101
-; CHECK stw r11, sp[7]
+; CHECK: ldap r11, g.1101
+; CHECK: stw r11, sp[7]
   %TRAMP.23 = alloca [20 x i8], align 2
   %FRAME.0 = alloca %struct.FRAME.f, align 4
   %TRAMP.23.sub = getelementptr inbounds [20 x i8]* %TRAMP.23, i32 0, i32 0
   %FRAME.02 = bitcast %struct.FRAME.f* %FRAME.0 to i8*
-  %tramp = call i8* @llvm.init.trampoline(i8* %TRAMP.23.sub, i8* bitcast (i32 (%struct.FRAME.f*)* @g.1101 to i8*), i8* %FRAME.02)
+  call void @llvm.init.trampoline(i8* %TRAMP.23.sub, i8* bitcast (i32 (%struct.FRAME.f*)* @g.1101 to i8*), i8* %FRAME.02)
+  %tramp = call i8* @llvm.adjust.trampoline(i8* %TRAMP.23.sub)
   %0 = getelementptr inbounds %struct.FRAME.f* %FRAME.0, i32 0, i32 1
   %1 = bitcast i8* %tramp to i32 ()*
   store i32 ()* %1, i32 ()** %0, align 4
@@ -32,6 +33,7 @@ entry:
   ret i32 %1
 }
 
-declare i8* @llvm.init.trampoline(i8*, i8*, i8*) nounwind
+declare void @llvm.init.trampoline(i8*, i8*, i8*) nounwind
+declare i8* @llvm.adjust.trampoline(i8*) nounwind
 
 declare void @h(i32 ()*)

@@ -41,16 +41,15 @@ VerifyRegionInfoX("verify-region-info", cl::location(VerifyRegionInfo),
 STATISTIC(numRegions,       "The # of regions");
 STATISTIC(numSimpleRegions, "The # of simple regions");
 
-//===----------------------------------------------------------------------===//
-/// PrintStyle - Print region in difference ways.
-enum PrintStyle { PrintNone, PrintBB, PrintRN  };
-
-static cl::opt<enum PrintStyle> printStyle("print-region-style", cl::Hidden,
+static cl::opt<enum Region::PrintStyle> printStyle("print-region-style",
+  cl::Hidden,
   cl::desc("style of printing regions"),
   cl::values(
-    clEnumValN(PrintNone, "none",  "print no details"),
-    clEnumValN(PrintBB, "bb",  "print regions in detail with block_iterator"),
-    clEnumValN(PrintRN, "rn",  "print regions in detail with element_iterator"),
+    clEnumValN(Region::PrintNone, "none",  "print no details"),
+    clEnumValN(Region::PrintBB, "bb",
+               "print regions in detail with block_iterator"),
+    clEnumValN(Region::PrintRN, "rn",
+               "print regions in detail with element_iterator"),
     clEnumValEnd));
 //===----------------------------------------------------------------------===//
 /// Region Implementation
@@ -187,18 +186,16 @@ std::string Region::getNameStr() const {
     raw_string_ostream OS(entryName);
 
     WriteAsOperand(OS, getEntry(), false);
-    entryName = OS.str();
   } else
-    entryName = getEntry()->getNameStr();
+    entryName = getEntry()->getName();
 
   if (getExit()) {
     if (getExit()->getName().empty()) {
       raw_string_ostream OS(exitName);
 
       WriteAsOperand(OS, getExit(), false);
-      exitName = OS.str();
     } else
-      exitName = getExit()->getNameStr();
+      exitName = getExit()->getName();
   } else
     exitName = "<Function Return>";
 
@@ -413,7 +410,8 @@ Region *Region::getExpandedRegion() const {
   return new Region(getEntry(), R->getExit(), RI, DT);
 }
 
-void Region::print(raw_ostream &OS, bool print_tree, unsigned level) const {
+void Region::print(raw_ostream &OS, bool print_tree, unsigned level,
+                   enum PrintStyle Style) const {
   if (print_tree)
     OS.indent(level*2) << "[" << level << "] " << getNameStr();
   else
@@ -422,14 +420,14 @@ void Region::print(raw_ostream &OS, bool print_tree, unsigned level) const {
   OS << "\n";
 
 
-  if (printStyle != PrintNone) {
+  if (Style != PrintNone) {
     OS.indent(level*2) << "{\n";
     OS.indent(level*2 + 2);
 
-    if (printStyle == PrintBB) {
+    if (Style == PrintBB) {
       for (const_block_iterator I = block_begin(), E = block_end(); I!=E; ++I)
         OS << **I << ", "; // TODO: remove the last ","
-    } else if (printStyle == PrintRN) {
+    } else if (Style == PrintRN) {
       for (const_element_iterator I = element_begin(), E = element_end(); I!=E; ++I)
         OS << **I << ", "; // TODO: remove the last ",
     }
@@ -439,14 +437,14 @@ void Region::print(raw_ostream &OS, bool print_tree, unsigned level) const {
 
   if (print_tree)
     for (const_iterator RI = begin(), RE = end(); RI != RE; ++RI)
-      (*RI)->print(OS, print_tree, level+1);
+      (*RI)->print(OS, print_tree, level+1, Style);
 
-  if (printStyle != PrintNone)
+  if (Style != PrintNone)
     OS.indent(level*2) << "} \n";
 }
 
 void Region::dump() const {
-  print(dbgs(), true, getDepth());
+  print(dbgs(), true, getDepth(), printStyle.getValue());
 }
 
 void Region::clearNodeCache() {
@@ -652,7 +650,7 @@ void RegionInfo::buildRegionsTree(DomTreeNode *N, Region *region) {
   // This basic block is a start block of a region. It is already in the
   // BBtoRegion relation. Only the child basic blocks have to be updated.
   if (it != BBtoRegion.end()) {
-    Region *newRegion = it->second;;
+    Region *newRegion = it->second;
     region->addSubRegion(getTopMostParent(newRegion));
     region = newRegion;
   } else {
@@ -714,7 +712,7 @@ void RegionInfo::getAnalysisUsage(AnalysisUsage &AU) const {
 
 void RegionInfo::print(raw_ostream &OS, const Module *) const {
   OS << "Region tree:\n";
-  TopLevelRegion->print(OS, true, 0);
+  TopLevelRegion->print(OS, true, 0, printStyle.getValue());
   OS << "End region tree\n";
 }
 

@@ -35,7 +35,8 @@ using namespace llvm;
 // if frame pointer elimination is disabled.
 bool LembergFrameLowering::hasFP(const MachineFunction &MF) const {
   const MachineFrameInfo *MFI = MF.getFrameInfo();
-  return DisableFramePointerElim(MF) || MFI->hasVarSizedObjects() || MFI->isFrameAddressTaken();
+  return MF.getTarget().Options.DisableFramePointerElim(MF) ||
+	MFI->hasVarSizedObjects() || MFI->isFrameAddressTaken();
 }
 
 void LembergFrameLowering::
@@ -263,9 +264,6 @@ void LembergFrameLowering::emitPrologue(MachineFunction &MF) const {
   if (hasFP(MF)) {
 	  // Save old frame pointer
 	  BuildStackStore(MF, MBB, MBBI, TRI->getFrameRegister(MF), CallFrameBytes);
-  }
-
-  if (hasFP(MF)) {
 	  // Copy stack pointer to frame pointer
 	  BuildMI(MBB, MBBI, DL, TII->get(Lemberg::MOVEaa), TRI->getFrameRegister(MF))
 	  	  .addImm(-1).addReg(0)
@@ -300,9 +298,6 @@ void LembergFrameLowering::emitEpilogue(MachineFunction &MF, MachineBasicBlock &
 	  BuildMI(MBB, MBBI, DL, TII->get(Lemberg::MOVEaa), TRI->getStackRegister())
 	  	  .addImm(-1).addReg(0)
 		  .addReg(TRI->getFrameRegister(MF));
-  }
-
-  if (hasFP(MF)) {
 	  // Restore old frame pointer
 	  BuildStackLoad(MF, MBB, MBBI, TRI->getFrameRegister(MF), CallFrameBytes);
   }

@@ -1,4 +1,4 @@
-//===---------------------------- system_error ----------------------------===//
+//===---------------------------- system_error ------------------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -222,7 +222,7 @@ template <> struct hash<std::error_code>;
 
 */
 
-#include "llvm/Config/config.h"
+#include "llvm/Config/llvm-config.h"
 #include "llvm/Support/type_traits.h"
 #include <cerrno>
 #include <string>
@@ -470,17 +470,6 @@ template <> struct hash<std::error_code>;
 
 namespace llvm {
 
-template <class T, T v>
-struct integral_constant {
-  typedef T value_type;
-  static const value_type value = v;
-  typedef integral_constant<T,v> type;
-  operator value_type() { return value; }
-};
-
-typedef integral_constant<bool, true> true_type;
-typedef integral_constant<bool, false> false_type;
-
 // is_error_code_enum
 
 template <class Tp> struct is_error_code_enum : public false_type {};
@@ -669,7 +658,7 @@ const error_category& generic_category();
 const error_category& system_category();
 
 /// Get the error_category used for errno values from POSIX functions. This is
-/// the same as the system_category on POISIX systems, but is the same as the
+/// the same as the system_category on POSIX systems, but is the same as the
 /// generic_category on Windows.
 const error_category& posix_category();
 
@@ -737,6 +726,10 @@ class error_code {
   const error_category* _cat_;
 public:
   error_code() : _val_(0), _cat_(&system_category()) {}
+
+  static error_code success() {
+    return error_code();
+  }
 
   error_code(int _val, const error_category& _cat)
     : _val_(_val), _cat_(&_cat) {}

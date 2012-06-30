@@ -604,6 +604,22 @@ def CortexA9Itineraries : ProcessorItineraries<
                                InstrStage<2,  [A9_NPipe]>],
                               [9, 1, 1, 1]>,
   //
+  // Single-precision Fused FP MAC
+  InstrItinData<IIC_fpFMAC32, [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
+                               InstrStage<1, [A9_MUX0], 0>,
+                               InstrStage<1, [A9_DRegsVFP], 0, Required>,
+                               InstrStage<9, [A9_DRegsN],   0, Reserved>,
+                               InstrStage<1, [A9_NPipe]>],
+                              [8, 1, 1, 1]>,
+  //
+  // Double-precision Fused FP MAC
+  InstrItinData<IIC_fpFMAC64, [InstrStage<1,  [A9_Issue0, A9_Issue1], 0>,
+                               InstrStage<1,  [A9_MUX0], 0>,
+                               InstrStage<1,  [A9_DRegsVFP], 0, Required>,
+                               InstrStage<10, [A9_DRegsN],  0, Reserved>,
+                               InstrStage<2,  [A9_NPipe]>],
+                              [9, 1, 1, 1]>,
+  //
   // Single-precision FP DIV
   InstrItinData<IIC_fpDIV32 , [InstrStage<1,  [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1,  [A9_MUX0], 0>,
@@ -656,19 +672,19 @@ def CortexA9Itineraries : ProcessorItineraries<
                               [1, 1, 1]>,
   //
   // Single-precision to Integer Move
+  //
+  // On A9 move-from-VFP is free to issue with no stall if other VFP
+  // operations are in flight. I assume it still can't dual-issue though.
   InstrItinData<IIC_fpMOVSI,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
-                               InstrStage<1, [A9_MUX0], 0>,
-                               InstrStage<1, [A9_DRegsVFP], 0, Required>,
-                               InstrStage<2, [A9_DRegsN],   0, Reserved>,
-                               InstrStage<1, [A9_NPipe]>],
+                               InstrStage<1, [A9_MUX0], 0>],
                               [2, 1]>,
   //
   // Double-precision to Integer Move
+  //
+  // On A9 move-from-VFP is free to issue with no stall if other VFP
+  // operations are in flight. I assume it still can't dual-issue though.
   InstrItinData<IIC_fpMOVDI,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
-                               InstrStage<1, [A9_MUX0], 0>,
-                               InstrStage<1, [A9_DRegsVFP], 0, Required>,
-                               InstrStage<2, [A9_DRegsN],   0, Reserved>,
-                               InstrStage<1, [A9_NPipe]>],
+                               InstrStage<1, [A9_MUX0], 0>],
                               [2, 1, 1]>,
   //
   // Single-precision FP Load
@@ -691,20 +707,22 @@ def CortexA9Itineraries : ProcessorItineraries<
                               [2, 1]>,
   //
   // FP Load Multiple
+  // FIXME: assumes 2 doubles which requires 2 LS cycles.
   InstrItinData<IIC_fpLoad_m, [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsVFP], 0, Required>,
                                InstrStage<2, [A9_DRegsN],   0, Reserved>,
                                InstrStage<1, [A9_NPipe], 0>,
-                               InstrStage<1, [A9_LSUnit]>], [1, 1, 1, 1]>,
+                               InstrStage<2, [A9_LSUnit]>], [1, 1, 1, 1]>,
   //
   // FP Load Multiple + update
+  // FIXME: assumes 2 doubles which requires 2 LS cycles.
   InstrItinData<IIC_fpLoad_mu,[InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsVFP], 0, Required>,
                                InstrStage<2, [A9_DRegsN],   0, Reserved>,
                                InstrStage<1, [A9_NPipe], 0>,
-                               InstrStage<1, [A9_LSUnit]>], [2, 1, 1, 1]>,
+                               InstrStage<2, [A9_LSUnit]>], [2, 1, 1, 1]>,
   //
   // Single-precision FP Store
   InstrItinData<IIC_fpStore32,[InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
@@ -725,205 +743,206 @@ def CortexA9Itineraries : ProcessorItineraries<
                               [1, 1]>,
   //
   // FP Store Multiple
+  // FIXME: assumes 2 doubles which requires 2 LS cycles.
   InstrItinData<IIC_fpStore_m,[InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsVFP], 0, Required>,
                                InstrStage<2, [A9_DRegsN],   0, Reserved>,
                                InstrStage<1, [A9_NPipe], 0>,
-                               InstrStage<1, [A9_LSUnit]>], [1, 1, 1, 1]>,
+                               InstrStage<2, [A9_LSUnit]>], [1, 1, 1, 1]>,
   //
   // FP Store Multiple + update
+  // FIXME: assumes 2 doubles which requires 2 LS cycles.
   InstrItinData<IIC_fpStore_mu,[InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                 InstrStage<1, [A9_MUX0], 0>,
                                 InstrStage<1, [A9_DRegsVFP], 0, Required>,
                                 InstrStage<2, [A9_DRegsN],   0, Reserved>,
                                 InstrStage<1, [A9_NPipe], 0>,
-                                InstrStage<1, [A9_LSUnit]>], [2, 1, 1, 1]>,
+                                InstrStage<2, [A9_LSUnit]>], [2, 1, 1, 1]>,
   // NEON
   // VLD1
-  // FIXME: Conservatively assume insufficent alignment.
   InstrItinData<IIC_VLD1,     [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
-                              [2, 1]>,
+                               InstrStage<7, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
+                              [1, 1]>,
   // VLD1x2
   InstrItinData<IIC_VLD1x2,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
-                              [2, 2, 1]>,
+                               InstrStage<7, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
+                              [1, 1, 1]>,
   // VLD1x3
   InstrItinData<IIC_VLD1x3,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [2, 2, 3, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [1, 1, 2, 1]>,
   // VLD1x4
   InstrItinData<IIC_VLD1x4,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [2, 2, 3, 3, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [1, 1, 2, 2, 1]>,
   // VLD1u
   InstrItinData<IIC_VLD1u,    [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
-                              [2, 2, 1]>,
+                               InstrStage<7, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
+                              [1, 2, 1]>,
   // VLD1x2u
   InstrItinData<IIC_VLD1x2u,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
-                              [2, 2, 2, 1]>,
+                               InstrStage<7, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
+                              [1, 1, 2, 1]>,
   // VLD1x3u
   InstrItinData<IIC_VLD1x3u,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [2, 2, 3, 2, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [1, 1, 2, 2, 1]>,
   // VLD1x4u
   InstrItinData<IIC_VLD1x4u,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [2, 2, 3, 3, 2, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [1, 1, 2, 2, 2, 1]>,
   //
   // VLD1ln
   InstrItinData<IIC_VLD1ln,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [4, 1, 1, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [3, 1, 1, 1]>,
   //
   // VLD1lnu
   InstrItinData<IIC_VLD1lnu,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [4, 2, 1, 1, 1, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [3, 2, 1, 1, 1, 1]>,
   //
   // VLD1dup
   InstrItinData<IIC_VLD1dup,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
-                              [3, 1]>,
+                               InstrStage<7, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
+                              [2, 1]>,
   //
   // VLD1dupu
   InstrItinData<IIC_VLD1dupu, [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
-                              [3, 2, 1, 1]>,
+                               InstrStage<7, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
+                              [2, 2, 1, 1]>,
   //
   // VLD2
   InstrItinData<IIC_VLD2,     [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
                                // Extra latency cycles since wbck is 7 cycles
-                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
-                              [3, 3, 1]>,
+                               InstrStage<7, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
+                              [2, 2, 1]>,
   //
   // VLD2x2
   InstrItinData<IIC_VLD2x2,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [3, 4, 3, 4, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [2, 3, 2, 3, 1]>,
   //
   // VLD2ln
   InstrItinData<IIC_VLD2ln,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [4, 4, 1, 1, 1, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [3, 3, 1, 1, 1, 1]>,
   //
   // VLD2u
   InstrItinData<IIC_VLD2u,    [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
                                // Extra latency cycles since wbck is 7 cycles
-                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
-                              [3, 3, 2, 1, 1, 1]>,
+                               InstrStage<7, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
+                              [2, 2, 2, 1, 1, 1]>,
   //
   // VLD2x2u
   InstrItinData<IIC_VLD2x2u,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [3, 4, 3, 4, 2, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [2, 3, 2, 3, 2, 1]>,
   //
   // VLD2lnu
   InstrItinData<IIC_VLD2lnu,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [4, 4, 2, 1, 1, 1, 1, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [3, 3, 2, 1, 1, 1, 1, 1]>,
   //
   // VLD2dup
   InstrItinData<IIC_VLD2dup,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
-                              [3, 3, 1]>,
+                               InstrStage<7, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
+                              [2, 2, 1]>,
   //
   // VLD2dupu
   InstrItinData<IIC_VLD2dupu, [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
-                              [3, 3, 2, 1, 1]>,
+                               InstrStage<7, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
+                              [2, 2, 2, 1, 1]>,
   //
   // VLD3
   InstrItinData<IIC_VLD3,     [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<10,[A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<4, [A9_NPipe], 0>,
-                               InstrStage<4, [A9_LSUnit]>],
-                              [4, 4, 5, 1]>,
+                               InstrStage<9,[A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<3, [A9_NPipe], 0>,
+                               InstrStage<3, [A9_LSUnit]>],
+                              [3, 3, 4, 1]>,
   //
   // VLD3ln
   InstrItinData<IIC_VLD3ln,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
@@ -938,10 +957,10 @@ def CortexA9Itineraries : ProcessorItineraries<
   InstrItinData<IIC_VLD3u,    [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<10,[A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<4, [A9_NPipe], 0>,
-                               InstrStage<4, [A9_LSUnit]>],
-                              [4, 4, 5, 2, 1]>,
+                               InstrStage<9,[A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<3, [A9_NPipe], 0>,
+                               InstrStage<3, [A9_LSUnit]>],
+                              [3, 3, 4, 2, 1]>,
   //
   // VLD3lnu
   InstrItinData<IIC_VLD3lnu,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
@@ -974,108 +993,108 @@ def CortexA9Itineraries : ProcessorItineraries<
   InstrItinData<IIC_VLD4,     [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<10,[A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<4, [A9_NPipe], 0>,
-                               InstrStage<4, [A9_LSUnit]>],
-                              [4, 4, 5, 5, 1]>,
+                               InstrStage<9,[A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<3, [A9_NPipe], 0>,
+                               InstrStage<3, [A9_LSUnit]>],
+                              [3, 3, 4, 4, 1]>,
   //
   // VLD4ln
   InstrItinData<IIC_VLD4ln,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<11,[A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<5, [A9_NPipe], 0>,
-                               InstrStage<5, [A9_LSUnit]>],
-                              [5, 5, 6, 6, 1, 1, 1, 1, 2, 2]>,
+                               InstrStage<10,[A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<4, [A9_NPipe], 0>,
+                               InstrStage<4, [A9_LSUnit]>],
+                              [4, 4, 5, 5, 1, 1, 1, 1, 2, 2]>,
   //
   // VLD4u
   InstrItinData<IIC_VLD4u,    [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<10,[A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<4, [A9_NPipe], 0>,
-                               InstrStage<4, [A9_LSUnit]>],
-                              [4, 4, 5, 5, 2, 1]>,
+                               InstrStage<9,[A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<3, [A9_NPipe], 0>,
+                               InstrStage<3, [A9_LSUnit]>],
+                              [3, 3, 4, 4, 2, 1]>,
   //
   // VLD4lnu
   InstrItinData<IIC_VLD4lnu,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<11,[A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<5, [A9_NPipe], 0>,
-                               InstrStage<5, [A9_LSUnit]>],
-                              [5, 5, 6, 6, 2, 1, 1, 1, 1, 1, 2, 2]>,
+                               InstrStage<10,[A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<4, [A9_NPipe], 0>,
+                               InstrStage<4, [A9_LSUnit]>],
+                              [4, 4, 5, 5, 2, 1, 1, 1, 1, 1, 2, 2]>,
   //
   // VLD4dup
   InstrItinData<IIC_VLD4dup,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [3, 3, 4, 4, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [2, 2, 3, 3, 1]>,
   //
   // VLD4dupu
   InstrItinData<IIC_VLD4dupu, [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<9, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
-                              [3, 3, 4, 4, 2, 1, 1]>,
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
+                              [2, 2, 3, 3, 2, 1, 1]>,
   //
   // VST1
   InstrItinData<IIC_VST1,     [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
+                               InstrStage<1, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
                               [1, 1, 1]>,
   //
   // VST1x2
   InstrItinData<IIC_VST1x2,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
+                               InstrStage<1, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
                               [1, 1, 1, 1]>,
   //
   // VST1x3
   InstrItinData<IIC_VST1x3,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
                               [1, 1, 1, 1, 2]>,
   //
   // VST1x4
   InstrItinData<IIC_VST1x4,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
                               [1, 1, 1, 1, 2, 2]>,
   //
   // VST1u
   InstrItinData<IIC_VST1u,    [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
+                               InstrStage<1, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
                               [2, 1, 1, 1, 1]>,
   //
   // VST1x2u
   InstrItinData<IIC_VST1x2u,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
+                               InstrStage<1, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
                               [2, 1, 1, 1, 1, 1]>,
   //
   // VST1x3u
@@ -1083,44 +1102,44 @@ def CortexA9Itineraries : ProcessorItineraries<
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
                                InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
                               [2, 1, 1, 1, 1, 1, 2]>,
   //
   // VST1x4u
   InstrItinData<IIC_VST1x4u,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
                               [2, 1, 1, 1, 1, 1, 2, 2]>,
   //
   // VST1ln
   InstrItinData<IIC_VST1ln,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
+                               InstrStage<1, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
                               [1, 1, 1]>,
   //
   // VST1lnu
   InstrItinData<IIC_VST1lnu,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<1, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
                               [2, 1, 1, 1, 1]>,
   //
   // VST2
   InstrItinData<IIC_VST2,     [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
+                               InstrStage<1, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
                               [1, 1, 1, 1]>,
   //
   // VST2x2
@@ -1136,9 +1155,9 @@ def CortexA9Itineraries : ProcessorItineraries<
   InstrItinData<IIC_VST2u,    [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
+                               InstrStage<1, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
                               [2, 1, 1, 1, 1, 1]>,
   //
   // VST2x2u
@@ -1154,36 +1173,36 @@ def CortexA9Itineraries : ProcessorItineraries<
   InstrItinData<IIC_VST2ln,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<2, [A9_NPipe], 0>,
-                               InstrStage<2, [A9_LSUnit]>],
+                               InstrStage<1, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
                               [1, 1, 1, 1]>,
   //
   // VST2lnu
   InstrItinData<IIC_VST2lnu,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<1, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<1, [A9_NPipe], 0>,
+                               InstrStage<1, [A9_LSUnit]>],
                               [2, 1, 1, 1, 1, 1]>,
   //
   // VST3
   InstrItinData<IIC_VST3,     [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
                               [1, 1, 1, 1, 2]>,
   //
   // VST3u
   InstrItinData<IIC_VST3u,    [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
                               [2, 1, 1, 1, 1, 1, 2]>,
   //
   // VST3ln
@@ -1208,36 +1227,36 @@ def CortexA9Itineraries : ProcessorItineraries<
   InstrItinData<IIC_VST4,     [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
                               [1, 1, 1, 1, 2, 2]>,
   //
   // VST4u
   InstrItinData<IIC_VST4u,    [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
                               [2, 1, 1, 1, 1, 1, 2, 2]>,
   //
   // VST4ln
   InstrItinData<IIC_VST4ln,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
                               [1, 1, 1, 1, 2, 2]>,
   //
   // VST4lnu
   InstrItinData<IIC_VST4lnu,  [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
-                               InstrStage<3, [A9_DRegsVFP], 0, Reserved>,
-                               InstrStage<3, [A9_NPipe], 0>,
-                               InstrStage<3, [A9_LSUnit]>],
+                               InstrStage<2, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe], 0>,
+                               InstrStage<2, [A9_LSUnit]>],
                               [2, 1, 1, 1, 1, 1, 2, 2]>,
 
   //
@@ -1687,6 +1706,26 @@ def CortexA9Itineraries : ProcessorItineraries<
   // Result written in N9, but that is relative to the last cycle of multicycle,
   // so we use 10 for those cases
   InstrItinData<IIC_VMACQ,    [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
+                               InstrStage<1, [A9_MUX0], 0>,
+                               InstrStage<1, [A9_DRegsN],   0, Required>,
+                               // Extra latency cycles since wbck is 9 cycles
+                               InstrStage<10, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<4, [A9_NPipe]>],
+                              [8, 4, 2, 1]>,
+  //
+  // Double-register Fused FP Multiple-Accumulate
+  InstrItinData<IIC_VFMACD,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
+                               InstrStage<1, [A9_MUX0], 0>,
+                               InstrStage<1, [A9_DRegsN],   0, Required>,
+                               // Extra latency cycles since wbck is 7 cycles
+                               InstrStage<8, [A9_DRegsVFP], 0, Reserved>,
+                               InstrStage<2, [A9_NPipe]>],
+                              [6, 3, 2, 1]>,
+  //
+  // Quad-register Fused FP Multiple-Accumulate
+  // Result written in N9, but that is relative to the last cycle of multicycle,
+  // so we use 10 for those cases
+  InstrItinData<IIC_VFMACQ,   [InstrStage<1, [A9_Issue0, A9_Issue1], 0>,
                                InstrStage<1, [A9_MUX0], 0>,
                                InstrStage<1, [A9_DRegsN],   0, Required>,
                                // Extra latency cycles since wbck is 9 cycles

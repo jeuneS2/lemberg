@@ -1,5 +1,5 @@
 ; RUN: llc < %s -fast-isel -fast-isel-abort -march=x86 -mattr=sse2
-; RUN: llc < %s -fast-isel -fast-isel-abort -march=x86-64
+; RUN: llc < %s -fast-isel -fast-isel-abort -mtriple=x86_64-apple-darwin10
 
 ; This tests very minimal fast-isel functionality.
 
@@ -20,13 +20,14 @@ fast:
   %t6 = add i32 %t5, 2
   %t7 = getelementptr i32* %y, i32 1
   %t8 = getelementptr i32* %t7, i32 %t6
+  call void asm sideeffect "hello world", ""()
   br label %exit
 
 exit:
   ret i32* %t8
 }
 
-define double @bar(double* %p, double* %q) nounwind {
+define void @bar(double* %p, double* %q) nounwind {
 entry:
   %r = load double* %p
   %s = load double* %q
@@ -40,7 +41,8 @@ fast:
   br label %exit
 
 exit:
-  ret double %t3
+  store double %t3, double* %q
+  ret void
 }
 
 define i32 @cast() nounwind {
@@ -67,24 +69,28 @@ define i8* @inttoptr_i32(i32 %p) nounwind {
   ret i8* %t
 }
 
-define i8 @trunc_i32_i8(i32 %x) signext nounwind  {
+define void @trunc_i32_i8(i32 %x, i8* %p) nounwind  {
 	%tmp1 = trunc i32 %x to i8
-	ret i8 %tmp1
+	store i8 %tmp1, i8* %p
+	ret void
 }
 
-define i8 @trunc_i16_i8(i16 signext %x) signext nounwind  {
+define void @trunc_i16_i8(i16 signext %x, i8* %p) nounwind  {
 	%tmp1 = trunc i16 %x to i8
-	ret i8 %tmp1
+	store i8 %tmp1, i8* %p
+	ret void
 }
 
-define i8 @shl_i8(i8 %a, i8 %c) nounwind {
-       %tmp = shl i8 %a, %c
-       ret i8 %tmp
+define void @shl_i8(i8 %a, i8 %c, i8* %p) nounwind {
+  %tmp = shl i8 %a, %c
+  store i8 %tmp, i8* %p
+  ret void
 }
 
-define i8 @mul_i8(i8 %a) nounwind {
-       %tmp = mul i8 %a, 17
-       ret i8 %tmp
+define void @mul_i8(i8 %a, i8* %p) nounwind {
+  %tmp = mul i8 %a, 17
+  store i8 %tmp, i8* %p
+  ret void
 }
 
 define void @load_store_i1(i1* %p, i1* %q) nounwind {
@@ -92,3 +98,22 @@ define void @load_store_i1(i1* %p, i1* %q) nounwind {
   store i1 %t, i1* %q
   ret void
 }
+
+@crash_test1x = external global <2 x i32>, align 8
+
+define void @crash_test1() nounwind ssp {
+  %tmp = load <2 x i32>* @crash_test1x, align 8
+  %neg = xor <2 x i32> %tmp, <i32 -1, i32 -1>
+  ret void
+}
+
+declare void @llvm.lifetime.start(i64, i8* nocapture) nounwind
+
+define i64* @life() nounwind {
+  %a1 = alloca i64*, align 8
+  %a2 = bitcast i64** %a1 to i8*
+  call void @llvm.lifetime.start(i64 -1, i8* %a2) nounwind      
+  %a3 = load i64** %a1, align 8
+  ret i64* %a3
+}
+

@@ -20,7 +20,7 @@
 #include "llvm/Support/LeakDetector.h"
 using namespace llvm;
 
-Instruction::Instruction(const Type *ty, unsigned it, Use *Ops, unsigned NumOps,
+Instruction::Instruction(Type *ty, unsigned it, Use *Ops, unsigned NumOps,
                          Instruction *InsertBefore)
   : User(ty, Value::InstructionVal + it, Ops, NumOps), Parent(0) {
   // Make sure that we get added to a basicblock
@@ -34,7 +34,7 @@ Instruction::Instruction(const Type *ty, unsigned it, Use *Ops, unsigned NumOps,
   }
 }
 
-Instruction::Instruction(const Type *ty, unsigned it, Use *Ops, unsigned NumOps,
+Instruction::Instruction(Type *ty, unsigned it, Use *Ops, unsigned NumOps,
                          BasicBlock *InsertAtEnd)
   : User(ty, Value::InstructionVal + it, Ops, NumOps), Parent(0) {
   // Make sure that we get added to a basicblock
@@ -101,7 +101,7 @@ const char *Instruction::getOpcodeName(unsigned OpCode) {
   case Switch: return "switch";
   case IndirectBr: return "indirectbr";
   case Invoke: return "invoke";
-  case Unwind: return "unwind";
+  case Resume: return "resume";
   case Unreachable: return "unreachable";
 
   // Standard binary operators...
@@ -127,6 +127,9 @@ const char *Instruction::getOpcodeName(unsigned OpCode) {
   case Alloca:        return "alloca";
   case Load:          return "load";
   case Store:         return "store";
+  case AtomicCmpXchg: return "cmpxchg";
+  case AtomicRMW:     return "atomicrmw";
+  case Fence:         return "fence";
   case GetElementPtr: return "getelementptr";
 
   // Convert instructions...
@@ -158,11 +161,10 @@ const char *Instruction::getOpcodeName(unsigned OpCode) {
   case ShuffleVector:  return "shufflevector";
   case ExtractValue:   return "extractvalue";
   case InsertValue:    return "insertvalue";
+  case LandingPad:     return "landingpad";
 
   default: return "<Invalid operator> ";
   }
-
-  return 0;
 }
 
 /// isIdenticalTo - Return true if the specified instruction is exactly
@@ -191,10 +193,14 @@ bool Instruction::isIdenticalToWhenDefined(const Instruction *I) const {
   // Check special state that is a part of some instructions.
   if (const LoadInst *LI = dyn_cast<LoadInst>(this))
     return LI->isVolatile() == cast<LoadInst>(I)->isVolatile() &&
-           LI->getAlignment() == cast<LoadInst>(I)->getAlignment();
+           LI->getAlignment() == cast<LoadInst>(I)->getAlignment() &&
+           LI->getOrdering() == cast<LoadInst>(I)->getOrdering() &&
+           LI->getSynchScope() == cast<LoadInst>(I)->getSynchScope();
   if (const StoreInst *SI = dyn_cast<StoreInst>(this))
     return SI->isVolatile() == cast<StoreInst>(I)->isVolatile() &&
-           SI->getAlignment() == cast<StoreInst>(I)->getAlignment();
+           SI->getAlignment() == cast<StoreInst>(I)->getAlignment() &&
+           SI->getOrdering() == cast<StoreInst>(I)->getOrdering() &&
+           SI->getSynchScope() == cast<StoreInst>(I)->getSynchScope();
   if (const CmpInst *CI = dyn_cast<CmpInst>(this))
     return CI->getPredicate() == cast<CmpInst>(I)->getPredicate();
   if (const CallInst *CI = dyn_cast<CallInst>(this))
@@ -204,22 +210,22 @@ bool Instruction::isIdenticalToWhenDefined(const Instruction *I) const {
   if (const InvokeInst *CI = dyn_cast<InvokeInst>(this))
     return CI->getCallingConv() == cast<InvokeInst>(I)->getCallingConv() &&
            CI->getAttributes() == cast<InvokeInst>(I)->getAttributes();
-  if (const InsertValueInst *IVI = dyn_cast<InsertValueInst>(this)) {
-    if (IVI->getNumIndices() != cast<InsertValueInst>(I)->getNumIndices())
-      return false;
-    for (unsigned i = 0, e = IVI->getNumIndices(); i != e; ++i)
-      if (IVI->idx_begin()[i] != cast<InsertValueInst>(I)->idx_begin()[i])
-        return false;
-    return true;
-  }
-  if (const ExtractValueInst *EVI = dyn_cast<ExtractValueInst>(this)) {
-    if (EVI->getNumIndices() != cast<ExtractValueInst>(I)->getNumIndices())
-      return false;
-    for (unsigned i = 0, e = EVI->getNumIndices(); i != e; ++i)
-      if (EVI->idx_begin()[i] != cast<ExtractValueInst>(I)->idx_begin()[i])
-        return false;
-    return true;
-  }
+  if (const InsertValueInst *IVI = dyn_cast<InsertValueInst>(this))
+    return IVI->getIndices() == cast<InsertValueInst>(I)->getIndices();
+  if (const ExtractValueInst *EVI = dyn_cast<ExtractValueInst>(this))
+    return EVI->getIndices() == cast<ExtractValueInst>(I)->getIndices();
+  if (const FenceInst *FI = dyn_cast<FenceInst>(this))
+    return FI->getOrdering() == cast<FenceInst>(FI)->getOrdering() &&
+           FI->getSynchScope() == cast<FenceInst>(FI)->getSynchScope();
+  if (const AtomicCmpXchgInst *CXI = dyn_cast<AtomicCmpXchgInst>(this))
+    return CXI->isVolatile() == cast<AtomicCmpXchgInst>(I)->isVolatile() &&
+           CXI->getOrdering() == cast<AtomicCmpXchgInst>(I)->getOrdering() &&
+           CXI->getSynchScope() == cast<AtomicCmpXchgInst>(I)->getSynchScope();
+  if (const AtomicRMWInst *RMWI = dyn_cast<AtomicRMWInst>(this))
+    return RMWI->getOperation() == cast<AtomicRMWInst>(I)->getOperation() &&
+           RMWI->isVolatile() == cast<AtomicRMWInst>(I)->isVolatile() &&
+           RMWI->getOrdering() == cast<AtomicRMWInst>(I)->getOrdering() &&
+           RMWI->getSynchScope() == cast<AtomicRMWInst>(I)->getSynchScope();
 
   return true;
 }
@@ -242,10 +248,14 @@ bool Instruction::isSameOperationAs(const Instruction *I) const {
   // Check special state that is a part of some instructions.
   if (const LoadInst *LI = dyn_cast<LoadInst>(this))
     return LI->isVolatile() == cast<LoadInst>(I)->isVolatile() &&
-           LI->getAlignment() == cast<LoadInst>(I)->getAlignment();
+           LI->getAlignment() == cast<LoadInst>(I)->getAlignment() &&
+           LI->getOrdering() == cast<LoadInst>(I)->getOrdering() &&
+           LI->getSynchScope() == cast<LoadInst>(I)->getSynchScope();
   if (const StoreInst *SI = dyn_cast<StoreInst>(this))
     return SI->isVolatile() == cast<StoreInst>(I)->isVolatile() &&
-           SI->getAlignment() == cast<StoreInst>(I)->getAlignment();
+           SI->getAlignment() == cast<StoreInst>(I)->getAlignment() &&
+           SI->getOrdering() == cast<StoreInst>(I)->getOrdering() &&
+           SI->getSynchScope() == cast<StoreInst>(I)->getSynchScope();
   if (const CmpInst *CI = dyn_cast<CmpInst>(this))
     return CI->getPredicate() == cast<CmpInst>(I)->getPredicate();
   if (const CallInst *CI = dyn_cast<CallInst>(this))
@@ -256,22 +266,22 @@ bool Instruction::isSameOperationAs(const Instruction *I) const {
     return CI->getCallingConv() == cast<InvokeInst>(I)->getCallingConv() &&
            CI->getAttributes() ==
              cast<InvokeInst>(I)->getAttributes();
-  if (const InsertValueInst *IVI = dyn_cast<InsertValueInst>(this)) {
-    if (IVI->getNumIndices() != cast<InsertValueInst>(I)->getNumIndices())
-      return false;
-    for (unsigned i = 0, e = IVI->getNumIndices(); i != e; ++i)
-      if (IVI->idx_begin()[i] != cast<InsertValueInst>(I)->idx_begin()[i])
-        return false;
-    return true;
-  }
-  if (const ExtractValueInst *EVI = dyn_cast<ExtractValueInst>(this)) {
-    if (EVI->getNumIndices() != cast<ExtractValueInst>(I)->getNumIndices())
-      return false;
-    for (unsigned i = 0, e = EVI->getNumIndices(); i != e; ++i)
-      if (EVI->idx_begin()[i] != cast<ExtractValueInst>(I)->idx_begin()[i])
-        return false;
-    return true;
-  }
+  if (const InsertValueInst *IVI = dyn_cast<InsertValueInst>(this))
+    return IVI->getIndices() == cast<InsertValueInst>(I)->getIndices();
+  if (const ExtractValueInst *EVI = dyn_cast<ExtractValueInst>(this))
+    return EVI->getIndices() == cast<ExtractValueInst>(I)->getIndices();
+  if (const FenceInst *FI = dyn_cast<FenceInst>(this))
+    return FI->getOrdering() == cast<FenceInst>(I)->getOrdering() &&
+           FI->getSynchScope() == cast<FenceInst>(I)->getSynchScope();
+  if (const AtomicCmpXchgInst *CXI = dyn_cast<AtomicCmpXchgInst>(this))
+    return CXI->isVolatile() == cast<AtomicCmpXchgInst>(I)->isVolatile() &&
+           CXI->getOrdering() == cast<AtomicCmpXchgInst>(I)->getOrdering() &&
+           CXI->getSynchScope() == cast<AtomicCmpXchgInst>(I)->getSynchScope();
+  if (const AtomicRMWInst *RMWI = dyn_cast<AtomicRMWInst>(this))
+    return RMWI->getOperation() == cast<AtomicRMWInst>(I)->getOperation() &&
+           RMWI->isVolatile() == cast<AtomicRMWInst>(I)->isVolatile() &&
+           RMWI->getOrdering() == cast<AtomicRMWInst>(I)->getOrdering() &&
+           RMWI->getSynchScope() == cast<AtomicRMWInst>(I)->getSynchScope();
 
   return true;
 }
@@ -304,13 +314,16 @@ bool Instruction::mayReadFromMemory() const {
   default: return false;
   case Instruction::VAArg:
   case Instruction::Load:
+  case Instruction::Fence: // FIXME: refine definition of mayReadFromMemory
+  case Instruction::AtomicCmpXchg:
+  case Instruction::AtomicRMW:
     return true;
   case Instruction::Call:
     return !cast<CallInst>(this)->doesNotAccessMemory();
   case Instruction::Invoke:
     return !cast<InvokeInst>(this)->doesNotAccessMemory();
   case Instruction::Store:
-    return cast<StoreInst>(this)->isVolatile();
+    return !cast<StoreInst>(this)->isUnordered();
   }
 }
 
@@ -319,15 +332,18 @@ bool Instruction::mayReadFromMemory() const {
 bool Instruction::mayWriteToMemory() const {
   switch (getOpcode()) {
   default: return false;
+  case Instruction::Fence: // FIXME: refine definition of mayWriteToMemory
   case Instruction::Store:
   case Instruction::VAArg:
+  case Instruction::AtomicCmpXchg:
+  case Instruction::AtomicRMW:
     return true;
   case Instruction::Call:
     return !cast<CallInst>(this)->onlyReadsMemory();
   case Instruction::Invoke:
     return !cast<InvokeInst>(this)->onlyReadsMemory();
   case Instruction::Load:
-    return cast<LoadInst>(this)->isVolatile();
+    return !cast<LoadInst>(this)->isUnordered();
   }
 }
 
@@ -336,7 +352,7 @@ bool Instruction::mayWriteToMemory() const {
 bool Instruction::mayThrow() const {
   if (const CallInst *CI = dyn_cast<CallInst>(this))
     return !CI->doesNotThrow();
-  return false;
+  return isa<ResumeInst>(this);
 }
 
 /// isAssociative - Return true if the instruction is associative:
@@ -372,54 +388,6 @@ bool Instruction::isCommutative(unsigned op) {
   }
 }
 
-bool Instruction::isSafeToSpeculativelyExecute() const {
-  for (unsigned i = 0, e = getNumOperands(); i != e; ++i)
-    if (Constant *C = dyn_cast<Constant>(getOperand(i)))
-      if (C->canTrap())
-        return false;
-
-  switch (getOpcode()) {
-  default:
-    return true;
-  case UDiv:
-  case URem: {
-    // x / y is undefined if y == 0, but calcuations like x / 3 are safe.
-    ConstantInt *Op = dyn_cast<ConstantInt>(getOperand(1));
-    return Op && !Op->isNullValue();
-  }
-  case SDiv:
-  case SRem: {
-    // x / y is undefined if y == 0, and might be undefined if y == -1,
-    // but calcuations like x / 3 are safe.
-    ConstantInt *Op = dyn_cast<ConstantInt>(getOperand(1));
-    return Op && !Op->isNullValue() && !Op->isAllOnesValue();
-  }
-  case Load: {
-    const LoadInst *LI = cast<LoadInst>(this);
-    if (LI->isVolatile())
-      return false;
-    return LI->getPointerOperand()->isDereferenceablePointer();
-  }
-  case Call:
-    return false; // The called function could have undefined behavior or
-                  // side-effects.
-                  // FIXME: We should special-case some intrinsics (bswap,
-                  // overflow-checking arithmetic, etc.)
-  case VAArg:
-  case Alloca:
-  case Invoke:
-  case PHI:
-  case Store:
-  case Ret:
-  case Br:
-  case IndirectBr:
-  case Switch:
-  case Unwind:
-  case Unreachable:
-    return false; // Misc instructions which have effects
-  }
-}
-
 Instruction *Instruction::clone() const {
   Instruction *New = clone_impl();
   New->SubclassOptionalData = SubclassOptionalData;
@@ -429,8 +397,10 @@ Instruction *Instruction::clone() const {
   // Otherwise, enumerate and copy over metadata from the old instruction to the
   // new one.
   SmallVector<std::pair<unsigned, MDNode*>, 4> TheMDs;
-  getAllMetadata(TheMDs);
+  getAllMetadataOtherThanDebugLoc(TheMDs);
   for (unsigned i = 0, e = TheMDs.size(); i != e; ++i)
     New->setMetadata(TheMDs[i].first, TheMDs[i].second);
+  
+  New->setDebugLoc(getDebugLoc());
   return New;
 }

@@ -22,8 +22,8 @@ namespace llvm {
 
 BumpPtrAllocator::BumpPtrAllocator(size_t size, size_t threshold,
                                    SlabAllocator &allocator)
-    : SlabSize(size), SizeThreshold(threshold), Allocator(allocator),
-      CurSlab(0), BytesAllocated(0) { }
+    : SlabSize(size), SizeThreshold(std::min(size, threshold)),
+      Allocator(allocator), CurSlab(0), BytesAllocated(0) { }
 
 BumpPtrAllocator::~BumpPtrAllocator() {
   DeallocateSlabs(CurSlab);
@@ -136,6 +136,14 @@ unsigned BumpPtrAllocator::GetNumSlabs() const {
   return NumSlabs;
 }
 
+size_t BumpPtrAllocator::getTotalMemory() const {
+  size_t TotalMemory = 0;
+  for (MemSlab *Slab = CurSlab; Slab != 0; Slab = Slab->NextPtr) {
+    TotalMemory += Slab->Size;
+  }
+  return TotalMemory;
+}
+  
 void BumpPtrAllocator::PrintStats() const {
   unsigned NumSlabs = 0;
   size_t TotalMemory = 0;

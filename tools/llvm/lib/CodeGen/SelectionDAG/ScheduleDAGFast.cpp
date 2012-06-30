@@ -43,7 +43,7 @@ namespace {
     SmallVector<SUnit *, 16> Queue;
 
     bool empty() const { return Queue.empty(); }
-    
+
     void push(SUnit *U) {
       Queue.push_back(U);
     }
@@ -101,8 +101,8 @@ private:
   bool DelayForLiveRegsBottomUp(SUnit*, SmallVector<unsigned, 4>&);
   void ListScheduleBottomUp();
 
-  /// ForceUnitLatencies - The fast scheduler doesn't care about real latencies.
-  bool ForceUnitLatencies() const { return true; }
+  /// forceUnitLatencies - The fast scheduler doesn't care about real latencies.
+  bool forceUnitLatencies() const { return true; }
 };
 }  // end anonymous namespace
 
@@ -112,7 +112,7 @@ void ScheduleDAGFast::Schedule() {
   DEBUG(dbgs() << "********** List Scheduling **********\n");
 
   NumLiveRegs = 0;
-  LiveRegDefs.resize(TRI->getNumRegs(), NULL);  
+  LiveRegDefs.resize(TRI->getNumRegs(), NULL);
   LiveRegCycles.resize(TRI->getNumRegs(), 0);
 
   // Build the scheduling graph.
@@ -159,7 +159,7 @@ void ScheduleDAGFast::ReleasePredecessors(SUnit *SU, unsigned CurCycle) {
     ReleasePred(SU, &*I);
     if (I->isAssignedRegDep()) {
       // This is a physical register dependency and it's impossible or
-      // expensive to copy the register. Make sure nothing that can 
+      // expensive to copy the register. Make sure nothing that can
       // clobber the register is scheduled between the predecessor and
       // this node.
       if (!LiveRegDefs[I->getReg()]) {
@@ -245,18 +245,18 @@ SUnit *ScheduleDAGFast::CopyAndMoveSuccessors(SUnit *SU) {
     DAG->ReplaceAllUsesOfValueWith(SDValue(SU->getNode(), OldNumVals-1),
                                    SDValue(LoadNode, 1));
 
-    SUnit *NewSU = NewSUnit(N);
+    SUnit *NewSU = newSUnit(N);
     assert(N->getNodeId() == -1 && "Node already inserted!");
     N->setNodeId(NewSU->NodeNum);
-      
-    const TargetInstrDesc &TID = TII->get(N->getMachineOpcode());
-    for (unsigned i = 0; i != TID.getNumOperands(); ++i) {
-      if (TID.getOperandConstraint(i, TOI::TIED_TO) != -1) {
+
+    const MCInstrDesc &MCID = TII->get(N->getMachineOpcode());
+    for (unsigned i = 0; i != MCID.getNumOperands(); ++i) {
+      if (MCID.getOperandConstraint(i, MCOI::TIED_TO) != -1) {
         NewSU->isTwoAddress = true;
         break;
       }
     }
-    if (TID.isCommutable())
+    if (MCID.isCommutable())
       NewSU->isCommutable = true;
 
     // LoadNode may already exist. This can happen when there is another
@@ -268,7 +268,7 @@ SUnit *ScheduleDAGFast::CopyAndMoveSuccessors(SUnit *SU) {
       LoadSU = &SUnits[LoadNode->getNodeId()];
       isNewLoad = false;
     } else {
-      LoadSU = NewSUnit(LoadNode);
+      LoadSU = newSUnit(LoadNode);
       LoadNode->setNodeId(LoadSU->NodeNum);
     }
 
@@ -329,7 +329,7 @@ SUnit *ScheduleDAGFast::CopyAndMoveSuccessors(SUnit *SU) {
         D.setSUnit(LoadSU);
         AddPred(SuccDep, D);
       }
-    } 
+    }
     if (isNewLoad) {
       AddPred(NewSU, SDep(LoadSU, SDep::Order, LoadSU->Latency));
     }
@@ -381,11 +381,11 @@ void ScheduleDAGFast::InsertCopiesAndMoveSuccs(SUnit *SU, unsigned Reg,
                                               const TargetRegisterClass *DestRC,
                                               const TargetRegisterClass *SrcRC,
                                                SmallVector<SUnit*, 2> &Copies) {
-  SUnit *CopyFromSU = NewSUnit(static_cast<SDNode *>(NULL));
+  SUnit *CopyFromSU = newSUnit(static_cast<SDNode *>(NULL));
   CopyFromSU->CopySrcRC = SrcRC;
   CopyFromSU->CopyDstRC = DestRC;
 
-  SUnit *CopyToSU = NewSUnit(static_cast<SDNode *>(NULL));
+  SUnit *CopyToSU = newSUnit(static_cast<SDNode *>(NULL));
   CopyToSU->CopySrcRC = DestRC;
   CopyToSU->CopyDstRC = SrcRC;
 
@@ -422,10 +422,10 @@ void ScheduleDAGFast::InsertCopiesAndMoveSuccs(SUnit *SU, unsigned Reg,
 /// FIXME: Move to SelectionDAG?
 static EVT getPhysicalRegisterVT(SDNode *N, unsigned Reg,
                                  const TargetInstrInfo *TII) {
-  const TargetInstrDesc &TID = TII->get(N->getMachineOpcode());
-  assert(TID.ImplicitDefs && "Physical reg def must be in implicit def list!");
-  unsigned NumRes = TID.getNumDefs();
-  for (const unsigned *ImpDef = TID.getImplicitDefs(); *ImpDef; ++ImpDef) {
+  const MCInstrDesc &MCID = TII->get(N->getMachineOpcode());
+  assert(MCID.ImplicitDefs && "Physical reg def must be in implicit def list!");
+  unsigned NumRes = MCID.getNumDefs();
+  for (const uint16_t *ImpDef = MCID.getImplicitDefs(); *ImpDef; ++ImpDef) {
     if (Reg == *ImpDef)
       break;
     ++NumRes;
@@ -447,7 +447,7 @@ static bool CheckForLiveRegDef(SUnit *SU, unsigned Reg,
       Added = true;
     }
   }
-  for (const unsigned *Alias = TRI->getAliasSet(Reg); *Alias; ++Alias)
+  for (const uint16_t *Alias = TRI->getAliasSet(Reg); *Alias; ++Alias)
     if (LiveRegDefs[*Alias] && LiveRegDefs[*Alias] != SU) {
       if (RegAdded.insert(*Alias)) {
         LRegs.push_back(*Alias);
@@ -490,7 +490,8 @@ bool ScheduleDAGFast::DelayForLiveRegsBottomUp(SUnit *SU,
 
         ++i; // Skip the ID value.
         if (InlineAsm::isRegDefKind(Flags) ||
-            InlineAsm::isRegDefEarlyClobberKind(Flags)) {
+            InlineAsm::isRegDefEarlyClobberKind(Flags) ||
+            InlineAsm::isClobberKind(Flags)) {
           // Check for def of register or earlyclobber register.
           for (; NumVals; --NumVals, ++i) {
             unsigned Reg = cast<RegisterSDNode>(Node->getOperand(i))->getReg();
@@ -504,10 +505,10 @@ bool ScheduleDAGFast::DelayForLiveRegsBottomUp(SUnit *SU,
     }
     if (!Node->isMachineOpcode())
       continue;
-    const TargetInstrDesc &TID = TII->get(Node->getMachineOpcode());
-    if (!TID.ImplicitDefs)
+    const MCInstrDesc &MCID = TII->get(Node->getMachineOpcode());
+    if (!MCID.ImplicitDefs)
       continue;
-    for (const unsigned *Reg = TID.ImplicitDefs; *Reg; ++Reg) {
+    for (const uint16_t *Reg = MCID.getImplicitDefs(); *Reg; ++Reg) {
       CheckForLiveRegDef(SU, *Reg, LiveRegDefs, RegAdded, LRegs, TRI);
     }
   }
@@ -570,13 +571,20 @@ void ScheduleDAGFast::ListScheduleBottomUp() {
           TRI->getMinimalPhysRegClass(Reg, VT);
         const TargetRegisterClass *DestRC = TRI->getCrossCopyRegClass(RC);
 
-        // If cross copy register class is null, then it must be possible copy
-        // the value directly. Do not try duplicate the def.
+        // If cross copy register class is the same as RC, then it must be
+        // possible copy the value directly. Do not try duplicate the def.
+        // If cross copy register class is not the same as RC, then it's
+        // possible to copy the value but it require cross register class copies
+        // and it is expensive.
+        // If cross copy register class is null, then it's not possible to copy
+        // the value at all.
         SUnit *NewDef = 0;
-        if (DestRC)
+        if (DestRC != RC) {
           NewDef = CopyAndMoveSuccessors(LRDef);
-        else
-          DestRC = RC;
+          if (!DestRC && !NewDef)
+            report_fatal_error("Can't handle live physical "
+                               "register dependency!");
+        }
         if (!NewDef) {
           // Issue copies, these can be expensive cross register class copies.
           SmallVector<SUnit*, 2> Copies;
@@ -622,7 +630,7 @@ void ScheduleDAGFast::ListScheduleBottomUp() {
   std::reverse(Sequence.begin(), Sequence.end());
 
 #ifndef NDEBUG
-  VerifySchedule(/*isBottomUp=*/true);
+  VerifyScheduledSequence(/*isBottomUp=*/true);
 #endif
 }
 

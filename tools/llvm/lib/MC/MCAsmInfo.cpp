@@ -13,12 +13,19 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCExpr.h"
+#include "llvm/MC/MCStreamer.h"
 #include "llvm/Support/DataTypes.h"
+#include "llvm/Support/Dwarf.h"
 #include <cctype>
 #include <cstring>
 using namespace llvm;
 
 MCAsmInfo::MCAsmInfo() {
+  PointerSize = 4;
+  IsLittleEndian = true;
+  StackGrowsUp = false;
   HasSubsectionsViaSymbols = false;
   HasMachoZeroFillDirective = false;
   HasMachoTBSSDirective = false;
@@ -26,7 +33,7 @@ MCAsmInfo::MCAsmInfo() {
   LinkerRequiresNonEmptyDwarfLines = false;
   MaxInstLength = 4;
   PCSymbol = "$";
-  SeparatorChar = ';';
+  SeparatorString = ";";
   CommentColumn = 40;
   CommentString = "#";
   LabelSuffix = ":";
@@ -35,10 +42,14 @@ MCAsmInfo::MCAsmInfo() {
   LinkerPrivateGlobalPrefix = "";
   InlineAsmStart = "APP";
   InlineAsmEnd = "NO_APP";
+  Code16Directive = ".code16";
+  Code32Directive = ".code32";
+  Code64Directive = ".code64";
   AssemblerDialect = 0;
   AllowQuotesInName = false;
   AllowNameToStartWithDigit = false;
   AllowPeriodsInName = true;
+  AllowUTF8 = true;
   ZeroDirective = "\t.zero\t";
   AsciiDirective = "\t.ascii\t";
   AscizDirective = "\t.asciz\t";
@@ -46,16 +57,23 @@ MCAsmInfo::MCAsmInfo() {
   Data16bitsDirective = "\t.short\t";
   Data32bitsDirective = "\t.long\t";
   Data64bitsDirective = "\t.quad\t";
+  DataBegin = "$d.";
+  CodeBegin = "$a.";
+  JT8Begin = "$d.";
+  JT16Begin = "$d.";
+  JT32Begin = "$d.";
+  SupportsDataRegions = false;
   SunStyleELFSectionSwitchSyntax = false;
   UsesELFSectionDirectiveForBSS = false;
   AlignDirective = "\t.align\t";
   AlignmentIsInBytes = true;
   TextAlignFillValue = 0;
+  GPRel64Directive = 0;
   GPRel32Directive = 0;
   GlobalDirective = "\t.globl\t";
   HasSetDirective = true;
   HasAggressiveSymbolFolding = true;
-  HasLCOMMDirective = false;
+  LCOMMDirectiveType = LCOMM::None;
   COMMDirectiveAlignmentIsInBytes = true;
   HasDotTypeDotSizeDirective = true;
   HasSingleParameterDotFile = true;
@@ -70,11 +88,12 @@ MCAsmInfo::MCAsmInfo() {
   HasLEB128 = false;
   SupportsDebugInformation = false;
   ExceptionsType = ExceptionHandling::None;
-  DwarfRequiresFrameSection = true;
   DwarfUsesInlineInfoSection = false;
-  DwarfUsesAbsoluteLabelForStmtList = true;
+  DwarfRequiresRelocationForSectionOffset = true;
   DwarfSectionOffsetDirective = 0;
   DwarfUsesLabelOffsetForRanges = true;
+  DwarfUsesRelocationsForStringPool = true;
+  DwarfRegNumForCFI = false;
   HasMicrosoftFastStdCallMangling = false;
 
   AsmTransCBE = 0;
@@ -105,4 +124,26 @@ unsigned MCAsmInfo::getSLEB128Size(int Value) {
     Size += sizeof(int8_t);
   } while (IsMore);
   return Size;
+}
+
+const MCExpr *
+MCAsmInfo::getExprForPersonalitySymbol(const MCSymbol *Sym,
+                                       unsigned Encoding,
+                                       MCStreamer &Streamer) const {
+  return getExprForFDESymbol(Sym, Encoding, Streamer);
+}
+
+const MCExpr *
+MCAsmInfo::getExprForFDESymbol(const MCSymbol *Sym,
+                               unsigned Encoding,
+                               MCStreamer &Streamer) const {
+  if (!(Encoding & dwarf::DW_EH_PE_pcrel))
+    return MCSymbolRefExpr::Create(Sym, Streamer.getContext());
+
+  MCContext &Context = Streamer.getContext();
+  const MCExpr *Res = MCSymbolRefExpr::Create(Sym, Context);
+  MCSymbol *PCSym = Context.CreateTempSymbol();
+  Streamer.EmitLabel(PCSym);
+  const MCExpr *PC = MCSymbolRefExpr::Create(PCSym, Context);
+  return MCBinaryExpr::CreateSub(Res, PC, Context);
 }

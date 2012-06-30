@@ -1,8 +1,8 @@
-; RUN: opt < %s -indvars -S > %t
-; RUN: not grep and %t
-; RUN: not grep zext %t
+; RUN: opt < %s -indvars -S | FileCheck %s
+; CHECK-NOT: and
+; CHECK-NOT: zext
 
-target datalayout = "-p:64:64:64"
+target datalayout = "-p:64:64:64-n32:64"
 
 define void @foo(double* %d, i64 %n) nounwind {
 entry:

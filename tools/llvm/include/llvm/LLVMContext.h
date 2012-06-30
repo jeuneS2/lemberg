@@ -19,6 +19,7 @@ namespace llvm {
 
 class LLVMContextImpl;
 class StringRef;
+class Twine;
 class Instruction;
 class Module;
 class SMDiagnostic;
@@ -39,7 +40,10 @@ public:
   // compile-time performance optimization, not a correctness optimization.
   enum {
     MD_dbg = 0,  // "dbg"
-    MD_tbaa = 1  // "tbaa"
+    MD_tbaa = 1, // "tbaa"
+    MD_prof = 2,  // "prof"
+    MD_fpmath = 3,  // "fpmath"
+    MD_range = 4 // "range"
   };
   
   /// getMDKindID - Return a unique non-zero ID for the specified metadata kind.
@@ -78,9 +82,9 @@ public:
   /// be prepared to drop the erroneous construct on the floor and "not crash".
   /// The generated code need not be correct.  The error message will be
   /// implicitly prefixed with "error: " and should not end with a ".".
-  void emitError(unsigned LocCookie, StringRef ErrorStr);
-  void emitError(const Instruction *I, StringRef ErrorStr);
-  void emitError(StringRef ErrorStr);
+  void emitError(unsigned LocCookie, const Twine &ErrorStr);
+  void emitError(const Instruction *I, const Twine &ErrorStr);
+  void emitError(const Twine &ErrorStr);
 
 private:
   // DO NOT IMPLEMENT

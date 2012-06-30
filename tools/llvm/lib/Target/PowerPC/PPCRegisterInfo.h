@@ -1,4 +1,4 @@
-//===- PPCRegisterInfo.h - PowerPC Register Information Impl -----*- C++ -*-==//
+//===-- PPCRegisterInfo.h - PowerPC Register Information Impl ---*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -16,8 +16,10 @@
 #define POWERPC32_REGISTERINFO_H
 
 #include "PPC.h"
-#include "PPCGenRegisterInfo.h.inc"
 #include <map>
+
+#define GET_REGINFO_HEADER
+#include "PPCGenRegisterInfo.inc"
 
 namespace llvm {
 class PPCSubtarget;
@@ -31,16 +33,16 @@ class PPCRegisterInfo : public PPCGenRegisterInfo {
 public:
   PPCRegisterInfo(const PPCSubtarget &SubTarget, const TargetInstrInfo &tii);
   
-  /// getRegisterNumbering - Given the enum value for some register, e.g.
-  /// PPC::F14, return the number that it corresponds to (e.g. 14).
-  static unsigned getRegisterNumbering(unsigned RegEnum);
-
   /// getPointerRegClass - Return the register class to use to hold pointers.
   /// This is used for addressing modes.
   virtual const TargetRegisterClass *getPointerRegClass(unsigned Kind=0) const;  
 
+  unsigned getRegPressureLimit(const TargetRegisterClass *RC,
+                               MachineFunction &MF) const;
+
   /// Code Generation virtual methods...
-  const unsigned *getCalleeSavedRegs(const MachineFunction* MF = 0) const;
+  const uint16_t *getCalleeSavedRegs(const MachineFunction* MF = 0) const;
+  const unsigned *getCallPreservedMask(CallingConv::ID CC) const;
 
   BitVector getReservedRegs(const MachineFunction &MF) const;
 
@@ -56,18 +58,17 @@ public:
                          int SPAdj, RegScavenger *RS) const;
   void lowerCRSpilling(MachineBasicBlock::iterator II, unsigned FrameIndex,
                        int SPAdj, RegScavenger *RS) const;
+  void lowerCRRestore(MachineBasicBlock::iterator II, unsigned FrameIndex,
+                       int SPAdj, RegScavenger *RS) const;
   void eliminateFrameIndex(MachineBasicBlock::iterator II,
                            int SPAdj, RegScavenger *RS = NULL) const;
 
   // Debug information queries.
-  unsigned getRARegister() const;
   unsigned getFrameRegister(const MachineFunction &MF) const;
 
   // Exception handling queries.
   unsigned getEHExceptionRegister() const;
   unsigned getEHHandlerRegister() const;
-
-  int getDwarfRegNum(unsigned RegNum, bool isEH) const;
 };
 
 } // end namespace llvm

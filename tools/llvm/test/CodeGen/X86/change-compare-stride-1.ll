@@ -1,11 +1,21 @@
-; RUN: llc < %s -march=x86-64 > %t
-; RUN: grep {cmpq	\$-478,} %t
-; RUN: not grep inc %t
-; RUN: not grep {leal	1(} %t
-; RUN: not grep {leal	-1(} %t
-; RUN: grep dec %t | count 1
+; RUN: llc < %s -march=x86-64 -enable-lsr-nested | FileCheck %s
+;
+; Nested LSR is required to optimize this case.
+; We do not expect to see this form of IR without -enable-iv-rewrite.
+
+; xfailed for now because the scheduler two-address hack has been disabled.
+; Now it's generating a leal -1 rather than a decq.
+; XFAIL: *
 
 define void @borf(i8* nocapture %in, i8* nocapture %out) nounwind {
+; CHECK: borf:
+; CHECK-NOT: inc
+; CHECK-NOT: leal 1(
+; CHECK-NOT: leal -1(
+; CHECK: decq
+; CHECK-NEXT: cmpq $-478
+; CHECK: ret
+
 bb4.thread:
 	br label %bb2.outer
 

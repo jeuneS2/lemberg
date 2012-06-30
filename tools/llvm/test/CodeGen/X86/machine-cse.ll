@@ -1,4 +1,4 @@
-; RUN: llc -mtriple=x86_64-apple-darwin < %s | FileCheck %s
+; RUN: llc -mtriple=x86_64-apple-macosx < %s | FileCheck %s
 ; rdar://7610418
 
 %ptr = type { i8* }
@@ -6,11 +6,11 @@
 %struct.s2 = type { i32, i8*, i8*, [256 x %struct.s1*], [8 x i32], i64, i8*, i32, i64, i64, i32, %struct.s3*, %struct.s3*, [49 x i64] }
 %struct.s3 = type { %struct.s3*, %struct.s3*, i32, i32, i32 }
 
-define fastcc i8* @t(i64 %size) nounwind {
+define fastcc i8* @t(i32 %base) nounwind {
 entry:
 ; CHECK: t:
 ; CHECK: leaq (%rax,%rax,4)
-  %0 = zext i32 undef to i64
+  %0 = zext i32 %base to i64
   %1 = getelementptr inbounds %struct.s2* null, i64 %0
   br i1 undef, label %bb1, label %bb2
 
@@ -76,4 +76,26 @@ bb.nph743.us:                                     ; preds = %for.body53.us, %if.
 
 sw.bb307:                                         ; preds = %sw.bb, %entry
   ret void
+}
+
+; CSE physical register defining instruction across MBB boundary.
+; rdar://10660865
+define i32 @cross_mbb_phys_cse(i32 %a, i32 %b) nounwind ssp {
+entry:
+; CHECK: cross_mbb_phys_cse:
+; CHECK: cmpl
+; CHECK: ja
+  %cmp = icmp ugt i32 %a, %b
+  br i1 %cmp, label %return, label %if.end
+
+if.end:                                           ; preds = %entry
+; CHECK-NOT: cmpl
+; CHECK: sbbl
+  %cmp1 = icmp ult i32 %a, %b
+  %. = sext i1 %cmp1 to i32
+  br label %return
+
+return:                                           ; preds = %if.end, %entry
+  %retval.0 = phi i32 [ 1, %entry ], [ %., %if.end ]
+  ret i32 %retval.0
 }

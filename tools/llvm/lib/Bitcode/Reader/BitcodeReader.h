@@ -44,9 +44,9 @@ class BitcodeReaderValueList {
   /// number that holds the resolved value.
   typedef std::vector<std::pair<Constant*, unsigned> > ResolveConstantsTy;
   ResolveConstantsTy ResolveConstants;
-  LLVMContext& Context;
+  LLVMContext &Context;
 public:
-  BitcodeReaderValueList(LLVMContext& C) : Context(C) {}
+  BitcodeReaderValueList(LLVMContext &C) : Context(C) {}
   ~BitcodeReaderValueList() {
     assert(ResolveConstants.empty() && "Constants not resolved?");
   }
@@ -76,8 +76,8 @@ public:
     ValuePtrs.resize(N);
   }
   
-  Constant *getConstantFwdRef(unsigned Idx, const Type *Ty);
-  Value *getValueFwdRef(unsigned Idx, const Type *Ty);
+  Constant *getConstantFwdRef(unsigned Idx, Type *Ty);
+  Value *getValueFwdRef(unsigned Idx, Type *Ty);
   
   void AssignValue(Value *V, unsigned Idx);
   
@@ -126,15 +126,19 @@ class BitcodeReader : public GVMaterializer {
   Module *TheModule;
   MemoryBuffer *Buffer;
   bool BufferOwned;
-  BitstreamReader StreamFile;
+  OwningPtr<BitstreamReader> StreamFile;
   BitstreamCursor Stream;
+  DataStreamer *LazyStreamer;
+  uint64_t NextUnreadBit;
+  bool SeenValueSymbolTable;
   
   const char *ErrorString;
   
-  std::vector<PATypeHolder> TypeList;
+  std::vector<Type*> TypeList;
   BitcodeReaderValueList ValueList;
   BitcodeReaderMDValueList MDValueList;
   SmallVector<Instruction *, 64> InstructionList;
+  SmallVector<SmallVector<uint64_t, 64>, 64> UseListRecords;
 
   std::vector<std::pair<GlobalVariable*, unsigned> > GlobalInits;
   std::vector<std::pair<GlobalAlias*, unsigned> > AliasInits;
@@ -160,9 +164,10 @@ class BitcodeReader : public GVMaterializer {
   // Map the bitcode's custom MDKind ID to the Module's MDKind ID.
   DenseMap<unsigned, unsigned> MDKindMap;
   
-  // After the module header has been read, the FunctionsWithBodies list is 
-  // reversed.  This keeps track of whether we've done this yet.
-  bool HasReversedFunctionsWithBodies;
+  // Several operations happen after the module header has been read, but
+  // before function bodies are processed. This keeps track of whether
+  // we've done this yet.
+  bool SeenFirstFunctionBody;
   
   /// DeferredFunctionInfo - When function bodies are initially scanned, this
   /// map contains info about where to find deferred function body in the
@@ -174,23 +179,25 @@ class BitcodeReader : public GVMaterializer {
   typedef std::pair<unsigned, GlobalVariable*> BlockAddrRefTy;
   DenseMap<Function*, std::vector<BlockAddrRefTy> > BlockAddrFwdRefs;
 
-  /// LLVM2_7MetadataDetected - True if metadata produced by LLVM 2.7 or
-  /// earlier was detected, in which case we behave slightly differently,
-  /// for compatibility.
-  /// FIXME: Remove in LLVM 3.0.
-  bool LLVM2_7MetadataDetected;
-  
 public:
   explicit BitcodeReader(MemoryBuffer *buffer, LLVMContext &C)
     : Context(C), TheModule(0), Buffer(buffer), BufferOwned(false),
+      LazyStreamer(0), NextUnreadBit(0), SeenValueSymbolTable(false),
       ErrorString(0), ValueList(C), MDValueList(C),
-      LLVM2_7MetadataDetected(false) {
-    HasReversedFunctionsWithBodies = false;
+      SeenFirstFunctionBody(false) {
+  }
+  explicit BitcodeReader(DataStreamer *streamer, LLVMContext &C)
+    : Context(C), TheModule(0), Buffer(0), BufferOwned(false),
+      LazyStreamer(streamer), NextUnreadBit(0), SeenValueSymbolTable(false),
+      ErrorString(0), ValueList(C), MDValueList(C),
+      SeenFirstFunctionBody(false) {
   }
   ~BitcodeReader() {
     FreeState();
   }
-  
+
+  void materializeForwardReferencedFunctions();
+
   void FreeState();
   
   /// setBufferOwned - If this is true, the reader will destroy the MemoryBuffer
@@ -217,12 +224,11 @@ public:
   /// @returns true if an error occurred.
   bool ParseTriple(std::string &Triple);
 private:
-  const Type *getTypeByID(unsigned ID, bool isTypeTable = false);
-  Value *getFnValueByID(unsigned ID, const Type *Ty) {
-    if (Ty == Type::getMetadataTy(Context))
+  Type *getTypeByID(unsigned ID);
+  Value *getFnValueByID(unsigned ID, Type *Ty) {
+    if (Ty && Ty->isMetadataTy())
       return MDValueList.getValueFwdRef(ID);
-    else
-      return ValueList.getValueFwdRef(ID, Ty);
+    return ValueList.getValueFwdRef(ID, Ty);
   }
   BasicBlock *getBasicBlock(unsigned ID) const {
     if (ID >= FunctionBBs.size()) return 0; // Invalid ID
@@ -255,7 +261,7 @@ private:
     return ResVal == 0;
   }
   bool getValue(SmallVector<uint64_t, 64> &Record, unsigned &Slot,
-                const Type *Ty, Value *&ResVal) {
+                Type *Ty, Value *&ResVal) {
     if (Slot == Record.size()) return true;
     unsigned ValNo = (unsigned)Record[Slot++];
     ResVal = getFnValueByID(ValNo, Ty);
@@ -263,18 +269,26 @@ private:
   }
 
   
-  bool ParseModule();
+  bool ParseModule(bool Resume);
   bool ParseAttributeBlock();
   bool ParseTypeTable();
-  bool ParseTypeSymbolTable();
+  bool ParseTypeTableBody();
+
   bool ParseValueSymbolTable();
   bool ParseConstants();
   bool RememberAndSkipFunctionBody();
   bool ParseFunctionBody(Function *F);
+  bool GlobalCleanup();
   bool ResolveGlobalAndAliasInits();
   bool ParseMetadata();
   bool ParseMetadataAttachment();
   bool ParseModuleTriple(std::string &Triple);
+  bool ParseUseLists();
+  bool InitStream();
+  bool InitStreamFromBuffer();
+  bool InitLazyStream();
+  bool FindFunctionInStream(Function *F,
+         DenseMap<Function*, uint64_t>::iterator DeferredFunctionInfoIterator);
 };
   
 } // End llvm namespace

@@ -24,63 +24,41 @@
 
 namespace llvm {
 enum {
-  SM_SentinelZero = ~0U
+  SM_SentinelZero = -1
 };
 
-void DecodeINSERTPSMask(unsigned Imm, SmallVectorImpl<unsigned> &ShuffleMask);
+void DecodeINSERTPSMask(unsigned Imm, SmallVectorImpl<int> &ShuffleMask);
 
 // <3,1> or <6,7,2,3>
-void DecodeMOVHLPSMask(unsigned NElts,
-                       SmallVectorImpl<unsigned> &ShuffleMask);
+void DecodeMOVHLPSMask(unsigned NElts, SmallVectorImpl<int> &ShuffleMask);
 
 // <0,2> or <0,1,4,5>
-void DecodeMOVLHPSMask(unsigned NElts,
-                       SmallVectorImpl<unsigned> &ShuffleMask);
+void DecodeMOVLHPSMask(unsigned NElts, SmallVectorImpl<int> &ShuffleMask);
 
-void DecodePSHUFMask(unsigned NElts, unsigned Imm,
-                     SmallVectorImpl<unsigned> &ShuffleMask);
+void DecodePSHUFMask(EVT VT, unsigned Imm, SmallVectorImpl<int> &ShuffleMask);
 
-void DecodePSHUFHWMask(unsigned Imm,
-                       SmallVectorImpl<unsigned> &ShuffleMask);
+void DecodePSHUFHWMask(unsigned Imm, SmallVectorImpl<int> &ShuffleMask);
 
-void DecodePSHUFLWMask(unsigned Imm,
-                       SmallVectorImpl<unsigned> &ShuffleMask);
+void DecodePSHUFLWMask(unsigned Imm, SmallVectorImpl<int> &ShuffleMask);
 
-void DecodePUNPCKLBWMask(unsigned NElts,
-                         SmallVectorImpl<unsigned> &ShuffleMask);
+/// DecodeSHUFPMask - This decodes the shuffle masks for shufp*. VT indicates
+/// the type of the vector allowing it to handle different datatypes and vector
+/// widths.
+void DecodeSHUFPMask(EVT VT, unsigned Imm, SmallVectorImpl<int> &ShuffleMask);
 
-void DecodePUNPCKLWDMask(unsigned NElts,
-                         SmallVectorImpl<unsigned> &ShuffleMask);
+/// DecodeUNPCKHMask - This decodes the shuffle masks for unpckhps/unpckhpd
+/// and punpckh*. VT indicates the type of the vector allowing it to handle
+/// different datatypes and vector widths.
+void DecodeUNPCKHMask(EVT VT, SmallVectorImpl<int> &ShuffleMask);
 
-void DecodePUNPCKLDQMask(unsigned NElts,
-                         SmallVectorImpl<unsigned> &ShuffleMask);
+/// DecodeUNPCKLMask - This decodes the shuffle masks for unpcklps/unpcklpd
+/// and punpckl*. VT indicates the type of the vector allowing it to handle
+/// different datatypes and vector widths.
+void DecodeUNPCKLMask(EVT VT, SmallVectorImpl<int> &ShuffleMask);
 
-void DecodePUNPCKLQDQMask(unsigned NElts,
-                          SmallVectorImpl<unsigned> &ShuffleMask);
 
-void DecodePUNPCKLMask(EVT VT,
-                       SmallVectorImpl<unsigned> &ShuffleMask);
-
-void DecodePUNPCKHMask(unsigned NElts,
-                       SmallVectorImpl<unsigned> &ShuffleMask);
-
-void DecodeSHUFPSMask(unsigned NElts, unsigned Imm,
-                      SmallVectorImpl<unsigned> &ShuffleMask);
-
-void DecodeUNPCKHPMask(unsigned NElts,
-                       SmallVectorImpl<unsigned> &ShuffleMask);
-
-void DecodeUNPCKLPSMask(unsigned NElts,
-                        SmallVectorImpl<unsigned> &ShuffleMask);
-
-void DecodeUNPCKLPDMask(unsigned NElts,
-                        SmallVectorImpl<unsigned> &ShuffleMask);
-
-/// DecodeUNPCKLPMask - This decodes the shuffle masks for unpcklps/unpcklpd
-/// etc.  VT indicates the type of the vector allowing it to handle different
-/// datatypes and vector widths.
-void DecodeUNPCKLPMask(EVT VT,
-                       SmallVectorImpl<unsigned> &ShuffleMask);
+void DecodeVPERM2X128Mask(EVT VT, unsigned Imm,
+                          SmallVectorImpl<int> &ShuffleMask);
 
 } // llvm namespace
 

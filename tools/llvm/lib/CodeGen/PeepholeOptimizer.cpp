@@ -30,7 +30,16 @@
 //     If the "sub" instruction all ready sets (or could be modified to set) the
 //     same flag that the "cmp" instruction sets and that "bz" uses, then we can
 //     eliminate the "cmp" instruction.
-// 
+//
+// - Optimize Bitcast pairs:
+//
+//     v1 = bitcast v0
+//     v2 = bitcast v1
+//        = v2
+//   =>
+//     v1 = bitcast v0
+//        = v0
+//
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "peephole-opt"
@@ -57,8 +66,9 @@ DisablePeephole("disable-peephole", cl::Hidden, cl::init(false),
                 cl::desc("Disable the peephole optimizer"));
 
 STATISTIC(NumReuse,      "Number of extension results reused");
-STATISTIC(NumEliminated, "Number of compares eliminated");
-STATISTIC(NumImmFold,    "Number of move immediate foled");
+STATISTIC(NumBitcasts,   "Number of bitcasts eliminated");
+STATISTIC(NumCmps,       "Number of compares eliminated");
+STATISTIC(NumImmFold,    "Number of move immediate folded");
 
 namespace {
   class PeepholeOptimizer : public MachineFunctionPass {
@@ -85,6 +95,7 @@ namespace {
     }
 
   private:
+    bool OptimizeBitcastInstr(MachineInstr *MI, MachineBasicBlock *MBB);
     bool OptimizeCmpInstr(MachineInstr *MI, MachineBasicBlock *MBB);
     bool OptimizeExtInstr(MachineInstr *MI, MachineBasicBlock *MBB,
                           SmallPtrSet<MachineInstr*, 8> &LocalMIs);
@@ -98,22 +109,19 @@ namespace {
 }
 
 char PeepholeOptimizer::ID = 0;
+char &llvm::PeepholeOptimizerID = PeepholeOptimizer::ID;
 INITIALIZE_PASS_BEGIN(PeepholeOptimizer, "peephole-opts",
                 "Peephole Optimizations", false, false)
 INITIALIZE_PASS_DEPENDENCY(MachineDominatorTree)
 INITIALIZE_PASS_END(PeepholeOptimizer, "peephole-opts",
                 "Peephole Optimizations", false, false)
 
-FunctionPass *llvm::createPeepholeOptimizerPass() {
-  return new PeepholeOptimizer();
-}
-
 /// OptimizeExtInstr - If instruction is a copy-like instruction, i.e. it reads
 /// a single register and writes a single register and it does not modify the
 /// source, and if the source value is preserved as a sub-register of the
 /// result, then replace all reachable uses of the source with the subreg of the
 /// result.
-/// 
+///
 /// Do not generate an EXTRACT that is used only in a debug use, as this changes
 /// the code. Since this code does not currently share EXTRACTs, just ignore all
 /// debug uses.
@@ -123,7 +131,7 @@ OptimizeExtInstr(MachineInstr *MI, MachineBasicBlock *MBB,
   unsigned SrcReg, DstReg, SubIdx;
   if (!TII->isCoalescableExtInstr(*MI, SrcReg, DstReg, SubIdx))
     return false;
-  
+
   if (TargetRegisterInfo::isPhysicalRegister(DstReg) ||
       TargetRegisterInfo::isPhysicalRegister(SrcReg))
     return false;
@@ -229,6 +237,10 @@ OptimizeExtInstr(MachineInstr *MI, MachineBasicBlock *MBB,
       if (PHIBBs.count(UseMBB))
         continue;
 
+      // About to add uses of DstReg, clear DstReg's kill flags.
+      if (!Changed)
+        MRI->clearKillFlags(DstReg);
+
       unsigned NewVR = MRI->createVirtualRegister(RC);
       BuildMI(*UseMBB, UseMI, UseMI->getDebugLoc(),
               TII->get(TargetOpcode::COPY), NewVR)
@@ -243,12 +255,84 @@ OptimizeExtInstr(MachineInstr *MI, MachineBasicBlock *MBB,
   return Changed;
 }
 
+/// OptimizeBitcastInstr - If the instruction is a bitcast instruction A that
+/// cannot be optimized away during isel (e.g. ARM::VMOVSR, which bitcast
+/// a value cross register classes), and the source is defined by another
+/// bitcast instruction B. And if the register class of source of B matches
+/// the register class of instruction A, then it is legal to replace all uses
+/// of the def of A with source of B. e.g.
+///   %vreg0<def> = VMOVSR %vreg1
+///   %vreg3<def> = VMOVRS %vreg0
+///   Replace all uses of vreg3 with vreg1.
+
+bool PeepholeOptimizer::OptimizeBitcastInstr(MachineInstr *MI,
+                                             MachineBasicBlock *MBB) {
+  unsigned NumDefs = MI->getDesc().getNumDefs();
+  unsigned NumSrcs = MI->getDesc().getNumOperands() - NumDefs;
+  if (NumDefs != 1)
+    return false;
+
+  unsigned Def = 0;
+  unsigned Src = 0;
+  for (unsigned i = 0, e = NumDefs + NumSrcs; i != e; ++i) {
+    const MachineOperand &MO = MI->getOperand(i);
+    if (!MO.isReg())
+      continue;
+    unsigned Reg = MO.getReg();
+    if (!Reg)
+      continue;
+    if (MO.isDef())
+      Def = Reg;
+    else if (Src)
+      // Multiple sources?
+      return false;
+    else
+      Src = Reg;
+  }
+
+  assert(Def && Src && "Malformed bitcast instruction!");
+
+  MachineInstr *DefMI = MRI->getVRegDef(Src);
+  if (!DefMI || !DefMI->isBitcast())
+    return false;
+
+  unsigned SrcSrc = 0;
+  NumDefs = DefMI->getDesc().getNumDefs();
+  NumSrcs = DefMI->getDesc().getNumOperands() - NumDefs;
+  if (NumDefs != 1)
+    return false;
+  for (unsigned i = 0, e = NumDefs + NumSrcs; i != e; ++i) {
+    const MachineOperand &MO = DefMI->getOperand(i);
+    if (!MO.isReg() || MO.isDef())
+      continue;
+    unsigned Reg = MO.getReg();
+    if (!Reg)
+      continue;
+    if (!MO.isDef()) {
+      if (SrcSrc)
+        // Multiple sources?
+        return false;
+      else
+        SrcSrc = Reg;
+    }
+  }
+
+  if (MRI->getRegClass(SrcSrc) != MRI->getRegClass(Def))
+    return false;
+
+  MRI->replaceRegWith(Def, SrcSrc);
+  MRI->clearKillFlags(SrcSrc);
+  MI->eraseFromParent();
+  ++NumBitcasts;
+  return true;
+}
+
 /// OptimizeCmpInstr - If the instruction is a compare and the previous
 /// instruction it's comparing against all ready sets (or could be modified to
 /// set) the same flag as the compare, then we can remove the comparison and use
 /// the flag from the previous instruction.
 bool PeepholeOptimizer::OptimizeCmpInstr(MachineInstr *MI,
-                                         MachineBasicBlock *MBB){
+                                         MachineBasicBlock *MBB) {
   // If this instruction is a comparison against zero and isn't comparing a
   // physical register, we can try to optimize it.
   unsigned SrcReg;
@@ -259,7 +343,7 @@ bool PeepholeOptimizer::OptimizeCmpInstr(MachineInstr *MI,
 
   // Attempt to optimize the comparison instruction.
   if (TII->OptimizeCompareInstr(MI, SrcReg, CmpMask, CmpValue, MRI)) {
-    ++NumEliminated;
+    ++NumCmps;
     return true;
   }
 
@@ -269,10 +353,10 @@ bool PeepholeOptimizer::OptimizeCmpInstr(MachineInstr *MI,
 bool PeepholeOptimizer::isMoveImmediate(MachineInstr *MI,
                                         SmallSet<unsigned, 4> &ImmDefRegs,
                                  DenseMap<unsigned, MachineInstr*> &ImmDefMIs) {
-  const TargetInstrDesc &TID = MI->getDesc();
-  if (!TID.isMoveImmediate())
+  const MCInstrDesc &MCID = MI->getDesc();
+  if (!MI->isMoveImmediate())
     return false;
-  if (TID.getNumDefs() != 1)
+  if (MCID.getNumDefs() != 1)
     return false;
   unsigned Reg = MI->getOperand(0).getReg();
   if (TargetRegisterInfo::isVirtualRegister(Reg)) {
@@ -280,7 +364,7 @@ bool PeepholeOptimizer::isMoveImmediate(MachineInstr *MI,
     ImmDefRegs.insert(Reg);
     return true;
   }
-  
+
   return false;
 }
 
@@ -312,7 +396,7 @@ bool PeepholeOptimizer::FoldImmediate(MachineInstr *MI, MachineBasicBlock *MBB,
 bool PeepholeOptimizer::runOnMachineFunction(MachineFunction &MF) {
   if (DisablePeephole)
     return false;
-  
+
   TM  = &MF.getTarget();
   TII = TM->getInstrInfo();
   MRI = &MF.getRegInfo();
@@ -325,7 +409,7 @@ bool PeepholeOptimizer::runOnMachineFunction(MachineFunction &MF) {
   DenseMap<unsigned, MachineInstr*> ImmDefMIs;
   for (MachineFunction::iterator I = MF.begin(), E = MF.end(); I != E; ++I) {
     MachineBasicBlock *MBB = &*I;
-    
+
     bool SeenMoveImm = false;
     LocalMIs.clear();
     ImmDefRegs.clear();
@@ -345,9 +429,18 @@ bool PeepholeOptimizer::runOnMachineFunction(MachineFunction &MF) {
         continue;
       }
 
-      if (MI->getDesc().isCompare()) {
+      if (MI->isBitcast()) {
+        if (OptimizeBitcastInstr(MI, MBB)) {
+          // MI is deleted.
+          LocalMIs.erase(MI);
+          Changed = true;
+          MII = First ? I->begin() : llvm::next(PMII);
+          continue;
+        }
+      } else if (MI->isCompare()) {
         if (OptimizeCmpInstr(MI, MBB)) {
           // MI is deleted.
+          LocalMIs.erase(MI);
           Changed = true;
           MII = First ? I->begin() : llvm::next(PMII);
           continue;

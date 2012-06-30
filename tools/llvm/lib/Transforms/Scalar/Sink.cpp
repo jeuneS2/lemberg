@@ -18,6 +18,7 @@
 #include "llvm/Analysis/Dominators.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Assembly/Writer.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/CFG.h"
@@ -153,19 +154,18 @@ bool Sinking::ProcessBlock(BasicBlock &BB) {
 
 static bool isSafeToMove(Instruction *Inst, AliasAnalysis *AA,
                          SmallPtrSet<Instruction *, 8> &Stores) {
-  if (LoadInst *L = dyn_cast<LoadInst>(Inst)) {
-    if (L->isVolatile()) return false;
 
+  if (Inst->mayWriteToMemory()) {
+    Stores.insert(Inst);
+    return false;
+  }
+
+  if (LoadInst *L = dyn_cast<LoadInst>(Inst)) {
     AliasAnalysis::Location Loc = AA->getLocation(L);
     for (SmallPtrSet<Instruction *, 8>::iterator I = Stores.begin(),
          E = Stores.end(); I != E; ++I)
       if (AA->getModRefInfo(*I, Loc) & AliasAnalysis::Mod)
         return false;
-  }
-
-  if (Inst->mayWriteToMemory()) {
-    Stores.insert(Inst);
-    return false;
   }
 
   if (isa<TerminatorInst>(Inst) || isa<PHINode>(Inst))
@@ -241,7 +241,7 @@ bool Sinking::SinkInstruction(Instruction *Inst,
   if (SuccToSinkTo->getUniquePredecessor() != ParentBlock) {
     // We cannot sink a load across a critical edge - there may be stores in
     // other code paths.
-    if (!Inst->isSafeToSpeculativelyExecute()) {
+    if (!isSafeToSpeculativelyExecute(Inst)) {
       DEBUG(dbgs() << " *** PUNTING: Wont sink load along critical edge.\n");
       return false;
     }

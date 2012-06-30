@@ -1,4 +1,4 @@
-//===- ARMBaseRegisterInfo.h - ARM Register Information Impl ----*- C++ -*-===//
+//===-- ARMBaseRegisterInfo.h - ARM Register Information Impl ---*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -16,7 +16,9 @@
 
 #include "ARM.h"
 #include "llvm/Target/TargetRegisterInfo.h"
-#include "ARMGenRegisterInfo.h.inc"
+
+#define GET_REGINFO_HEADER
+#include "ARMGenRegisterInfo.inc"
 
 namespace llvm {
   class ARMSubtarget;
@@ -31,22 +33,9 @@ namespace ARMRI {
   };
 }
 
-/// isARMLowRegister - Returns true if the register is low register r0-r7.
-///
-static inline bool isARMLowRegister(unsigned Reg) {
-  using namespace ARM;
-  switch (Reg) {
-  case R0:  case R1:  case R2:  case R3:
-  case R4:  case R5:  case R6:  case R7:
-    return true;
-  default:
-    return false;
-  }
-}
-
 /// isARMArea1Register - Returns true if the register is a low register (r0-r7)
 /// or a stack/pc register that we should push/pop.
-static inline bool isARMArea1Register(unsigned Reg, bool isDarwin) {
+static inline bool isARMArea1Register(unsigned Reg, bool isIOS) {
   using namespace ARM;
   switch (Reg) {
     case R0:  case R1:  case R2:  case R3:
@@ -54,25 +43,25 @@ static inline bool isARMArea1Register(unsigned Reg, bool isDarwin) {
     case LR:  case SP:  case PC:
       return true;
     case R8:  case R9:  case R10: case R11:
-      // For darwin we want r7 and lr to be next to each other.
-      return !isDarwin;
+      // For iOS we want r7 and lr to be next to each other.
+      return !isIOS;
     default:
       return false;
   }
 }
 
-static inline bool isARMArea2Register(unsigned Reg, bool isDarwin) {
+static inline bool isARMArea2Register(unsigned Reg, bool isIOS) {
   using namespace ARM;
   switch (Reg) {
     case R8: case R9: case R10: case R11:
-      // Darwin has this second area.
-      return isDarwin;
+      // iOS has this second area.
+      return isIOS;
     default:
       return false;
   }
 }
 
-static inline bool isARMArea3Register(unsigned Reg, bool isDarwin) {
+static inline bool isARMArea3Register(unsigned Reg, bool isIOS) {
   using namespace ARM;
   switch (Reg) {
     case D15: case D14: case D13: case D12:
@@ -105,16 +94,10 @@ protected:
 
 public:
   /// Code Generation virtual methods...
-  const unsigned *getCalleeSavedRegs(const MachineFunction *MF = 0) const;
+  const uint16_t *getCalleeSavedRegs(const MachineFunction *MF = 0) const;
+  const uint32_t *getCallPreservedMask(CallingConv::ID) const;
 
   BitVector getReservedRegs(const MachineFunction &MF) const;
-
-  /// getMatchingSuperRegClass - Return a subclass of the specified register
-  /// class A so that each register in it has a sub-register of the
-  /// specified sub-register index which is in the specified register class B.
-  virtual const TargetRegisterClass *
-  getMatchingSuperRegClass(const TargetRegisterClass *A,
-                           const TargetRegisterClass *B, unsigned Idx) const;
 
   /// canCombineSubRegIndices - Given a register class and a list of
   /// subregister indices, return true if it's possible to combine the
@@ -127,20 +110,26 @@ public:
                                        unsigned &NewSubIdx) const;
 
   const TargetRegisterClass *getPointerRegClass(unsigned Kind = 0) const;
+  const TargetRegisterClass*
+  getCrossCopyRegClass(const TargetRegisterClass *RC) const;
+
+  const TargetRegisterClass*
+  getLargestLegalSuperClass(const TargetRegisterClass *RC) const;
 
   unsigned getRegPressureLimit(const TargetRegisterClass *RC,
                                MachineFunction &MF) const;
 
-  std::pair<TargetRegisterClass::iterator,TargetRegisterClass::iterator>
-  getAllocationOrder(const TargetRegisterClass *RC,
-                     unsigned HintType, unsigned HintReg,
-                     const MachineFunction &MF) const;
+  ArrayRef<uint16_t> getRawAllocationOrder(const TargetRegisterClass *RC,
+                                           unsigned HintType, unsigned HintReg,
+                                           const MachineFunction &MF) const;
 
   unsigned ResolveRegAllocHint(unsigned Type, unsigned Reg,
                                const MachineFunction &MF) const;
 
   void UpdateRegAllocHint(unsigned Reg, unsigned NewReg,
                           MachineFunction &MF) const;
+
+  virtual bool avoidWriteAfterWrite(const TargetRegisterClass *RC) const;
 
   bool hasBasePointer(const MachineFunction &MF) const;
 
@@ -158,15 +147,12 @@ public:
   bool cannotEliminateFrame(const MachineFunction &MF) const;
 
   // Debug information queries.
-  unsigned getRARegister() const;
   unsigned getFrameRegister(const MachineFunction &MF) const;
   unsigned getBaseRegister() const { return BasePtr; }
 
   // Exception handling queries.
   unsigned getEHExceptionRegister() const;
   unsigned getEHHandlerRegister() const;
-
-  int getDwarfRegNum(unsigned RegNum, bool isEH) const;
 
   bool isLowRegister(unsigned Reg) const;
 

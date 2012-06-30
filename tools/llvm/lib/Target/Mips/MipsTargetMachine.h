@@ -1,4 +1,4 @@
-//===-- MipsTargetMachine.h - Define TargetMachine for Mips -00--*- C++ -*-===//
+//===-- MipsTargetMachine.h - Define TargetMachine for Mips -----*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -14,11 +14,12 @@
 #ifndef MIPSTARGETMACHINE_H
 #define MIPSTARGETMACHINE_H
 
-#include "MipsSubtarget.h"
+#include "MipsFrameLowering.h"
 #include "MipsInstrInfo.h"
 #include "MipsISelLowering.h"
-#include "MipsFrameLowering.h"
+#include "MipsJITInfo.h"
 #include "MipsSelectionDAGInfo.h"
+#include "MipsSubtarget.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Target/TargetFrameLowering.h"
@@ -33,9 +34,14 @@ namespace llvm {
     MipsFrameLowering   FrameLowering;
     MipsTargetLowering  TLInfo;
     MipsSelectionDAGInfo TSInfo;
+    MipsJITInfo JITInfo;
+
   public:
-    MipsTargetMachine(const Target &T, const std::string &TT,
-                      const std::string &FS, bool isLittle);
+    MipsTargetMachine(const Target &T, StringRef TT,
+                      StringRef CPU, StringRef FS, const TargetOptions &Options,
+                      Reloc::Model RM, CodeModel::Model CM,
+                      CodeGenOpt::Level OL,
+                      bool isLittle);
 
     virtual const MipsInstrInfo   *getInstrInfo()     const
     { return &InstrInfo; }
@@ -45,6 +51,9 @@ namespace llvm {
     { return &Subtarget; }
     virtual const TargetData      *getTargetData()    const
     { return &DataLayout;}
+    virtual MipsJITInfo *getJITInfo()
+    { return &JITInfo; }
+
 
     virtual const MipsRegisterInfo *getRegisterInfo()  const {
       return &InstrInfo.getRegisterInfo();
@@ -59,20 +68,57 @@ namespace llvm {
     }
 
     // Pass Pipeline Configuration
-    virtual bool addInstSelector(PassManagerBase &PM,
-                                 CodeGenOpt::Level OptLevel);
-    virtual bool addPreEmitPass(PassManagerBase &PM,
-                                CodeGenOpt::Level OptLevel);
+    virtual TargetPassConfig *createPassConfig(PassManagerBase &PM);
+    virtual bool addCodeEmitter(PassManagerBase &PM,
+				 JITCodeEmitter &JCE);
+
   };
 
-/// MipselTargetMachine - Mipsel target machine.
+/// MipsebTargetMachine - Mips32 big endian target machine.
 ///
-class MipselTargetMachine : public MipsTargetMachine {
+class MipsebTargetMachine : public MipsTargetMachine {
+  virtual void anchor();
 public:
-  MipselTargetMachine(const Target &T, const std::string &TT,
-                      const std::string &FS);
+  MipsebTargetMachine(const Target &T, StringRef TT,
+                      StringRef CPU, StringRef FS, const TargetOptions &Options,
+                      Reloc::Model RM, CodeModel::Model CM,
+                      CodeGenOpt::Level OL);
 };
 
+/// MipselTargetMachine - Mips32 little endian target machine.
+///
+class MipselTargetMachine : public MipsTargetMachine {
+  virtual void anchor();
+public:
+  MipselTargetMachine(const Target &T, StringRef TT,
+                      StringRef CPU, StringRef FS, const TargetOptions &Options,
+                      Reloc::Model RM, CodeModel::Model CM,
+                      CodeGenOpt::Level OL);
+};
+
+/// Mips64ebTargetMachine - Mips64 big endian target machine.
+///
+class Mips64ebTargetMachine : public MipsTargetMachine {
+  virtual void anchor();
+public:
+  Mips64ebTargetMachine(const Target &T, StringRef TT,
+                        StringRef CPU, StringRef FS,
+                        const TargetOptions &Options,
+                        Reloc::Model RM, CodeModel::Model CM,
+                        CodeGenOpt::Level OL);
+};
+
+/// Mips64elTargetMachine - Mips64 little endian target machine.
+///
+class Mips64elTargetMachine : public MipsTargetMachine {
+  virtual void anchor();
+public:
+  Mips64elTargetMachine(const Target &T, StringRef TT,
+                        StringRef CPU, StringRef FS,
+                        const TargetOptions &Options,
+                        Reloc::Model RM, CodeModel::Model CM,
+                        CodeGenOpt::Level OL);
+};
 } // End llvm namespace
 
 #endif

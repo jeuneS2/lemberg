@@ -113,7 +113,7 @@ bb116:		; preds = %bb131, %entry
 	br i1 false, label %bb141, label %bb131
 
 bb131:		; preds = %bb116
-	%mrv_gr125 = getresult %struct.NSRange %tmp123, 1		; <i64> [#uses=0]
+	%mrv_gr125 = extractvalue %struct.NSRange %tmp123, 1		; <i64> [#uses=0]
 	br label %bb116
 
 bb141:		; preds = %bb116
@@ -137,3 +137,19 @@ bb17:		; preds = %bb15
 }
 
 
+
+
+; PR9523 - Non-canonical loop.
+define void @test7(i8* %P) nounwind {
+entry:
+  indirectbr i8* %P, [label %"3", label %"5"]
+
+"3":                                              ; preds = %"4", %entry
+  br i1 undef, label %"5", label %"4"
+
+"4":                                              ; preds = %"3"
+  br label %"3"
+
+"5":                                              ; preds = %"3", %entry
+  ret void
+}

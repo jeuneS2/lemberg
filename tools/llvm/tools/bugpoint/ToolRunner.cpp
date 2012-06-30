@@ -234,6 +234,8 @@ int LLI::ExecuteProgram(const std::string &Bitcode,
       Timeout, MemoryLimit, Error);
 }
 
+void AbstractInterpreter::anchor() { }
+
 // LLI create method - Try to find the LLI executable
 AbstractInterpreter *AbstractInterpreter::createLLI(const char *Argv0,
                                                     std::string &Message,
@@ -503,7 +505,7 @@ int LLC::ExecuteProgram(const std::string &Bitcode,
   sys::Path OutputAsmFile;
   GCC::FileType FileKind = OutputCode(Bitcode, OutputAsmFile, *Error, Timeout,
                                       MemoryLimit);
-  FileRemover OutFileRemover(OutputAsmFile, !SaveTemps);
+  FileRemover OutFileRemover(OutputAsmFile.str(), !SaveTemps);
 
   std::vector<std::string> GCCArgs(ArgsForGCC);
   GCCArgs.insert(GCCArgs.end(), SharedLibs.begin(), SharedLibs.end());
@@ -621,94 +623,6 @@ AbstractInterpreter *AbstractInterpreter::createJIT(const char *Argv0,
   return 0;
 }
 
-GCC::FileType CBE::OutputCode(const std::string &Bitcode,
-                              sys::Path &OutputCFile, std::string &Error,
-                              unsigned Timeout, unsigned MemoryLimit) {
-  sys::Path uniqueFile(Bitcode+".cbe.c");
-  std::string ErrMsg;
-  if (uniqueFile.makeUnique(true, &ErrMsg)) {
-    errs() << "Error making unique filename: " << ErrMsg << "\n";
-    exit(1);
-  }
-  OutputCFile = uniqueFile;
-  std::vector<const char *> LLCArgs;
-  LLCArgs.push_back(LLCPath.c_str());
-
-  // Add any extra LLC args.
-  for (unsigned i = 0, e = ToolArgs.size(); i != e; ++i)
-    LLCArgs.push_back(ToolArgs[i].c_str());
-
-  LLCArgs.push_back("-o");
-  LLCArgs.push_back(OutputCFile.c_str());   // Output to the C file
-  LLCArgs.push_back("-march=c");            // Output C language
-  LLCArgs.push_back(Bitcode.c_str());      // This is the input bitcode
-  LLCArgs.push_back(0);
-
-  outs() << "<cbe>"; outs().flush();
-  DEBUG(errs() << "\nAbout to run:\t";
-        for (unsigned i = 0, e = LLCArgs.size()-1; i != e; ++i)
-          errs() << " " << LLCArgs[i];
-        errs() << "\n";
-        );
-  if (RunProgramWithTimeout(LLCPath, &LLCArgs[0], sys::Path(), sys::Path(),
-                            sys::Path(), Timeout, MemoryLimit))
-    Error = ProcessFailure(LLCPath, &LLCArgs[0], Timeout, MemoryLimit);
-  return GCC::CFile;
-}
-
-void CBE::compileProgram(const std::string &Bitcode, std::string *Error,
-                         unsigned Timeout, unsigned MemoryLimit) {
-  sys::Path OutputCFile;
-  OutputCode(Bitcode, OutputCFile, *Error, Timeout, MemoryLimit);
-  OutputCFile.eraseFromDisk();
-}
-
-int CBE::ExecuteProgram(const std::string &Bitcode,
-                        const std::vector<std::string> &Args,
-                        const std::string &InputFile,
-                        const std::string &OutputFile,
-                        std::string *Error,
-                        const std::vector<std::string> &ArgsForGCC,
-                        const std::vector<std::string> &SharedLibs,
-                        unsigned Timeout,
-                        unsigned MemoryLimit) {
-  sys::Path OutputCFile;
-  OutputCode(Bitcode, OutputCFile, *Error, Timeout, MemoryLimit);
-
-  FileRemover CFileRemove(OutputCFile, !SaveTemps);
-
-  std::vector<std::string> GCCArgs(ArgsForGCC);
-  GCCArgs.insert(GCCArgs.end(), SharedLibs.begin(), SharedLibs.end());
-
-  return gcc->ExecuteProgram(OutputCFile.str(), Args, GCC::CFile,
-                             InputFile, OutputFile, Error, GCCArgs,
-                             Timeout, MemoryLimit);
-}
-
-/// createCBE - Try to find the 'llc' executable
-///
-CBE *AbstractInterpreter::createCBE(const char *Argv0,
-                                    std::string &Message,
-                                    const std::string &GCCBinary,
-                                    const std::vector<std::string> *Args,
-                                    const std::vector<std::string> *GCCArgs) {
-  sys::Path LLCPath =
-    PrependMainExecutablePath("llc", Argv0, (void *)(intptr_t)&createCBE);
-  if (LLCPath.isEmpty()) {
-    Message =
-      "Cannot find `llc' in executable directory!\n";
-    return 0;
-  }
-
-  Message = "Found llc: " + LLCPath.str() + "\n";
-  GCC *gcc = GCC::create(Message, GCCBinary, GCCArgs);
-  if (!gcc) {
-    errs() << Message << "\n";
-    exit(1);
-  }
-  return new CBE(LLCPath, gcc, Args);
-}
-
 //===---------------------------------------------------------------------===//
 // GCC abstraction
 //
@@ -758,8 +672,7 @@ int GCC::ExecuteProgram(const std::string &ProgramFile,
       // For ARM architectures we don't want this flag. bugpoint isn't
       // explicitly told what architecture it is working on, so we get
       // it from gcc flags
-      if ((TargetTriple.getOS() == Triple::Darwin) &&
-          !IsARMArchitecture(GCCArgs))
+      if (TargetTriple.isOSDarwin() && !IsARMArchitecture(GCCArgs))
         GCCArgs.push_back("-force_cpusubtype_ALL");
     }
   }
@@ -851,13 +764,22 @@ int GCC::ExecuteProgram(const std::string &ProgramFile,
         errs() << "\n";
         );
 
-  FileRemover OutputBinaryRemover(OutputBinary, !SaveTemps);
+  FileRemover OutputBinaryRemover(OutputBinary.str(), !SaveTemps);
 
   if (RemoteClientPath.isEmpty()) {
     DEBUG(errs() << "<run locally>");
-    return RunProgramWithTimeout(OutputBinary, &ProgramArgs[0],
+    int ExitCode = RunProgramWithTimeout(OutputBinary, &ProgramArgs[0],
         sys::Path(InputFile), sys::Path(OutputFile), sys::Path(OutputFile),
         Timeout, MemoryLimit, Error);
+    // Treat a signal (usually SIGSEGV) or timeout as part of the program output
+    // so that crash-causing miscompilation is handled seamlessly.
+    if (ExitCode < -1) {
+      std::ofstream outFile(OutputFile.c_str(), std::ios_base::app);
+      outFile << *Error << '\n';
+      outFile.close();
+      Error->clear();
+    }
+    return ExitCode;
   } else {
     outs() << "<run remotely>"; outs().flush();
     return RunProgramRemotelyWithTimeout(sys::Path(RemoteClientPath),
@@ -900,7 +822,7 @@ int GCC::MakeSharedObject(const std::string &InputFile, FileType fileType,
   GCCArgs.push_back("none");
   if (TargetTriple.getArch() == Triple::sparc)
     GCCArgs.push_back("-G");       // Compile a shared library, `-G' for Sparc
-  else if (TargetTriple.getOS() == Triple::Darwin) {
+  else if (TargetTriple.isOSDarwin()) {
     // link all source files into a single module in data segment, rather than
     // generating blocks. dynamic_lookup requires that you set
     // MACOSX_DEPLOYMENT_TARGET=10.3 in your env.  FIXME: it would be better for
@@ -912,8 +834,7 @@ int GCC::MakeSharedObject(const std::string &InputFile, FileType fileType,
   } else
     GCCArgs.push_back("-shared");  // `-shared' for Linux/X86, maybe others
 
-  if ((TargetTriple.getArch() == Triple::alpha) ||
-      (TargetTriple.getArch() == Triple::x86_64))
+  if (TargetTriple.getArch() == Triple::x86_64)
     GCCArgs.push_back("-fPIC");   // Requires shared objs to contain PIC
 
   if (TargetTriple.getArch() == Triple::sparc)

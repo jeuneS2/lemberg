@@ -16,39 +16,62 @@
 #define FixedLenDECODEREMITTER_H
 
 #include "CodeGenTarget.h"
-#include "TableGenBackend.h"
 
+#include "llvm/TableGen/TableGenBackend.h"
 #include "llvm/Support/DataTypes.h"
 
 namespace llvm {
 
+struct EncodingField {
+  unsigned Base, Width, Offset;
+  EncodingField(unsigned B, unsigned W, unsigned O)
+    : Base(B), Width(W), Offset(O) { }
+};
+
 struct OperandInfo {
-  unsigned FieldBase;
-  unsigned FieldLength;
+  std::vector<EncodingField> Fields;
   std::string Decoder;
 
-  OperandInfo(unsigned FB, unsigned FL, std::string D)
-    : FieldBase(FB), FieldLength(FL), Decoder(D) { }
+  OperandInfo(std::string D)
+    : Decoder(D) { }
+
+  void addField(unsigned Base, unsigned Width, unsigned Offset) {
+    Fields.push_back(EncodingField(Base, Width, Offset));
+  }
+
+  unsigned numFields() const { return Fields.size(); }
+
+  typedef std::vector<EncodingField>::const_iterator const_iterator;
+
+  const_iterator begin() const { return Fields.begin(); }
+  const_iterator end() const   { return Fields.end();   }
 };
 
 class FixedLenDecoderEmitter : public TableGenBackend {
 public:
-  FixedLenDecoderEmitter(RecordKeeper &R) :
-    Records(R), Target(R),
-    NumberedInstructions(Target.getInstructionsByEnumValue()) {}
+  FixedLenDecoderEmitter(RecordKeeper &R,
+                         std::string PredicateNamespace,
+                         std::string GPrefix  = "if (",
+                         std::string GPostfix = " == MCDisassembler::Fail)"
+                         " return MCDisassembler::Fail;",
+                         std::string ROK      = "MCDisassembler::Success",
+                         std::string RFail    = "MCDisassembler::Fail",
+                         std::string L        = "") :
+    Target(R),
+    PredicateNamespace(PredicateNamespace),
+    GuardPrefix(GPrefix), GuardPostfix(GPostfix),
+    ReturnOK(ROK), ReturnFail(RFail), Locals(L) {}
 
   // run - Output the code emitter
   void run(raw_ostream &o);
 
 private:
-  RecordKeeper &Records;
   CodeGenTarget Target;
-  std::vector<const CodeGenInstruction*> NumberedInstructions;
-  std::vector<unsigned> Opcodes;
-  std::map<unsigned, std::vector<OperandInfo> > Operands;
-
-  bool populateInstruction(const CodeGenInstruction &CGI, unsigned Opc);
-  void populateInstructions();
+public:
+  std::string PredicateNamespace;
+  std::string GuardPrefix, GuardPostfix;
+  std::string ReturnOK, ReturnFail;
+  std::string Locals;
 };
 
 } // end llvm namespace

@@ -1,19 +1,41 @@
-; RUN: llc < %s -march=x86 -fast-isel | grep {andb	\$1, %}
+; RUN: llc < %s -mtriple=i686-apple-darwin10 -fast-isel -fast-isel-abort | FileCheck %s
+; RUN: llc < %s -mtriple=x86_64-apple-darwin10 -fast-isel -fast-isel-abort | FileCheck %s
 
-declare i64 @bar(i64)
+declare i32 @test1a(i32)
 
-define i32 @foo(i64 %x) nounwind {
-	%y = add i64 %x, -3		; <i64> [#uses=1]
-	%t = call i64 @bar(i64 %y)		; <i64> [#uses=1]
-	%s = mul i64 %t, 77		; <i64> [#uses=1]
-	%z = trunc i64 %s to i1		; <i1> [#uses=1]
+define i32 @test1(i32 %x) nounwind {
+; CHECK: test1:
+; CHECK: andb $1, %
+	%y = add i32 %x, -3
+	%t = call i32 @test1a(i32 %y)
+	%s = mul i32 %t, 77
+	%z = trunc i32 %s to i1
 	br label %next
 
 next:		; preds = %0
-	%u = zext i1 %z to i32		; <i32> [#uses=1]
-	%v = add i32 %u, 1999		; <i32> [#uses=1]
+	%u = zext i1 %z to i32
+	%v = add i32 %u, 1999
 	br label %exit
 
 exit:		; preds = %next
 	ret i32 %v
+}
+
+define void @test2(i8* %a) nounwind {
+entry:
+; CHECK: test2:
+; CHECK: movb {{.*}} %al
+; CHECK-NEXT: xorb $1, %al
+; CHECK-NEXT: testb $1
+  %tmp = load i8* %a, align 1
+  %tobool = trunc i8 %tmp to i1
+  %tobool2 = xor i1 %tobool, true
+  br i1 %tobool2, label %if.then, label %if.end
+
+if.then:
+  call void @test2(i8* null)
+  br label %if.end
+
+if.end:
+  ret void
 }

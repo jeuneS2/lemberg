@@ -15,6 +15,7 @@
 #include "Lemberg.h"
 #include "LembergRegisterInfo.h"
 #include "LembergFrameLowering.h"
+#include "LembergSubtarget.h"
 #include "llvm/Function.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineFunction.h"
@@ -31,19 +32,22 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 
+#define GET_REGINFO_TARGET_DESC
+#include "LembergGenRegisterInfo.inc"
+
 using namespace llvm;
 
 LembergRegisterInfo::LembergRegisterInfo(LembergSubtarget &st, const TargetInstrInfo &tii)
-	: LembergGenRegisterInfo(Lemberg::ADJCALLSTACKDOWN, Lemberg::ADJCALLSTACKUP),
+	: LembergGenRegisterInfo(Lemberg::RB),
     Subtarget(st),
 	TII(tii) {
 	LastLargeFrame = new FrameReuseInfo();
 }
 
-const unsigned*
+const uint16_t*
 LembergRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
   using namespace Lemberg;
-  static const unsigned CalleeSavedRegs[] = {
+  static const uint16_t CalleeSavedRegs[] = {
 	  R10, R11, R12, R13, R14,
 	  R0_23, R1_23, R2_23, R3_23,
 	  R0_24, R1_24, R2_24, R3_24,
@@ -758,10 +762,6 @@ unsigned LembergRegisterInfo::getRegPressureLimit(const TargetRegisterClass *RC,
 	case Lemberg::DRegClassID:
 		return 8;
 	}
-}
-
-int LembergRegisterInfo::getDwarfRegNum(unsigned RegNum, bool isEH) const {
-  return LembergGenRegisterInfo::getDwarfRegNumFull(RegNum, 0);
 }
 
 const TargetRegisterClass *

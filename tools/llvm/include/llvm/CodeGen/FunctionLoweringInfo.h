@@ -19,11 +19,11 @@
 #include "llvm/Instructions.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/IndexedMap.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
-#ifndef NDEBUG
-#include "llvm/ADT/SmallSet.h"
-#endif
+#include "llvm/Analysis/BranchProbabilityInfo.h"
 #include "llvm/CodeGen/ValueTypes.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
@@ -57,7 +57,7 @@ public:
   const Function *Fn;
   MachineFunction *MF;
   MachineRegisterInfo *RegInfo;
-
+  BranchProbabilityInfo *BPI;
   /// CanLowerReturn - true iff the function's return value can be lowered to
   /// registers.
   bool CanLowerReturn;
@@ -96,8 +96,8 @@ public:
   MachineBasicBlock::iterator InsertPt;
 
 #ifndef NDEBUG
-  SmallSet<const Instruction *, 8> CatchInfoLost;
-  SmallSet<const Instruction *, 8> CatchInfoFound;
+  SmallPtrSet<const Instruction *, 8> CatchInfoLost;
+  SmallPtrSet<const Instruction *, 8> CatchInfoFound;
 #endif
 
   struct LiveOutInfo {
@@ -110,7 +110,7 @@ public:
 
   /// VisitedBBs - The set of basic blocks visited thus far by instruction
   /// selection.
-  DenseSet<const BasicBlock*> VisitedBBs;
+  SmallPtrSet<const BasicBlock*, 4> VisitedBBs;
 
   /// PHINodesToUpdate - A list of phi instructions whose operand list will
   /// be updated after processing the current basic block.
@@ -138,7 +138,7 @@ public:
 
   unsigned CreateReg(EVT VT);
   
-  unsigned CreateRegs(const Type *Ty);
+  unsigned CreateRegs(Type *Ty);
   
   unsigned InitializeRegForValue(const Value *V) {
     unsigned &R = ValueMap[V];
@@ -197,27 +197,34 @@ public:
     LiveOutRegInfo[Reg].IsValid = false;
   }
 
-  /// setByValArgumentFrameIndex - Record frame index for the byval
+  /// setArgumentFrameIndex - Record frame index for the byval
   /// argument.
-  void setByValArgumentFrameIndex(const Argument *A, int FI);
-  
-  /// getByValArgumentFrameIndex - Get frame index for the byval argument.
-  int getByValArgumentFrameIndex(const Argument *A);
+  void setArgumentFrameIndex(const Argument *A, int FI);
+
+  /// getArgumentFrameIndex - Get frame index for the byval argument.
+  int getArgumentFrameIndex(const Argument *A);
 
 private:
   /// LiveOutRegInfo - Information about live out vregs.
   IndexedMap<LiveOutInfo, VirtReg2IndexFunctor> LiveOutRegInfo;
 };
 
+/// ComputeUsesVAFloatArgument - Determine if any floating-point values are
+/// being passed to this variadic function, and set the MachineModuleInfo's
+/// usesVAFloatArgument flag if so. This flag is used to emit an undefined
+/// reference to _fltused on Windows, which will link in MSVCRT's
+/// floating-point support.
+void ComputeUsesVAFloatArgument(const CallInst &I, MachineModuleInfo *MMI);
+
 /// AddCatchInfo - Extract the personality and type infos from an eh.selector
 /// call, and add them to the specified machine basic block.
 void AddCatchInfo(const CallInst &I,
                   MachineModuleInfo *MMI, MachineBasicBlock *MBB);
 
-/// CopyCatchInfo - Copy catch information from SuccBB (or one of its
-/// successors) to LPad.
-void CopyCatchInfo(const BasicBlock *SuccBB, const BasicBlock *LPad,
-                   MachineModuleInfo *MMI, FunctionLoweringInfo &FLI);
+/// AddLandingPadInfo - Extract the exception handling information from the
+/// landingpad instruction and add them to the specified machine module info.
+void AddLandingPadInfo(const LandingPadInst &I, MachineModuleInfo &MMI,
+                       MachineBasicBlock *MBB);
 
 } // end namespace llvm
 

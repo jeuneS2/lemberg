@@ -1,4 +1,4 @@
-//===- SPURegisterInfo.h - Cell SPU Register Information Impl ----*- C++ -*-==//
+//===-- SPURegisterInfo.h - Cell SPU Register Information Impl --*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -16,7 +16,9 @@
 #define SPU_REGISTERINFO_H
 
 #include "SPU.h"
-#include "SPUGenRegisterInfo.h.inc"
+
+#define GET_REGINFO_HEADER
+#include "SPUGenRegisterInfo.inc"
 
 namespace llvm {
   class SPUSubtarget;
@@ -55,7 +57,7 @@ namespace llvm {
     }
 
     //! Return the array of callee-saved registers
-    virtual const unsigned* getCalleeSavedRegs(const MachineFunction *MF) const;
+    virtual const uint16_t* getCalleeSavedRegs(const MachineFunction *MF) const;
 
     //! Allow for scavenging, so we can get scratch registers when needed.
     virtual bool requiresRegisterScavenging(const MachineFunction &MF) const
@@ -72,17 +74,12 @@ namespace llvm {
     void eliminateFrameIndex(MachineBasicBlock::iterator II, int SPAdj,
                              RegScavenger *RS = NULL) const;
 
-    //! Get return address register (LR, aka R0)
-    unsigned getRARegister() const;
     //! Get the stack frame register (SP, aka R1)
     unsigned getFrameRegister(const MachineFunction &MF) const;
 
     //------------------------------------------------------------------------
     // New methods added:
     //------------------------------------------------------------------------
-
-    //! Get DWARF debugging register number
-    int getDwarfRegNum(unsigned RegNum, bool isEH) const;
 
     //! Convert D-form load/store to X-form load/store
     /*!

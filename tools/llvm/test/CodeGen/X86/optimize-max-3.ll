@@ -1,5 +1,5 @@
-; RUN: llc < %s -mtriple=x86_64-linux -asm-verbose=false | FileCheck %s
-; RUN: llc < %s -mtriple=x86_64-win32 -asm-verbose=false | FileCheck %s
+; RUN: llc < %s -mcpu=generic -mtriple=x86_64-linux -asm-verbose=false | FileCheck %s
+; RUN: llc < %s -mcpu=generic -mtriple=x86_64-win32 -asm-verbose=false | FileCheck %s
 
 ; LSR's OptimizeMax should eliminate the select (max).
 
@@ -41,14 +41,13 @@ for.end:                                          ; preds = %for.body, %entry
 
 ;      CHECK:         jle
 ;  CHECK-NOT:         cmov
-;      CHECK:         xorl    {{%edi, %edi|%ecx, %ecx}}
+;      CHECK:         xorl    {{%edi, %edi|%ecx, %ecx|%eax, %eax}}
 ; CHECK-NEXT:         align
 ; CHECK-NEXT: BB1_2:
-; CHECK-NEXT:         callq
-; CHECK-NEXT:         incl    [[BX:%ebx|%esi]]
-; CHECK-NEXT:         cmpl    [[R14:%r14d|%edi]], [[BX]]
-; CHECK-NEXT:         movq    %rax, %r{{di|cx}}
-; CHECK-NEXT:         jl
+; CHECK:              callq
+; CHECK-NEXT:         incl    [[BX:%[a-z0-9]+]]
+; CHECK-NEXT:         cmpl    [[R14:%[a-z0-9]+]], [[BX]]
+; CHECK:              jl
 
 define void @_Z18GenerateStatusPagei(i32 %jobs_to_display) nounwind {
 entry:

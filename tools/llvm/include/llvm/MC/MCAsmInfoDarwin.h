@@ -18,12 +18,9 @@
 #include "llvm/MC/MCAsmInfo.h"
 
 namespace llvm {
-  class GlobalValue;
-  class GlobalVariable;
-  class Type;
-  class Mangler;
-
-  struct MCAsmInfoDarwin : public MCAsmInfo {
+  class MCAsmInfoDarwin : public MCAsmInfo {
+    virtual void anchor();
+  public:
     explicit MCAsmInfoDarwin();
   };
 }

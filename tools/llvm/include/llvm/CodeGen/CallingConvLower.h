@@ -16,6 +16,7 @@
 #define LLVM_CODEGEN_CALLINGCONVLOWER_H
 
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/ValueTypes.h"
 #include "llvm/Target/TargetCallingConv.h"
 #include "llvm/CallingConv.h"
@@ -141,12 +142,19 @@ typedef bool CCCustomFn(unsigned &ValNo, MVT &ValVT,
                         MVT &LocVT, CCValAssign::LocInfo &LocInfo,
                         ISD::ArgFlagsTy &ArgFlags, CCState &State);
 
+/// ParmContext - This enum tracks whether calling convention lowering is in
+/// the context of prologue or call generation. Not all backends make use of
+/// this information.
+typedef enum { Unknown, Prologue, Call } ParmContext;
+
 /// CCState - This class holds information needed while lowering arguments and
 /// return values.  It captures which registers are already assigned and which
 /// stack slots are used.  It provides accessors to allocate these values.
 class CCState {
+private:
   CallingConv::ID CallingConv;
   bool IsVarArg;
+  MachineFunction &MF;
   const TargetMachine &TM;
   const TargetRegisterInfo &TRI;
   SmallVector<CCValAssign, 16> &Locs;
@@ -154,9 +162,16 @@ class CCState {
 
   unsigned StackOffset;
   SmallVector<uint32_t, 16> UsedRegs;
+  unsigned FirstByValReg;
+  bool FirstByValRegValid;
+
+protected:
+  ParmContext CallOrPrologue;
+
 public:
-  CCState(CallingConv::ID CC, bool isVarArg, const TargetMachine &TM,
-          SmallVector<CCValAssign, 16> &locs, LLVMContext &C);
+  CCState(CallingConv::ID CC, bool isVarArg, MachineFunction &MF,
+          const TargetMachine &TM, SmallVector<CCValAssign, 16> &locs,
+          LLVMContext &C);
 
   void addLoc(const CCValAssign &V) {
     Locs.push_back(V);
@@ -164,6 +179,7 @@ public:
 
   LLVMContext &getContext() const { return Context; }
   const TargetMachine &getTarget() const { return TM; }
+  MachineFunction &getMachineFunction() const { return MF; }
   CallingConv::ID getCallingConv() const { return CallingConv; }
   bool isVarArg() const { return IsVarArg; }
 
@@ -213,7 +229,7 @@ public:
 
   /// getFirstUnallocated - Return the first unallocated register in the set, or
   /// NumRegs if they are all allocated.
-  unsigned getFirstUnallocated(const unsigned *Regs, unsigned NumRegs) const {
+  unsigned getFirstUnallocated(const uint16_t *Regs, unsigned NumRegs) const {
     for (unsigned i = 0; i != NumRegs; ++i)
       if (!isAllocated(Regs[i]))
         return i;
@@ -240,7 +256,7 @@ public:
   /// AllocateReg - Attempt to allocate one of the specified registers.  If none
   /// are available, return zero.  Otherwise, return the first one available,
   /// marking it and any aliases as allocated.
-  unsigned AllocateReg(const unsigned *Regs, unsigned NumRegs) {
+  unsigned AllocateReg(const uint16_t *Regs, unsigned NumRegs) {
     unsigned FirstUnalloc = getFirstUnallocated(Regs, NumRegs);
     if (FirstUnalloc == NumRegs)
       return 0;    // Didn't find the reg.
@@ -252,7 +268,7 @@ public:
   }
 
   /// Version of AllocateReg with list of registers to be shadowed.
-  unsigned AllocateReg(const unsigned *Regs, const unsigned *ShadowRegs,
+  unsigned AllocateReg(const uint16_t *Regs, const uint16_t *ShadowRegs,
                        unsigned NumRegs) {
     unsigned FirstUnalloc = getFirstUnallocated(Regs, NumRegs);
     if (FirstUnalloc == NumRegs)
@@ -287,6 +303,15 @@ public:
   void HandleByVal(unsigned ValNo, MVT ValVT,
                    MVT LocVT, CCValAssign::LocInfo LocInfo,
                    int MinSize, int MinAlign, ISD::ArgFlagsTy ArgFlags);
+
+  // First GPR that carries part of a byval aggregate that's split
+  // between registers and memory.
+  unsigned getFirstByValReg() const { return FirstByValRegValid ? FirstByValReg : 0; }
+  void setFirstByValReg(unsigned r) { FirstByValReg = r; FirstByValRegValid = true; }
+  void clearFirstByValReg() { FirstByValReg = 0; FirstByValRegValid = false; }
+  bool isFirstByValRegValid() const { return FirstByValRegValid; }
+
+  ParmContext getCallOrPrologue() const { return CallOrPrologue; }
 
 private:
   /// MarkAllocated - Mark a register and all of its aliases as allocated.

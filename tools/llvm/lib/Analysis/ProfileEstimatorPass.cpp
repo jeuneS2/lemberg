@@ -140,7 +140,7 @@ void ProfileEstimatorPass::recurseBasicBlock(BasicBlock *BB) {
     // loop, thus the edge is a backedge, continue and do not check if the
     // value is valid.
     if (BBisHeader && BBLoop->contains(*bbi)) {
-      printEdgeError(edge, "but is backedge, continueing");
+      printEdgeError(edge, "but is backedge, continuing");
       continue;
     }
     // If the edges value is missing (and this is no loop header, and this is
@@ -332,7 +332,7 @@ bool ProfileEstimatorPass::runOnFunction(Function &F) {
   // Clear Minimal Edges.
   MinimalWeight.clear();
 
-  DEBUG(dbgs() << "Working on function " << F.getNameStr() << "\n");
+  DEBUG(dbgs() << "Working on function " << F.getName() << "\n");
 
   // Since the entry block is the first one and has no predecessors, the edge
   // (0,entry) is inserted with the starting weight of 1.

@@ -49,25 +49,6 @@ static void Warning(const Twine &Msg) {
 
 ///
 
-static int DumpHeader(MachOObject &Obj) {
-  // Read the header.
-  const macho::Header &Hdr = Obj.getHeader();
-  outs() << "('cputype', " << Hdr.CPUType << ")\n";
-  outs() << "('cpusubtype', " << Hdr.CPUSubtype << ")\n";
-  outs() << "('filetype', " << Hdr.FileType << ")\n";
-  outs() << "('num_load_commands', " << Hdr.NumLoadCommands << ")\n";
-  outs() << "('load_commands_size', " << Hdr.SizeOfLoadCommands << ")\n";
-  outs() << "('flag', " << Hdr.Flags << ")\n";
-
-  // Print extended header if 64-bit.
-  if (Obj.is64Bit()) {
-    const macho::Header64Ext &Hdr64 = Obj.getHeader64Ext();
-    outs() << "('reserved', " << Hdr64.Reserved << ")\n";
-  }
-
-  return 0;
-}
-
 static void DumpSegmentCommandData(StringRef Name,
                                    uint64_t VMAddr, uint64_t VMSize,
                                    uint64_t FileOffset, uint64_t FileSize,
@@ -329,6 +310,29 @@ static int DumpDysymtabCommand(MachOObject &Obj,
   return Res;
 }
 
+static int DumpLinkeditDataCommand(MachOObject &Obj,
+                                   const MachOObject::LoadCommandInfo &LCI) {
+  InMemoryStruct<macho::LinkeditDataLoadCommand> LLC;
+  Obj.ReadLinkeditDataLoadCommand(LCI, LLC);
+  if (!LLC)
+    return Error("unable to read segment load command");
+
+  outs() << "  ('dataoff', " << LLC->DataOffset << ")\n"
+         << "  ('datasize', " << LLC->DataSize << ")\n"
+         << "  ('_addresses', [\n";
+
+  SmallVector<uint64_t, 8> Addresses;
+  Obj.ReadULEB128s(LLC->DataOffset, Addresses);
+  for (unsigned i = 0, e = Addresses.size(); i != e; ++i)
+    outs() << "    # Address " << i << '\n'
+           << "    ('address', " << format("0x%x", Addresses[i]) << "),\n";
+
+  outs() << "  ])\n";
+
+  return 0;
+}
+
+
 static int DumpLoadCommand(MachOObject &Obj, unsigned Index) {
   const MachOObject::LoadCommandInfo &LCI = Obj.getLoadCommandInfo(Index);
   int Res = 0;
@@ -348,6 +352,11 @@ static int DumpLoadCommand(MachOObject &Obj, unsigned Index) {
     break;
   case macho::LCT_Dysymtab:
     Res = DumpDysymtabCommand(Obj, LCI);
+    break;
+  case macho::LCT_CodeSignature:
+  case macho::LCT_SegmentSplitInfo:
+  case macho::LCT_FunctionStarts:
+    Res = DumpLinkeditDataCommand(Obj, LCI);
     break;
   default:
     Warning("unknown load command: " + Twine(LCI.Command.Type));
@@ -376,8 +385,8 @@ int main(int argc, char **argv) {
   if (!InputObject)
     return Error("unable to load object: '" + ErrorStr + "'");
 
-  if (int Res = DumpHeader(*InputObject))
-    return Res;
+  // Print the header
+  InputObject->printHeader(outs());
 
   // Print the load commands.
   int Res = 0;

@@ -35,11 +35,11 @@ namespace llvm {
     LembergFrameLowering FrameLowering;
 
   public:
-    LembergTargetMachine(const Target &T, const std::string &TT,
-						 const std::string &FS);
-
-    virtual void setCodeModelForJIT();
-    virtual void setCodeModelForStatic();
+    LembergTargetMachine(const Target &T, StringRef TT,
+						 StringRef CPU, StringRef FS,
+						 const TargetOptions &Options,
+						 Reloc::Model RM, CodeModel::Model CM,
+						 CodeGenOpt::Level OL);
 
 	virtual const LembergInstrInfo *getInstrInfo() const { return &InstrInfo; }
     virtual const LembergSubtarget *getSubtargetImpl() const {
@@ -58,12 +58,8 @@ namespace llvm {
 	virtual const LembergSelectionDAGInfo* getSelectionDAGInfo() const { return &TSInfo; }
 	virtual const TargetData *getTargetData() const { return &DataLayout; }
 
-	virtual bool addInstSelector(PassManagerBase &PM,
-                                 CodeGenOpt::Level OptLevel);
-	virtual bool addPreRegAlloc(PassManagerBase &PM,
-                                CodeGenOpt::Level OptLevel);
-	virtual bool addPreEmitPass(PassManagerBase &PM,
-								CodeGenOpt::Level OptLevel);
+	// Pass Pipeline Configuration
+	virtual TargetPassConfig *createPassConfig(PassManagerBase &PM);
    };
 
 } // end namespace llvm

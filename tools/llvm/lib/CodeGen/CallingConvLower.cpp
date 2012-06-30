@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/CodeGen/CallingConvLower.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
@@ -22,19 +23,22 @@
 #include "llvm/Target/TargetLowering.h"
 using namespace llvm;
 
-CCState::CCState(CallingConv::ID CC, bool isVarArg, const TargetMachine &tm,
-                 SmallVector<CCValAssign, 16> &locs, LLVMContext &C)
-  : CallingConv(CC), IsVarArg(isVarArg), TM(tm),
-    TRI(*TM.getRegisterInfo()), Locs(locs), Context(C) {
+CCState::CCState(CallingConv::ID CC, bool isVarArg, MachineFunction &mf,
+                 const TargetMachine &tm, SmallVector<CCValAssign, 16> &locs,
+                 LLVMContext &C)
+  : CallingConv(CC), IsVarArg(isVarArg), MF(mf), TM(tm),
+    TRI(*TM.getRegisterInfo()), Locs(locs), Context(C),
+    CallOrPrologue(Unknown) {
   // No stack is used.
   StackOffset = 0;
-  
+
+  clearFirstByValReg();
   UsedRegs.resize((TRI.getNumRegs()+31)/32);
 }
 
-// HandleByVal - Allocate a stack slot large enough to pass an argument by
-// value. The size and alignment information of the argument is encoded in its
-// parameter attribute.
+// HandleByVal - Allocate space on the stack large enough to pass an argument
+// by value. The size and alignment information of the argument is encoded in
+// its parameter attribute.
 void CCState::HandleByVal(unsigned ValNo, MVT ValVT,
                           MVT LocVT, CCValAssign::LocInfo LocInfo,
                           int MinSize, int MinAlign,
@@ -45,15 +49,16 @@ void CCState::HandleByVal(unsigned ValNo, MVT ValVT,
     Size = MinSize;
   if (MinAlign > (int)Align)
     Align = MinAlign;
+  if (MF.getFrameInfo()->getMaxAlignment() < Align)
+    MF.getFrameInfo()->setMaxAlignment(Align);
+  TM.getTargetLowering()->HandleByVal(this, Size);
   unsigned Offset = AllocateStack(Size, Align);
-
   addLoc(CCValAssign::getMem(ValNo, ValVT, Offset, LocVT, LocInfo));
-  TM.getTargetLowering()->HandleByVal(const_cast<CCState*>(this));
 }
 
 /// MarkAllocated - Mark a register and all of its aliases as allocated.
 void CCState::MarkAllocated(unsigned Reg) {
-  for (const unsigned *Alias = TRI.getOverlaps(Reg);
+  for (const uint16_t *Alias = TRI.getOverlaps(Reg);
        unsigned Reg = *Alias; ++Alias)
     UsedRegs[Reg/32] |= 1 << (Reg&31);
 }

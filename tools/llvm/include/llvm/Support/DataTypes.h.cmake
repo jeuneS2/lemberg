@@ -15,11 +15,13 @@
 |*   [u]int(32|64)_t : typedefs for signed and unsigned 32/64 bit system types*|
 |*   [U]INT(8|16|32|64)_(MIN|MAX) : Constants for the min and max values.     *|
 |*                                                                            *|
-|* No library is required when using these functinons.                        *|
+|* No library is required when using these functions.                         *|
 |*                                                                            *|
 |*===----------------------------------------------------------------------===*/
 
 /* Please leave this file C-compatible. */
+
+/* Please keep this file in sync with DataTypes.h.in */
 
 #ifndef SUPPORT_DATATYPES_H
 #define SUPPORT_DATATYPES_H
@@ -92,6 +94,9 @@ typedef u_int64_t uint64_t;
 #else /* _MSC_VER */
 /* Visual C++ doesn't provide standard integer headers, but it does provide
    built-in data types. */
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
 #include <stdlib.h>
 #include <stddef.h>
 #include <sys/types.h>
@@ -131,7 +136,8 @@ typedef signed int ssize_t;
 # define INT32_MAX 2147483647
 #endif
 #ifndef INT32_MIN
-# define INT32_MIN -2147483648
+/* MSC treats -2147483648 as -(2147483648U). */
+# define INT32_MIN (-INT32_MAX - 1)
 #endif
 #ifndef UINT32_MAX
 # define UINT32_MAX 4294967295U
@@ -163,6 +169,26 @@ typedef signed int ssize_t;
 #ifndef UINT64_C
 # define UINT64_C(C) C##ui64
 #endif
+
+#ifndef PRId64
+# define PRId64 "I64d"
+#endif
+#ifndef PRIi64
+# define PRIi64 "I64i"
+#endif
+#ifndef PRIo64
+# define PRIo64 "I64o"
+#endif
+#ifndef PRIu64
+# define PRIu64 "I64u"
+#endif
+#ifndef PRIx64
+# define PRIx64 "I64x"
+#endif
+#ifndef PRIX64
+# define PRIX64 "I64X"
+#endif
+
 #endif /* _MSC_VER */
 
 /* Set defaults for constants which we cannot find. */

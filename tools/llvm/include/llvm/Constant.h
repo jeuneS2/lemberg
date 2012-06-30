@@ -41,24 +41,25 @@ namespace llvm {
 class Constant : public User {
   void operator=(const Constant &);     // Do not implement
   Constant(const Constant &);           // Do not implement
+  virtual void anchor();
   
 protected:
-  Constant(const Type *ty, ValueTy vty, Use *Ops, unsigned NumOps)
+  Constant(Type *ty, ValueTy vty, Use *Ops, unsigned NumOps)
     : User(ty, vty, Ops, NumOps) {}
 
   void destroyConstantImpl();
-  
-  void setOperand(unsigned i, Value *V) {
-    User::setOperand(i, V);
-  }
 public:
   /// isNullValue - Return true if this is the value that would be returned by
   /// getNullValue.
-  virtual bool isNullValue() const = 0;
+  bool isNullValue() const;
+
+  /// isAllOnesValue - Return true if this is the value that would be returned by
+  /// getAllOnesValue.
+  bool isAllOnesValue() const;
 
   /// isNegativeZeroValue - Return true if the value is what would be returned 
   /// by getZeroValueForNegation.
-  virtual bool isNegativeZeroValue() const { return isNullValue(); }
+  bool isNegativeZeroValue() const;
 
   /// canTrap - Return true if evaluation of this constant could trap.  This is
   /// true for things like constant expressions that could divide by zero.
@@ -90,21 +91,13 @@ public:
   /// FIXME: This really should not be in VMCore.
   PossibleRelocationsTy getRelocationInfo() const;
   
-  // Specialize get/setOperand for Users as their operands are always
-  // constants or BasicBlocks as well.
-  User *getOperand(unsigned i) {
-    return static_cast<User*>(User::getOperand(i));
-  }
-  const User *getOperand(unsigned i) const {
-    return static_cast<const User*>(User::getOperand(i));
-  }
+  /// getAggregateElement - For aggregates (struct/array/vector) return the
+  /// constant that corresponds to the specified element if possible, or null if
+  /// not.  This can return null if the element index is a ConstantExpr, or if
+  /// 'this' is a constant expr.
+  Constant *getAggregateElement(unsigned Elt) const;
+  Constant *getAggregateElement(Constant *Elt) const;
   
-  /// getVectorElements - This method, which is only valid on constant of vector
-  /// type, returns the elements of the vector in the specified smallvector.
-  /// This handles breaking down a vector undef into undef elements, etc.  For
-  /// constant exprs and other cases we can't handle, we return an empty vector.
-  void getVectorElements(SmallVectorImpl<Constant*> &Elts) const;
-
   /// destroyConstant - Called if some element of this constant is no longer
   /// valid.  At this point only other constants may be on the use_list for this
   /// constant.  Any constants on our Use list must also be destroy'd.  The
@@ -112,7 +105,7 @@ public:
   /// available cached constants.  Implementations should call
   /// destroyConstantImpl as the last thing they do, to destroy all users and
   /// delete this.
-  virtual void destroyConstant() { assert(0 && "Not reached!"); }
+  virtual void destroyConstant() { llvm_unreachable("Not reached!"); }
 
   //// Methods for support type inquiry through isa, cast, and dyn_cast:
   static inline bool classof(const Constant *) { return true; }
@@ -138,19 +131,20 @@ public:
     // to be here to avoid link errors.
     assert(getNumOperands() == 0 && "replaceUsesOfWithOnConstant must be "
            "implemented for all constants that have operands!");
-    assert(0 && "Constants that do not have operands cannot be using 'From'!");
+    llvm_unreachable("Constants that do not have operands cannot be using "
+                     "'From'!");
   }
-  
-  static Constant *getNullValue(const Type* Ty);
-  
+
+  static Constant *getNullValue(Type* Ty);
+
   /// @returns the value for an integer constant of the given type that has all
   /// its bits set to true.
   /// @brief Get the all ones value
-  static Constant *getAllOnesValue(const Type* Ty);
+  static Constant *getAllOnesValue(Type* Ty);
 
   /// getIntegerValue - Return the value for an integer or pointer constant,
   /// or a vector thereof, with the given scalar value.
-  static Constant *getIntegerValue(const Type* Ty, const APInt &V);
+  static Constant *getIntegerValue(Type* Ty, const APInt &V);
   
   /// removeDeadConstantUsers - If there are any dead constant users dangling
   /// off of this constant, remove them.  This method is useful for clients

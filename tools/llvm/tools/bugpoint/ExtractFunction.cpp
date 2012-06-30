@@ -47,7 +47,39 @@ namespace {
   cl::opt<bool, true>
   NoSCFG("disable-simplifycfg", cl::location(DisableSimplifyCFG),
          cl::desc("Do not use the -simplifycfg pass to reduce testcases"));
-}
+
+  Function* globalInitUsesExternalBA(GlobalVariable* GV) {
+    if (!GV->hasInitializer())
+      return 0;
+
+    Constant *I = GV->getInitializer();
+
+    // walk the values used by the initializer
+    // (and recurse into things like ConstantExpr)
+    std::vector<Constant*> Todo;
+    std::set<Constant*> Done;
+    Todo.push_back(I);
+
+    while (!Todo.empty()) {
+      Constant* V = Todo.back();
+      Todo.pop_back();
+      Done.insert(V);
+
+      if (BlockAddress *BA = dyn_cast<BlockAddress>(V)) {
+        Function *F = BA->getFunction();
+        if (F->isDeclaration())
+          return F;
+      }
+
+      for (User::op_iterator i = V->op_begin(), e = V->op_end(); i != e; ++i) {
+        Constant *C = dyn_cast<Constant>(*i);
+        if (C && !isa<GlobalValue>(C) && !Done.count(C))
+          Todo.push_back(C);
+      }
+    }
+    return 0;
+  }
+}  // end anonymous namespace
 
 /// deleteInstructionFromProgram - This method clones the current Program and
 /// deletes the specified instruction from the cloned module.  It then runs a
@@ -116,8 +148,6 @@ Module *BugDriver::performFinalCleanups(Module *M, bool MayModifySemantics) {
   else
     CleanupPasses.push_back("deadargelim");
 
-  CleanupPasses.push_back("deadtypeelim");
-
   Module *New = runPassesOn(M, CleanupPasses);
   if (New == 0) {
     errs() << "Final cleanups failed.  Sorry. :(  Please report a bug!\n";
@@ -175,13 +205,16 @@ void llvm::DeleteFunctionBody(Function *F) {
 static Constant *GetTorInit(std::vector<std::pair<Function*, int> > &TorList) {
   assert(!TorList.empty() && "Don't create empty tor list!");
   std::vector<Constant*> ArrayElts;
+  Type *Int32Ty = Type::getInt32Ty(TorList[0].first->getContext());
+  
+  StructType *STy =
+    StructType::get(Int32Ty, TorList[0].first->getType(), NULL);
   for (unsigned i = 0, e = TorList.size(); i != e; ++i) {
-    std::vector<Constant*> Elts;
-    Elts.push_back(ConstantInt::get(
-          Type::getInt32Ty(TorList[i].first->getContext()), TorList[i].second));
-    Elts.push_back(TorList[i].first);
-    ArrayElts.push_back(ConstantStruct::get(TorList[i].first->getContext(),
-                                            Elts, false));
+    Constant *Elts[] = {
+      ConstantInt::get(Int32Ty, TorList[i].second),
+      TorList[i].first
+    };
+    ArrayElts.push_back(ConstantStruct::get(STy, Elts));
   }
   return ConstantArray::get(ArrayType::get(ArrayElts[0]->getType(), 
                                            ArrayElts.size()),
@@ -271,11 +304,6 @@ llvm::SplitFunctionsOutOfModule(Module *M,
   ValueToValueMapTy NewVMap;
   Module *New = CloneModule(M, NewVMap);
 
-  // Make sure global initializers exist only in the safe module (CBE->.so)
-  for (Module::global_iterator I = New->global_begin(), E = New->global_end();
-       I != E; ++I)
-    I->setInitializer(0);  // Delete the initializer to make it external
-
   // Remove the Test functions from the Safe module
   std::set<Function *> TestFunctions;
   for (unsigned i = 0, e = F.size(); i != e; ++i) {
@@ -293,6 +321,27 @@ llvm::SplitFunctionsOutOfModule(Module *M,
     if (!TestFunctions.count(I))
       DeleteFunctionBody(I);
   
+
+  // Try to split the global initializers evenly
+  for (Module::global_iterator I = M->global_begin(), E = M->global_end();
+       I != E; ++I) {
+    GlobalVariable *GV = cast<GlobalVariable>(NewVMap[I]);
+    if (Function *TestFn = globalInitUsesExternalBA(I)) {
+      if (Function *SafeFn = globalInitUsesExternalBA(GV)) {
+        errs() << "*** Error: when reducing functions, encountered "
+                  "the global '";
+        WriteAsOperand(errs(), GV, false);
+        errs() << "' with an initializer that references blockaddresses "
+                  "from safe function '" << SafeFn->getName()
+               << "' and from test function '" << TestFn->getName() << "'.\n";
+        exit(1);
+      }
+      I->setInitializer(0);  // Delete the initializer to make it external
+    } else {
+      // If we keep it in the safe module, then delete it in the test module
+      GV->setInitializer(0);
+    }
+  }
 
   // Make sure that there is a global ctor/dtor array in both halves of the
   // module if they both have static ctor/dtor functions.
@@ -339,7 +388,7 @@ Module *BugDriver::ExtractMappedBlocksFromModule(const
     // If the BB doesn't have a name, give it one so we have something to key
     // off of.
     if (!BB->hasName()) BB->setName("tmpbb");
-    BlocksToNotExtractFile.os() << BB->getParent()->getNameStr() << " "
+    BlocksToNotExtractFile.os() << BB->getParent()->getName() << " "
                                 << BB->getName() << "\n";
   }
   BlocksToNotExtractFile.os().close();

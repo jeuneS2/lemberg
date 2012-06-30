@@ -320,36 +320,36 @@ void Pinner::pinToCluster(MachineInstr &MI, int cluster) {
 
 	unsigned SchedClass = MI.getDesc().getSchedClass();
 
-	const TargetInstrDesc &TID = MI.getDesc();
-	TargetInstrDesc *NTID = new TargetInstrDesc();
-	*NTID = TID;
+	const MCInstrDesc &MID = MI.getDesc();
+	MCInstrDesc *NMID = new MCInstrDesc();
+	*NMID = MID;
 	
 	if (compatibleSchedClass(SchedClass, AluSchedClasses[cluster])) {
-		NTID->SchedClass = AluSchedClasses[cluster];
+		NMID->SchedClass = AluSchedClasses[cluster];
 	} else if (compatibleSchedClass(SchedClass, MemSchedClasses[cluster])) {
-		NTID->SchedClass = MemSchedClasses[cluster];
+		NMID->SchedClass = MemSchedClasses[cluster];
 	} else if (compatibleSchedClass(SchedClass, JmpSchedClasses[cluster])) {
-		NTID->SchedClass = JmpSchedClasses[cluster];
+		NMID->SchedClass = JmpSchedClasses[cluster];
 	} else if (compatibleSchedClass(SchedClass, Fpu0SchedClasses[cluster])) {
-		NTID->SchedClass = Fpu0SchedClasses[cluster];
+		NMID->SchedClass = Fpu0SchedClasses[cluster];
 	} else if (compatibleSchedClass(SchedClass, Fpu1SchedClasses[cluster])) {
-		NTID->SchedClass = Fpu1SchedClasses[cluster];
+		NMID->SchedClass = Fpu1SchedClasses[cluster];
 	} else if (compatibleSchedClass(SchedClass, Fpu2SchedClasses[cluster])) {
-		NTID->SchedClass = Fpu2SchedClasses[cluster];
+		NMID->SchedClass = Fpu2SchedClasses[cluster];
 	} else if (compatibleSchedClass(SchedClass, Fpu3SchedClasses[cluster])) {
-		NTID->SchedClass = Fpu3SchedClasses[cluster];
+		NMID->SchedClass = Fpu3SchedClasses[cluster];
 	} else if (compatibleSchedClass(SchedClass, Fpu4SchedClasses[cluster])) {
-		NTID->SchedClass = Fpu4SchedClasses[cluster];
+		NMID->SchedClass = Fpu4SchedClasses[cluster];
 	} else if (compatibleSchedClass(SchedClass, Fpu6SchedClasses[cluster])) {
-		NTID->SchedClass = Fpu6SchedClasses[cluster];
+		NMID->SchedClass = Fpu6SchedClasses[cluster];
 	} else if (compatibleSchedClass(SchedClass, Fpu7SchedClasses[cluster])) {
-		NTID->SchedClass = Fpu7SchedClasses[cluster];
+		NMID->SchedClass = Fpu7SchedClasses[cluster];
 	} else {
 		MI.dump();
 		llvm_unreachable("Cannot find compatible schedule class for pinning");
 	}
 	
-	MI.setDesc(*NTID);
+	MI.setDesc(*NMID);
 }
 
 bool Pinner::runOnMachineFunction(MachineFunction &F) 

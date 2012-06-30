@@ -18,6 +18,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/Support/DataTypes.h"
+#include "llvm/Support/ErrorHandling.h"
 #include <cassert>
 #include <functional>
 #include <vector>
@@ -346,7 +347,7 @@ public:
       if (prev)
         prev->next = next;
       else
-        factory->Cache[computeDigest()] = next;
+        factory->Cache[factory->maskCacheIndex(computeDigest())] = next;
     }
     
     // We need to clear the mutability bit in case we are
@@ -427,6 +428,11 @@ protected:
   TreeTy*         getLeft(TreeTy* T) const { return T->getLeft(); }
   TreeTy*         getRight(TreeTy* T) const { return T->getRight(); }
   value_type_ref  getValue(TreeTy* T) const { return T->value; }
+
+  // Make sure the index is not the Tombstone or Entry key of the DenseMap.
+  static inline unsigned maskCacheIndex(unsigned I) {
+	return (I & ~0x02);
+  }
 
   unsigned incrementHeight(TreeTy* L, TreeTy* R) const {
     unsigned hl = getHeight(L);
@@ -610,7 +616,7 @@ public:
     // Search the hashtable for another tree with the same digest, and
     // if find a collision compare those trees by their contents.
     unsigned digest = TNew->computeDigest();
-    TreeTy *&entry = Cache[digest];
+    TreeTy *&entry = Cache[maskCacheIndex(digest)];
     do {
       if (!entry)
         break;
@@ -686,7 +692,7 @@ public:
         stack.back() |= VisitedRight;
         break;
       default:
-        assert(false && "Unreachable.");
+        llvm_unreachable("Unreachable.");
     }
   }
 
@@ -722,7 +728,7 @@ public:
         skipToParent();
         break;
       default:
-        assert(false && "Unreachable.");
+        llvm_unreachable("Unreachable.");
     }
     return *this;
   }
@@ -747,7 +753,7 @@ public:
           stack.push_back(reinterpret_cast<uintptr_t>(R) | VisitedRight);
         break;
       default:
-        assert(false && "Unreachable.");
+        llvm_unreachable("Unreachable.");
     }
     return *this;
   }
@@ -997,6 +1003,10 @@ public:
 
     BumpPtrAllocator& getAllocator() { return F.getAllocator(); }
 
+    typename TreeTy::Factory *getTreeFactory() const {
+      return const_cast<typename TreeTy::Factory *>(&F);
+    }
+    
   private:
     Factory(const Factory& RHS); // DO NOT IMPLEMENT
     void operator=(const Factory& RHS); // DO NOT IMPLEMENT
@@ -1019,6 +1029,10 @@ public:
 
   TreeTy *getRoot() { 
     if (Root) { Root->retain(); }
+    return Root;
+  }
+  
+  TreeTy *getRootWithoutRetain() const {
     return Root;
   }
 
@@ -1076,6 +1090,132 @@ public:
   // For testing.
   //===--------------------------------------------------===//
 
+  void validateTree() const { if (Root) Root->validateTree(); }
+};
+  
+// NOTE: This may some day replace the current ImmutableSet.
+template <typename ValT, typename ValInfo = ImutContainerInfo<ValT> >
+class ImmutableSetRef {
+public:
+  typedef typename ValInfo::value_type      value_type;
+  typedef typename ValInfo::value_type_ref  value_type_ref;
+  typedef ImutAVLTree<ValInfo> TreeTy;
+  typedef typename TreeTy::Factory          FactoryTy;
+  
+private:
+  TreeTy *Root;
+  FactoryTy *Factory;
+  
+public:
+  /// Constructs a set from a pointer to a tree root.  In general one
+  /// should use a Factory object to create sets instead of directly
+  /// invoking the constructor, but there are cases where make this
+  /// constructor public is useful.
+  explicit ImmutableSetRef(TreeTy* R, FactoryTy *F)
+    : Root(R),
+      Factory(F) {
+    if (Root) { Root->retain(); }
+  }
+  ImmutableSetRef(const ImmutableSetRef &X)
+    : Root(X.Root),
+      Factory(X.Factory) {
+    if (Root) { Root->retain(); }
+  }
+  ImmutableSetRef &operator=(const ImmutableSetRef &X) {
+    if (Root != X.Root) {
+      if (X.Root) { X.Root->retain(); }
+      if (Root) { Root->release(); }
+      Root = X.Root;
+      Factory = X.Factory;
+    }
+    return *this;
+  }
+  ~ImmutableSetRef() {
+    if (Root) { Root->release(); }
+  }
+  
+  static inline ImmutableSetRef getEmptySet(FactoryTy *F) {
+    return ImmutableSetRef(0, F);
+  }
+  
+  ImmutableSetRef add(value_type_ref V) {
+    return ImmutableSetRef(Factory->add(Root, V), Factory);
+  }
+  
+  ImmutableSetRef remove(value_type_ref V) {
+    return ImmutableSetRef(Factory->remove(Root, V), Factory);
+  }
+    
+  /// Returns true if the set contains the specified value.
+  bool contains(value_type_ref V) const {
+    return Root ? Root->contains(V) : false;
+  }
+  
+  ImmutableSet<ValT> asImmutableSet(bool canonicalize = true) const {
+    return ImmutableSet<ValT>(canonicalize ?
+                              Factory->getCanonicalTree(Root) : Root);
+  }
+  
+  TreeTy *getRootWithoutRetain() const {
+    return Root;
+  }
+  
+  bool operator==(const ImmutableSetRef &RHS) const {
+    return Root && RHS.Root ? Root->isEqual(*RHS.Root) : Root == RHS.Root;
+  }
+  
+  bool operator!=(const ImmutableSetRef &RHS) const {
+    return Root && RHS.Root ? Root->isNotEqual(*RHS.Root) : Root != RHS.Root;
+  }
+
+  /// isEmpty - Return true if the set contains no elements.
+  bool isEmpty() const { return !Root; }
+  
+  /// isSingleton - Return true if the set contains exactly one element.
+  ///   This method runs in constant time.
+  bool isSingleton() const { return getHeight() == 1; }
+
+  //===--------------------------------------------------===//
+  // Iterators.
+  //===--------------------------------------------------===//
+  
+  class iterator {
+    typename TreeTy::iterator itr;
+    iterator(TreeTy* t) : itr(t) {}
+    friend class ImmutableSetRef<ValT,ValInfo>;
+  public:
+    iterator() {}
+    inline value_type_ref operator*() const { return itr->getValue(); }
+    inline iterator& operator++() { ++itr; return *this; }
+    inline iterator  operator++(int) { iterator tmp(*this); ++itr; return tmp; }
+    inline iterator& operator--() { --itr; return *this; }
+    inline iterator  operator--(int) { iterator tmp(*this); --itr; return tmp; }
+    inline bool operator==(const iterator& RHS) const { return RHS.itr == itr; }
+    inline bool operator!=(const iterator& RHS) const { return RHS.itr != itr; }
+    inline value_type *operator->() const { return &(operator*()); }
+  };
+  
+  iterator begin() const { return iterator(Root); }
+  iterator end() const { return iterator(); }
+  
+  //===--------------------------------------------------===//
+  // Utility methods.
+  //===--------------------------------------------------===//
+  
+  unsigned getHeight() const { return Root ? Root->getHeight() : 0; }
+  
+  static inline void Profile(FoldingSetNodeID& ID, const ImmutableSetRef& S) {
+    ID.AddPointer(S.Root);
+  }
+  
+  inline void Profile(FoldingSetNodeID& ID) const {
+    return Profile(ID,*this);
+  }
+  
+  //===--------------------------------------------------===//
+  // For testing.
+  //===--------------------------------------------------===//
+  
   void validateTree() const { if (Root) Root->validateTree(); }
 };
 

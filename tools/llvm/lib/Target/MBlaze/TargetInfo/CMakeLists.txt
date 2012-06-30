@@ -5,4 +5,4 @@ add_llvm_library(LLVMMBlazeInfo
   MBlazeTargetInfo.cpp
   )
 
-add_dependencies(LLVMMBlazeInfo MBlazeCodeGenTable_gen)
+add_dependencies(LLVMMBlazeInfo MBlazeCommonTableGen)

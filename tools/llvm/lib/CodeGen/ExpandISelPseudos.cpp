@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Expand Psuedo-instructions produced by ISel. These are usually to allow
+// Expand Pseudo-instructions produced by ISel. These are usually to allow
 // the expansion to contain control flow, such as a conditional move
 // implemented with a conditional branch and a phi, or an atomic operation
 // implemented with a loop.
@@ -32,10 +32,6 @@ namespace {
   private:
     virtual bool runOnMachineFunction(MachineFunction &MF);
 
-    const char *getPassName() const {
-      return "Expand ISel Pseudo-instructions";
-    }
-
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
       MachineFunctionPass::getAnalysisUsage(AU);
     }
@@ -43,12 +39,9 @@ namespace {
 } // end anonymous namespace
 
 char ExpandISelPseudos::ID = 0;
+char &llvm::ExpandISelPseudosID = ExpandISelPseudos::ID;
 INITIALIZE_PASS(ExpandISelPseudos, "expand-isel-pseudos",
-                "Expand CodeGen Pseudo-instructions", false, false)
-
-FunctionPass *llvm::createExpandISelPseudosPass() {
-  return new ExpandISelPseudos();
-}
+                "Expand ISel Pseudo-instructions", false, false)
 
 bool ExpandISelPseudos::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
@@ -62,8 +55,7 @@ bool ExpandISelPseudos::runOnMachineFunction(MachineFunction &MF) {
       MachineInstr *MI = MBBI++;
 
       // If MI is a pseudo, expand it.
-      const TargetInstrDesc &TID = MI->getDesc();
-      if (TID.usesCustomInsertionHook()) {
+      if (MI->usesCustomInsertionHook()) {
         Changed = true;
         MachineBasicBlock *NewMBB =
           TLI->EmitInstrWithCustomInserter(MI, MBB);

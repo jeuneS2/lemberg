@@ -7,20 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "MBlaze.h"
-#include "MBlazeTargetMachine.h"
-
-#include "llvm/ADT/OwningPtr.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/StringExtras.h"
+#include "MCTargetDesc/MBlazeBaseInfo.h"
 
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCParser/MCAsmLexer.h"
 #include "llvm/MC/MCParser/MCParsedAsmOperand.h"
+#include "llvm/MC/MCRegisterInfo.h"
+#include "llvm/MC/MCTargetAsmLexer.h"
 
-#include "llvm/Target/TargetAsmLexer.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetRegistry.h"
+#include "llvm/Support/TargetRegistry.h"
 
 #include <string>
 #include <map>
@@ -29,7 +24,7 @@ using namespace llvm;
 
 namespace {
   
-  class MBlazeBaseAsmLexer : public TargetAsmLexer {
+  class MBlazeBaseAsmLexer : public MCTargetAsmLexer {
     const MCAsmInfo &AsmInfo;
     
     const AsmToken &lexDefinite() {
@@ -42,7 +37,7 @@ namespace {
     
     rmap_ty RegisterMap;
     
-    void InitRegisterMap(const TargetRegisterInfo *info) {
+    void InitRegisterMap(const MCRegisterInfo *info) {
       unsigned numRegs = info->getNumRegs();
 
       for (unsigned i = 0; i < numRegs; ++i) {
@@ -76,19 +71,16 @@ namespace {
     }
   public:
     MBlazeBaseAsmLexer(const Target &T, const MCAsmInfo &MAI)
-      : TargetAsmLexer(T), AsmInfo(MAI) {
+      : MCTargetAsmLexer(T), AsmInfo(MAI) {
     }
   };
   
   class MBlazeAsmLexer : public MBlazeBaseAsmLexer {
   public:
-    MBlazeAsmLexer(const Target &T, const MCAsmInfo &MAI)
+    MBlazeAsmLexer(const Target &T, const MCRegisterInfo &MRI,
+                   const MCAsmInfo &MAI)
       : MBlazeBaseAsmLexer(T, MAI) {
-      std::string tripleString("mblaze-unknown-unknown");
-      std::string featureString;
-      OwningPtr<const TargetMachine> 
-        targetMachine(T.createTargetMachine(tripleString, featureString));
-      InitRegisterMap(targetMachine->getRegisterInfo());
+      InitRegisterMap(&MRI);
     }
   };
 }
@@ -104,11 +96,7 @@ AsmToken MBlazeBaseAsmLexer::LexTokenUAL() {
     return AsmToken(lexedToken);
   case AsmToken::Identifier:
   {
-    std::string upperCase = lexedToken.getString().str();
-    std::string lowerCase = LowercaseString(upperCase);
-    StringRef lowerRef(lowerCase);
-    
-    unsigned regID = MatchRegisterName(lowerRef);
+    unsigned regID = MatchRegisterName(lexedToken.getString().lower());
     
     if (regID) {
       return AsmToken(AsmToken::Register,
@@ -122,6 +110,6 @@ AsmToken MBlazeBaseAsmLexer::LexTokenUAL() {
 }
 
 extern "C" void LLVMInitializeMBlazeAsmLexer() {
-  RegisterAsmLexer<MBlazeAsmLexer> X(TheMBlazeTarget);
+  RegisterMCAsmLexer<MBlazeAsmLexer> X(TheMBlazeTarget);
 }
 

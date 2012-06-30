@@ -16,7 +16,9 @@
 #define LEMBERGREGISTERINFO_H
 
 #include "llvm/Target/TargetRegisterInfo.h"
-#include "LembergGenRegisterInfo.h.inc"
+
+#define GET_REGINFO_HEADER
+#include "LembergGenRegisterInfo.inc"
 
 namespace llvm {
 
@@ -39,7 +41,7 @@ namespace llvm {
 	LembergRegisterInfo(LembergSubtarget &st, const TargetInstrInfo &tii);
 
     /// Code Generation virtual methods...
-    const unsigned *getCalleeSavedRegs(const MachineFunction *MF = 0) const;
+    const uint16_t *getCalleeSavedRegs(const MachineFunction *MF = 0) const;
 
     BitVector getReservedRegs(const MachineFunction &MF) const;
 
@@ -66,8 +68,6 @@ namespace llvm {
 
 	unsigned getRegPressureLimit(const TargetRegisterClass *RC,
 								 MachineFunction &MF) const;
-
-    int getDwarfRegNum(unsigned RegNum, bool isEH) const;
 
 	const TargetRegisterClass * getMatchingSuperRegClass(const TargetRegisterClass *A,
 														 const TargetRegisterClass *B,

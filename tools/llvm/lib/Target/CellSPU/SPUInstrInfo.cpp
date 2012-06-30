@@ -1,4 +1,4 @@
-//===- SPUInstrInfo.cpp - Cell SPU Instruction Information ----------------===//
+//===-- SPUInstrInfo.cpp - Cell SPU Instruction Information ---------------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -11,17 +11,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "SPURegisterNames.h"
 #include "SPUInstrInfo.h"
 #include "SPUInstrBuilder.h"
 #include "SPUTargetMachine.h"
-#include "SPUGenInstrInfo.inc"
 #include "SPUHazardRecognizers.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/MC/MCContext.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/MC/MCContext.h"
+
+#define GET_INSTRINFO_CTOR
+#include "SPUGenInstrInfo.inc"
 
 using namespace llvm;
 
@@ -51,7 +53,7 @@ namespace {
 }
 
 SPUInstrInfo::SPUInstrInfo(SPUTargetMachine &tm)
-  : TargetInstrInfoImpl(SPUInsts, sizeof(SPUInsts)/sizeof(SPUInsts[0])),
+  : SPUGenInstrInfo(SPU::ADJCALLSTACKDOWN, SPU::ADJCALLSTACKUP),
     TM(tm),
     RI(*TM.getSubtargetImpl(), *this)
 { /* NOP */ }
@@ -288,6 +290,8 @@ static void removeHBR( MachineBasicBlock &MBB) {
     if (I->getOpcode() == SPU::HBRA ||
         I->getOpcode() == SPU::HBR_LABEL){
       I=MBB.erase(I);
+      if (I == MBB.end())
+        break;
     }
   }
 }

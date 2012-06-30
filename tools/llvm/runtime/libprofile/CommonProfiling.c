@@ -19,7 +19,11 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#if !defined(_MSC_VER) && !defined(__MINGW32__)
 #include <unistd.h>
+#else
+#include <io.h>
+#endif
 #include <stdlib.h>
 
 static char *SavedArgs = 0;
@@ -42,7 +46,7 @@ int save_arguments(int argc, const char **argv) {
      * what to do with it.
      */
     const char *Arg = argv[1];
-    memmove(&argv[1], &argv[2], (argc-1)*sizeof(char*));
+    memmove((char**)&argv[1], &argv[2], (argc-1)*sizeof(char*));
     --argc;
 
     if (!strcmp(Arg, "-llvmprof-output")) {
@@ -50,7 +54,7 @@ int save_arguments(int argc, const char **argv) {
         puts("-llvmprof-output requires a filename argument!");
       else {
         OutputFilename = strdup(argv[1]);
-        memmove(&argv[1], &argv[2], (argc-1)*sizeof(char*));
+        memmove((char**)&argv[1], &argv[2], (argc-1)*sizeof(char*));
         --argc;
       }
     } else {
@@ -98,12 +102,19 @@ int getOutFile() {
     {
       int PTy = ArgumentInfo;
       int Zeros = 0;
-      write(OutFile, &PTy, sizeof(int));
-      write(OutFile, &SavedArgsLength, sizeof(unsigned));
-      write(OutFile, SavedArgs, SavedArgsLength);
+      if (write(OutFile, &PTy, sizeof(int)) < 0 ||
+          write(OutFile, &SavedArgsLength, sizeof(unsigned)) < 0 ||
+          write(OutFile, SavedArgs, SavedArgsLength) < 0 ) {
+        fprintf(stderr,"error: unable to write to output file.");
+        exit(0);
+      }
       /* Pad out to a multiple of four bytes */
-      if (SavedArgsLength & 3)
-        write(OutFile, &Zeros, 4-(SavedArgsLength&3));
+      if (SavedArgsLength & 3) {
+        if (write(OutFile, &Zeros, 4-(SavedArgsLength&3)) < 0) {
+          fprintf(stderr,"error: unable to write to output file.");
+          exit(0);
+        }
+      }
     }
   }
   return(OutFile);

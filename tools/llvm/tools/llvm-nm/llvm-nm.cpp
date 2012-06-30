@@ -20,12 +20,14 @@
 #include "llvm/Module.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Bitcode/Archive.h"
+#include "llvm/Object/Archive.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/PrettyStackTrace.h"
+#include "llvm/Support/Program.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/Format.h"
@@ -58,6 +60,12 @@ namespace {
                               cl::desc("Show only undefined symbols"));
   cl::alias UndefinedOnly2("u", cl::desc("Alias for --undefined-only"),
                            cl::aliasopt(UndefinedOnly));
+
+  cl::opt<bool> DynamicSyms("dynamic",
+                             cl::desc("Display the dynamic symbols instead "
+                                      "of normal symbols."));
+  cl::alias DynamicSyms2("D", cl::desc("Alias for --dynamic"),
+                         cl::aliasopt(DynamicSyms));
 
   cl::opt<bool> DefinedOnly("defined-only",
                             cl::desc("Show only defined symbols"));
@@ -107,6 +115,19 @@ namespace {
   bool MultipleFiles = false;
 
   std::string ToolName;
+}
+
+
+static void error(Twine message, Twine path = Twine()) {
+  errs() << ToolName << ": " << path << ": " << message << ".\n";
+}
+
+static bool error(error_code ec, Twine path = Twine()) {
+  if (ec) {
+    error(ec.message(), path);
+    return true;
+  }
+  return false;
 }
 
 namespace {
@@ -183,9 +204,10 @@ static void SortAndPrintSymbolList() {
       strcpy(SymbolSizeStr, "        ");
 
     if (i->Address != object::UnknownAddressOrSize)
-      format("%08x", i->Address).print(SymbolAddrStr, sizeof(SymbolAddrStr));
+      format("%08" PRIx64, i->Address).print(SymbolAddrStr,
+                                             sizeof(SymbolAddrStr));
     if (i->Size != object::UnknownAddressOrSize)
-      format("%08x", i->Size).print(SymbolSizeStr, sizeof(SymbolSizeStr));
+      format("%08" PRIx64, i->Size).print(SymbolSizeStr, sizeof(SymbolSizeStr));
 
     if (OutputFormat == posix) {
       outs() << i->Name << " " << i->TypeChar << " "
@@ -261,69 +283,94 @@ static void DumpSymbolNamesFromModule(Module *M) {
 }
 
 static void DumpSymbolNamesFromObject(ObjectFile *obj) {
-  for (ObjectFile::symbol_iterator i = obj->begin_symbols(),
-                                   e = obj->end_symbols(); i != e; ++i) {
-    if (!DebugSyms && i->isInternal())
+  error_code ec;
+  symbol_iterator ibegin = obj->begin_symbols();
+  symbol_iterator iend = obj->end_symbols();
+  if (DynamicSyms) {
+    ibegin = obj->begin_dynamic_symbols();
+    iend = obj->end_dynamic_symbols();
+  }
+  for (symbol_iterator i = ibegin; i != iend; i.increment(ec)) {
+    if (error(ec)) break;
+    uint32_t symflags;
+    if (error(i->getFlags(symflags))) break;
+    if (!DebugSyms && (symflags & SymbolRef::SF_FormatSpecific))
       continue;
     NMSymbol s;
     s.Size = object::UnknownAddressOrSize;
     s.Address = object::UnknownAddressOrSize;
-    if (PrintSize || SizeSort)
-      s.Size = i->getSize();
+    if (PrintSize || SizeSort) {
+      if (error(i->getSize(s.Size))) break;
+    }
     if (PrintAddress)
-      s.Address = i->getAddress();
-    s.TypeChar = i->getNMTypeChar();
-    s.Name     = i->getName();
+      if (error(i->getAddress(s.Address))) break;
+    if (error(i->getNMTypeChar(s.TypeChar))) break;
+    if (error(i->getName(s.Name))) break;
     SymbolList.push_back(s);
   }
 
-  CurrentFilename = obj->getFilename();
+  CurrentFilename = obj->getFileName();
   SortAndPrintSymbolList();
 }
 
 static void DumpSymbolNamesFromFile(std::string &Filename) {
+  if (Filename != "-" && !sys::fs::exists(Filename)) {
+    errs() << ToolName << ": '" << Filename << "': " << "No such file\n";
+    return;
+  }
+
+  OwningPtr<MemoryBuffer> Buffer;
+  if (error(MemoryBuffer::getFileOrSTDIN(Filename, Buffer), Filename))
+    return;
+
+  sys::fs::file_magic magic = sys::fs::identify_magic(Buffer->getBuffer());
+
   LLVMContext &Context = getGlobalContext();
   std::string ErrorMessage;
-  sys::Path aPath(Filename);
-  bool exists;
-  if (sys::fs::exists(aPath.str(), exists) || !exists)
-    errs() << ToolName << ": '" << Filename << "': " << "No such file\n";
-  // Note: Currently we do not support reading an archive from stdin.
-  if (Filename == "-" || aPath.isBitcodeFile()) {
-    OwningPtr<MemoryBuffer> Buffer;
-    if (error_code ec = MemoryBuffer::getFileOrSTDIN(Filename, Buffer))
-      ErrorMessage = ec.message();
+  if (magic == sys::fs::file_magic::bitcode) {
     Module *Result = 0;
-    if (Buffer.get())
-      Result = ParseBitcodeFile(Buffer.get(), Context, &ErrorMessage);
-
+    Result = ParseBitcodeFile(Buffer.get(), Context, &ErrorMessage);
     if (Result) {
       DumpSymbolNamesFromModule(Result);
       delete Result;
-    } else
-      errs() << ToolName << ": " << Filename << ": " << ErrorMessage << "\n";
+    } else {
+      error(ErrorMessage, Filename);
+      return;
+    }
+  } else if (magic == sys::fs::file_magic::archive) {
+    OwningPtr<Binary> arch;
+    if (error(object::createBinary(Buffer.take(), arch), Filename))
+      return;
 
-  } else if (aPath.isArchive()) {
-    std::string ErrMsg;
-    Archive* archive = Archive::OpenAndLoad(sys::Path(Filename), Context,
-                                            &ErrorMessage);
-    if (!archive)
-      errs() << ToolName << ": " << Filename << ": " << ErrorMessage << "\n";
-    std::vector<Module *> Modules;
-    if (archive->getAllModules(Modules, &ErrorMessage)) {
-      errs() << ToolName << ": " << Filename << ": " << ErrorMessage << "\n";
-      return;
+    if (object::Archive *a = dyn_cast<object::Archive>(arch.get())) {
+      for (object::Archive::child_iterator i = a->begin_children(),
+                                           e = a->end_children(); i != e; ++i) {
+        OwningPtr<Binary> child;
+        if (i->getAsBinary(child)) {
+          // Try opening it as a bitcode file.
+          OwningPtr<MemoryBuffer> buff(i->getBuffer());
+          Module *Result = 0;
+          if (buff)
+            Result = ParseBitcodeFile(buff.get(), Context, &ErrorMessage);
+
+          if (Result) {
+            DumpSymbolNamesFromModule(Result);
+            delete Result;
+          }
+          continue;
+        }
+        if (object::ObjectFile *o = dyn_cast<ObjectFile>(child.get())) {
+          outs() << o->getFileName() << ":\n";
+          DumpSymbolNamesFromObject(o);
+        }
+      }
     }
-    MultipleFiles = true;
-    std::for_each (Modules.begin(), Modules.end(), DumpSymbolNamesFromModule);
-  } else if (aPath.isObjectFile()) {
-    std::auto_ptr<ObjectFile> obj(ObjectFile::createObjectFile(aPath.str()));
-    if (!obj.get()) {
-      errs() << ToolName << ": " << Filename << ": "
-             << "Failed to open object file\n";
+  } else if (magic.is_object()) {
+    OwningPtr<Binary> obj;
+    if (error(object::createBinary(Buffer.take(), obj), Filename))
       return;
-    }
-    DumpSymbolNamesFromObject(obj.get());
+    if (object::ObjectFile *o = dyn_cast<ObjectFile>(obj.get()))
+      DumpSymbolNamesFromObject(o);
   } else {
     errs() << ToolName << ": " << Filename << ": "
            << "unrecognizable file type\n";
@@ -338,6 +385,10 @@ int main(int argc, char **argv) {
 
   llvm_shutdown_obj Y;  // Call llvm_shutdown() on exit.
   cl::ParseCommandLineOptions(argc, argv, "llvm symbol table dumper\n");
+
+  // llvm-nm only reads binary files.
+  if (error(sys::Program::ChangeStdinToBinary()))
+    return 1;
 
   ToolName = argv[0];
   if (BSDFormat) OutputFormat = bsd;

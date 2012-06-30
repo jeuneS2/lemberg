@@ -1,5 +1,5 @@
-; RUN: llc < %s -mtriple=x86_64-unknown-linux-gnu | FileCheck %s -check-prefix=LINUX
-; RUN: llc < %s -mtriple=x86_64-apple-darwin | FileCheck %s -check-prefix=DARWIN
+; RUN: llc < %s -mtriple=x86_64-unknown-linux-gnu -mcpu=core2 | FileCheck %s -check-prefix=LINUX
+; RUN: llc < %s -mtriple=x86_64-apple-darwin -mcpu=core2 | FileCheck %s -check-prefix=DARWIN
 
 declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture, i64, i32, i1) nounwind
 
@@ -78,4 +78,17 @@ entry:
 ; LINUX movq
 ; LINUX movq
 }
+
+
+@.str = private unnamed_addr constant [30 x i8] c"\00aaaaaaaaaaaaaaaaaaaaaaaaaaaa\00", align 1
+
+define void @test5(i8* nocapture %C) nounwind uwtable ssp {
+entry:
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %C, i8* getelementptr inbounds ([30 x i8]* @.str, i64 0, i64 0), i64 16, i32 1, i1 false)
+  ret void
+
+; DARWIN: movabsq	$7016996765293437281
+; DARWIN: movabsq	$7016996765293437184
+}
+
 

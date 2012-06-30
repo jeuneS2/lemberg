@@ -14,14 +14,18 @@
 #ifndef LLVM_TRANSFORMS_UTILS_SSAUPDATER_H
 #define LLVM_TRANSFORMS_UTILS_SSAUPDATER_H
 
+#include "llvm/ADT/StringRef.h"
+
 namespace llvm {
-  class Value;
   class BasicBlock;
-  class Use;
-  class PHINode;
+  class Instruction;
+  class LoadInst;
   template<typename T> class SmallVectorImpl;
   template<typename T> class SSAUpdaterTraits;
-  class BumpPtrAllocator;
+  class PHINode;
+  class Type;
+  class Use;
+  class Value;
 
 /// SSAUpdater - This class updates SSA form for a set of values defined in
 /// multiple blocks.  This is used when code duplication or another unstructured
@@ -37,7 +41,7 @@ private:
   void *AV;
 
   /// ProtoType holds the type of the values being rewritten.
-  const Type *ProtoType;
+  Type *ProtoType;
 
   // PHI nodes are given a name based on ProtoName.
   std::string ProtoName;
@@ -54,7 +58,7 @@ public:
 
   /// Initialize - Reset this object to get ready for a new set of SSA
   /// updates with type 'Ty'.  PHI nodes get a name based on 'Name'.
-  void Initialize(const Type *Ty, StringRef Name);
+  void Initialize(Type *Ty, StringRef Name);
 
   /// AddAvailableValue - Indicate that a rewritten value is available at the
   /// end of the specified block with the specified value.
@@ -135,12 +139,7 @@ public:
   /// passed into the run method).  Clients should implement this with a more
   /// efficient version if possible.
   virtual bool isInstInList(Instruction *I,
-                            const SmallVectorImpl<Instruction*> &Insts) const {
-    for (unsigned i = 0, e = Insts.size(); i != e; ++i)
-      if (Insts[i] == I)
-        return true;
-    return false;
-  }
+                            const SmallVectorImpl<Instruction*> &Insts) const;
   
   /// doExtraRewritesBeforeFinalDeletion - This hook is invoked after all the
   /// stores are found and inserted as available values, but 
@@ -156,6 +155,10 @@ public:
   virtual void instructionDeleted(Instruction *I) const {
   }
 
+  /// updateDebugInfo - This is called to update debug info associated with the
+  /// instruction.
+  virtual void updateDebugInfo(Instruction *I) const {
+  }
 };
 
 } // End llvm namespace

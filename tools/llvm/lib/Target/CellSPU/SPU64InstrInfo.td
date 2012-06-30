@@ -1,4 +1,4 @@
-//====--- SPU64InstrInfo.td - Cell SPU 64-bit operations -*- tablegen -*--====//
+//====-- SPU64InstrInfo.td - Cell SPU 64-bit operations ---*- tablegen -*--===//
 //
 //                     Cell SPU 64-bit operations
 //
@@ -24,7 +24,7 @@
 // 5. The code sequences for r64 and v2i64 are probably overly conservative,
 //    compared to the code that gcc produces.
 //
-// M00$E B!tes Kan be Pretty N@sTi!!!!! (appologies to Monty!)
+// M00$E B!tes Kan be Pretty N@sTi!!!!! (apologies to Monty!)
 //-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
 
 // selb instruction definition for i64. Note that the selection mask is

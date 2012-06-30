@@ -203,7 +203,7 @@ define i1 @test21(i32 %g, i32 %h) {
 }
 
 ; PR2298
-define i1 @test22(i32 %a, i32 %b) zeroext nounwind  {
+define zeroext i1 @test22(i32 %a, i32 %b)  nounwind  {
 	%tmp2 = sub i32 0, %a	
 	%tmp4 = sub i32 0, %b	
 	%tmp5 = icmp eq i32 %tmp2, %tmp4	
@@ -300,4 +300,30 @@ define i32 @test28(i32 %x, i32 %y, i32 %z) {
 ; CHECK-NEXT: mul i32 %z, %y
 ; CHECK-NEXT: add i32
 ; CHECK-NEXT: ret i32
+}
+
+define i64 @test29(i8* %foo, i64 %i, i64 %j) {
+  %gep1 = getelementptr inbounds i8* %foo, i64 %i
+  %gep2 = getelementptr inbounds i8* %foo, i64 %j
+  %cast1 = ptrtoint i8* %gep1 to i64
+  %cast2 = ptrtoint i8* %gep2 to i64
+  %sub = sub i64 %cast1, %cast2
+  ret i64 %sub
+; CHECK: @test29
+; CHECK-NEXT: sub i64 %i, %j
+; CHECK-NEXT: ret i64
+}
+
+define i64 @test30(i8* %foo, i64 %i, i64 %j) {
+  %bit = bitcast i8* %foo to i32*
+  %gep1 = getelementptr inbounds i32* %bit, i64 %i
+  %gep2 = getelementptr inbounds i8* %foo, i64 %j
+  %cast1 = ptrtoint i32* %gep1 to i64
+  %cast2 = ptrtoint i8* %gep2 to i64
+  %sub = sub i64 %cast1, %cast2
+  ret i64 %sub
+; CHECK: @test30
+; CHECK-NEXT: %gep1.idx = shl nuw i64 %i, 2
+; CHECK-NEXT: sub i64 %gep1.idx, %j
+; CHECK-NEXT: ret i64
 }

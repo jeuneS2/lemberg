@@ -15,7 +15,7 @@
 #define INTRINSIC_EMITTER_H
 
 #include "CodeGenIntrinsics.h"
-#include "TableGenBackend.h"
+#include "llvm/TableGen/TableGenBackend.h"
 
 namespace llvm {
   class IntrinsicEmitter : public TableGenBackend {
@@ -47,8 +47,6 @@ namespace llvm {
     void EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints,
                         raw_ostream &OS);
     void EmitModRefBehavior(const std::vector<CodeGenIntrinsic> &Ints,
-                            raw_ostream &OS);
-    void EmitGCCBuiltinList(const std::vector<CodeGenIntrinsic> &Ints, 
                             raw_ostream &OS);
     void EmitIntrinsicToGCCBuiltinMap(const std::vector<CodeGenIntrinsic> &Ints, 
                                       raw_ostream &OS);

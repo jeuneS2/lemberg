@@ -15,10 +15,10 @@
 #ifndef LLVM_TARGET_POWERPC_PPC32ISELLOWERING_H
 #define LLVM_TARGET_POWERPC_PPC32ISELLOWERING_H
 
-#include "llvm/Target/TargetLowering.h"
-#include "llvm/CodeGen/SelectionDAG.h"
 #include "PPC.h"
 #include "PPCSubtarget.h"
+#include "llvm/Target/TargetLowering.h"
+#include "llvm/CodeGen/SelectionDAG.h"
 
 namespace llvm {
   namespace PPCISD {
@@ -95,7 +95,9 @@ namespace llvm {
       EXTSW_32,
 
       /// CALL - A direct function call.
-      CALL_Darwin, CALL_SVR4,
+      /// CALL_NOP_SVR4 is a call with the special  NOP which follows 64-bit
+      /// SVR4 calls.
+      CALL_Darwin, CALL_SVR4, CALL_NOP_SVR4,
 
       /// NOP - Special NOP which follows 64-bit SVR4 calls.
       NOP,
@@ -246,7 +248,7 @@ namespace llvm {
     virtual MVT getShiftAmountTy(EVT LHSTy) const { return MVT::i32; }
 
     /// getSetCCResultType - Return the ISD::SETCC ValueType
-    virtual MVT::SimpleValueType getSetCCResultType(EVT VT) const;
+    virtual EVT getSetCCResultType(EVT VT) const;
 
     /// getPreIndexedAddressParts - returns true by value, base pointer and
     /// offset pointer and addressing mode by reference if the node's address
@@ -279,6 +281,7 @@ namespace llvm {
     bool SelectAddressRegImmShift(SDValue N, SDValue &Disp, SDValue &Base,
                                   SelectionDAG &DAG) const;
 
+    Sched::Preference getSchedulingPreference(SDNode *N) const;
 
     /// LowerOperation - Provide custom lowering hooks for some operations.
     ///
@@ -293,7 +296,6 @@ namespace llvm {
     virtual SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const;
 
     virtual void computeMaskedBitsForTargetNode(const SDValue Op,
-                                                const APInt &Mask,
                                                 APInt &KnownZero,
                                                 APInt &KnownOne,
                                                 const SelectionDAG &DAG,
@@ -323,23 +325,23 @@ namespace llvm {
     /// getByValTypeAlignment - Return the desired alignment for ByVal aggregate
     /// function arguments in the caller parameter area.  This is the actual
     /// alignment, not its logarithm.
-    unsigned getByValTypeAlignment(const Type *Ty) const;
+    unsigned getByValTypeAlignment(Type *Ty) const;
 
     /// LowerAsmOperandForConstraint - Lower the specified operand into the Ops
     /// vector.  If it is invalid, don't add anything to Ops.
     virtual void LowerAsmOperandForConstraint(SDValue Op,
-                                              char ConstraintLetter,
+                                              std::string &Constraint,
                                               std::vector<SDValue> &Ops,
                                               SelectionDAG &DAG) const;
 
     /// isLegalAddressingMode - Return true if the addressing mode represented
     /// by AM is legal for this target, for a load/store of the specified type.
-    virtual bool isLegalAddressingMode(const AddrMode &AM, const Type *Ty)const;
+    virtual bool isLegalAddressingMode(const AddrMode &AM, Type *Ty)const;
 
     /// isLegalAddressImmediate - Return true if the integer value can be used
     /// as the offset of the target addressing mode for load / store of the
     /// given type.
-    virtual bool isLegalAddressImmediate(int64_t V, const Type *Ty) const;
+    virtual bool isLegalAddressImmediate(int64_t V, Type *Ty) const;
 
     /// isLegalAddressImmediate - Return true if the GlobalValue can be used as
     /// the offset of the target addressing mode.
@@ -353,7 +355,7 @@ namespace llvm {
     /// alignment can satisfy any constraint. Similarly if SrcAlign is zero it
     /// means there isn't a need to check it against alignment requirement,
     /// probably because the source does not need to be loaded. If
-    /// 'NonScalarIntSafe' is true, that means it's safe to return a
+    /// 'IsZeroVal' is true, that means it's safe to return a
     /// non-scalar-integer type, e.g. empty string source, constant, or loaded
     /// from memory. 'MemcpyStrSrc' indicates whether the memcpy source is
     /// constant so it does not need to be loaded.
@@ -361,11 +363,8 @@ namespace llvm {
     /// target-independent logic.
     virtual EVT
     getOptimalMemOpType(uint64_t Size, unsigned DstAlign, unsigned SrcAlign,
-                        bool NonScalarIntSafe, bool MemcpyStrSrc,
+                        bool IsZeroVal, bool MemcpyStrSrc,
                         MachineFunction &MF) const;
-
-    /// getFunctionAlignment - Return the Log2 alignment of this function.
-    virtual unsigned getFunctionAlignment(const Function *F) const;
 
   private:
     SDValue getFramePointerFrameIndex(SelectionDAG & DAG) const;
@@ -393,7 +392,8 @@ namespace llvm {
     SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerJumpTable(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerSETCC(SDValue Op, SelectionDAG &DAG) const;
-    SDValue LowerTRAMPOLINE(SDValue Op, SelectionDAG &DAG) const;
+    SDValue LowerINIT_TRAMPOLINE(SDValue Op, SelectionDAG &DAG) const;
+    SDValue LowerADJUST_TRAMPOLINE(SDValue Op, SelectionDAG &DAG) const;
     SDValue LowerVASTART(SDValue Op, SelectionDAG &DAG,
                          const PPCSubtarget &Subtarget) const;
     SDValue LowerVAARG(SDValue Op, SelectionDAG &DAG,
@@ -439,13 +439,19 @@ namespace llvm {
                            SmallVectorImpl<SDValue> &InVals) const;
 
     virtual SDValue
-      LowerCall(SDValue Chain, SDValue Callee,
-                CallingConv::ID CallConv, bool isVarArg, bool &isTailCall,
+      LowerCall(SDValue Chain, SDValue Callee, CallingConv::ID CallConv,
+                bool isVarArg, bool doesNotRet, bool &isTailCall,
                 const SmallVectorImpl<ISD::OutputArg> &Outs,
                 const SmallVectorImpl<SDValue> &OutVals,
                 const SmallVectorImpl<ISD::InputArg> &Ins,
                 DebugLoc dl, SelectionDAG &DAG,
                 SmallVectorImpl<SDValue> &InVals) const;
+
+    virtual bool
+      CanLowerReturn(CallingConv::ID CallConv, MachineFunction &MF,
+                   bool isVarArg,
+                   const SmallVectorImpl<ISD::OutputArg> &Outs,
+                   LLVMContext &Context) const;
 
     virtual SDValue
       LowerReturn(SDValue Chain,
@@ -468,21 +474,21 @@ namespace llvm {
                                 SmallVectorImpl<SDValue> &InVals) const;
 
     SDValue
-      LowerCall_Darwin(SDValue Chain, SDValue Callee,
-                       CallingConv::ID CallConv, bool isVarArg, bool isTailCall,
+      LowerCall_Darwin(SDValue Chain, SDValue Callee, CallingConv::ID CallConv,
+                       bool isVarArg, bool isTailCall,
                        const SmallVectorImpl<ISD::OutputArg> &Outs,
                        const SmallVectorImpl<SDValue> &OutVals,
                        const SmallVectorImpl<ISD::InputArg> &Ins,
                        DebugLoc dl, SelectionDAG &DAG,
                        SmallVectorImpl<SDValue> &InVals) const;
     SDValue
-      LowerCall_SVR4(SDValue Chain, SDValue Callee,
-                     CallingConv::ID CallConv, bool isVarArg, bool isTailCall,
-                     const SmallVectorImpl<ISD::OutputArg> &Outs,
-                     const SmallVectorImpl<SDValue> &OutVals,
-                     const SmallVectorImpl<ISD::InputArg> &Ins,
-                     DebugLoc dl, SelectionDAG &DAG,
-                     SmallVectorImpl<SDValue> &InVals) const;
+    LowerCall_SVR4(SDValue Chain, SDValue Callee, CallingConv::ID CallConv,
+                   bool isVarArg, bool isTailCall,
+                   const SmallVectorImpl<ISD::OutputArg> &Outs,
+                   const SmallVectorImpl<SDValue> &OutVals,
+                   const SmallVectorImpl<ISD::InputArg> &Ins,
+                   DebugLoc dl, SelectionDAG &DAG,
+                   SmallVectorImpl<SDValue> &InVals) const;
   };
 }
 

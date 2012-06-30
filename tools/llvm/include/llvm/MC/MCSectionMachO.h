@@ -15,6 +15,7 @@
 #define LLVM_MC_MCSECTIONMACHO_H
 
 #include "llvm/MC/MCSection.h"
+#include "llvm/ADT/StringRef.h"
 
 namespace llvm {
 
@@ -66,10 +67,10 @@ public:
     /// S_SYMBOL_STUBS - Section with symbol stubs, byte size of stub in
     /// the Reserved2 field.
     S_SYMBOL_STUBS               = 0x08U,
-    /// S_SYMBOL_STUBS - Section with only function pointers for
+    /// S_MOD_INIT_FUNC_POINTERS - Section with only function pointers for
     /// initialization.
     S_MOD_INIT_FUNC_POINTERS     = 0x09U,
-    /// S_MOD_INIT_FUNC_POINTERS - Section with only function pointers for
+    /// S_MOD_TERM_FUNC_POINTERS - Section with only function pointers for
     /// termination.
     S_MOD_TERM_FUNC_POINTERS     = 0x0AU,
     /// S_COALESCED - Section contains symbols that are to be coalesced.
@@ -157,10 +158,12 @@ public:
   /// flavored .s file.  If successful, this fills in the specified Out
   /// parameters and returns an empty string.  When an invalid section
   /// specifier is present, this returns a string indicating the problem.
+  /// If no TAA was parsed, TAA is not altered, and TAAWasSet becomes false.
   static std::string ParseSectionSpecifier(StringRef Spec,       // In.
                                            StringRef &Segment,   // Out.
                                            StringRef &Section,   // Out.
                                            unsigned  &TAA,       // Out.
+                                           bool      &TAAParsed, // Out.
                                            unsigned  &StubSize); // Out.
 
   virtual void PrintSwitchToSection(const MCAsmInfo &MAI,

@@ -11,93 +11,58 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "PPC.h"
-#include "PPCMCAsmInfo.h"
 #include "PPCTargetMachine.h"
+#include "PPC.h"
 #include "llvm/PassManager.h"
 #include "llvm/MC/MCStreamer.h"
+#include "llvm/CodeGen/Passes.h"
 #include "llvm/Target/TargetOptions.h"
-#include "llvm/Target/TargetRegistry.h"
 #include "llvm/Support/FormattedStream.h"
+#include "llvm/Support/TargetRegistry.h"
 using namespace llvm;
-
-static MCAsmInfo *createMCAsmInfo(const Target &T, StringRef TT) {
-  Triple TheTriple(TT);
-  bool isPPC64 = TheTriple.getArch() == Triple::ppc64;
-  if (TheTriple.getOS() == Triple::Darwin)
-    return new PPCMCAsmInfoDarwin(isPPC64);
-  return new PPCLinuxMCAsmInfo(isPPC64);
-  
-}
-
-// This is duplicated code. Refactor this.
-static MCStreamer *createMCStreamer(const Target &T, const std::string &TT,
-                                    MCContext &Ctx, TargetAsmBackend &TAB,
-                                    raw_ostream &OS,
-                                    MCCodeEmitter *Emitter,
-                                    bool RelaxAll,
-                                    bool NoExecStack) {
-  switch (Triple(TT).getOS()) {
-  case Triple::Darwin:
-    return createMachOStreamer(Ctx, TAB, OS, Emitter, RelaxAll);
-  default:
-    return NULL;
-  }
-}
 
 extern "C" void LLVMInitializePowerPCTarget() {
   // Register the targets
-  RegisterTargetMachine<PPC32TargetMachine> A(ThePPC32Target);  
+  RegisterTargetMachine<PPC32TargetMachine> A(ThePPC32Target);
   RegisterTargetMachine<PPC64TargetMachine> B(ThePPC64Target);
-  
-  RegisterAsmInfoFn C(ThePPC32Target, createMCAsmInfo);
-  RegisterAsmInfoFn D(ThePPC64Target, createMCAsmInfo);
-  
-  // Register the MC Code Emitter
-  TargetRegistry::RegisterCodeEmitter(ThePPC32Target, createPPCMCCodeEmitter);
-  TargetRegistry::RegisterCodeEmitter(ThePPC64Target, createPPCMCCodeEmitter);
-  
-  
-  // Register the asm backend.
-  TargetRegistry::RegisterAsmBackend(ThePPC32Target, createPPCAsmBackend);
-  TargetRegistry::RegisterAsmBackend(ThePPC64Target, createPPCAsmBackend);
-  
-  // Register the object streamer.
-  TargetRegistry::RegisterObjectStreamer(ThePPC32Target, createMCStreamer);
-  TargetRegistry::RegisterObjectStreamer(ThePPC64Target, createMCStreamer);
 }
 
-
-PPCTargetMachine::PPCTargetMachine(const Target &T, const std::string &TT,
-                                   const std::string &FS, bool is64Bit)
-  : LLVMTargetMachine(T, TT),
-    Subtarget(TT, FS, is64Bit),
+PPCTargetMachine::PPCTargetMachine(const Target &T, StringRef TT,
+                                   StringRef CPU, StringRef FS,
+                                   const TargetOptions &Options,
+                                   Reloc::Model RM, CodeModel::Model CM,
+                                   CodeGenOpt::Level OL,
+                                   bool is64Bit)
+  : LLVMTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL),
+    Subtarget(TT, CPU, FS, is64Bit),
     DataLayout(Subtarget.getTargetDataString()), InstrInfo(*this),
     FrameLowering(Subtarget), JITInfo(*this, is64Bit),
     TLInfo(*this), TSInfo(*this),
     InstrItins(Subtarget.getInstrItineraryData()) {
 
-  if (getRelocationModel() == Reloc::Default) {
-    if (Subtarget.isDarwin())
-      setRelocationModel(Reloc::DynamicNoPIC);
-    else
-      setRelocationModel(Reloc::Static);
-  }
+  // The binutils for the BG/P are too old for CFI.
+  if (Subtarget.isBGP())
+    setMCUseCFI(false);
 }
 
-/// Override this for PowerPC.  Tail merging happily breaks up instruction issue
-/// groups, which typically degrades performance.
-bool PPCTargetMachine::getEnableTailMergeDefault() const { return false; }
+void PPC32TargetMachine::anchor() { }
 
-PPC32TargetMachine::PPC32TargetMachine(const Target &T, const std::string &TT, 
-                                       const std::string &FS) 
-  : PPCTargetMachine(T, TT, FS, false) {
+PPC32TargetMachine::PPC32TargetMachine(const Target &T, StringRef TT,
+                                       StringRef CPU, StringRef FS,
+                                       const TargetOptions &Options,
+                                       Reloc::Model RM, CodeModel::Model CM,
+                                       CodeGenOpt::Level OL)
+  : PPCTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, false) {
 }
 
+void PPC64TargetMachine::anchor() { }
 
-PPC64TargetMachine::PPC64TargetMachine(const Target &T, const std::string &TT, 
-                                       const std::string &FS)
-  : PPCTargetMachine(T, TT, FS, true) {
+PPC64TargetMachine::PPC64TargetMachine(const Target &T, StringRef TT,
+                                       StringRef CPU,  StringRef FS,
+                                       const TargetOptions &Options,
+                                       Reloc::Model RM, CodeModel::Model CM,
+                                       CodeGenOpt::Level OL)
+  : PPCTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, true) {
 }
 
 
@@ -105,41 +70,56 @@ PPC64TargetMachine::PPC64TargetMachine(const Target &T, const std::string &TT,
 // Pass Pipeline Configuration
 //===----------------------------------------------------------------------===//
 
-bool PPCTargetMachine::addInstSelector(PassManagerBase &PM,
-                                       CodeGenOpt::Level OptLevel) {
+namespace {
+/// PPC Code Generator Pass Configuration Options.
+class PPCPassConfig : public TargetPassConfig {
+public:
+  PPCPassConfig(PPCTargetMachine *TM, PassManagerBase &PM)
+    : TargetPassConfig(TM, PM) {}
+
+  PPCTargetMachine &getPPCTargetMachine() const {
+    return getTM<PPCTargetMachine>();
+  }
+
+  virtual bool addInstSelector();
+  virtual bool addPreEmitPass();
+};
+} // namespace
+
+TargetPassConfig *PPCTargetMachine::createPassConfig(PassManagerBase &PM) {
+  TargetPassConfig *PassConfig = new PPCPassConfig(this, PM);
+
+  // Override this for PowerPC.  Tail merging happily breaks up instruction issue
+  // groups, which typically degrades performance.
+  PassConfig->setEnableTailMerge(false);
+
+  return PassConfig;
+}
+
+bool PPCPassConfig::addInstSelector() {
   // Install an instruction selector.
-  PM.add(createPPCISelDag(*this));
+  PM->add(createPPCISelDag(getPPCTargetMachine()));
   return false;
 }
 
-bool PPCTargetMachine::addPreEmitPass(PassManagerBase &PM,
-                                      CodeGenOpt::Level OptLevel) {
+bool PPCPassConfig::addPreEmitPass() {
   // Must run branch selection immediately preceding the asm printer.
-  PM.add(createPPCBranchSelectionPass());
+  PM->add(createPPCBranchSelectionPass());
   return false;
 }
 
 bool PPCTargetMachine::addCodeEmitter(PassManagerBase &PM,
-                                      CodeGenOpt::Level OptLevel,
                                       JITCodeEmitter &JCE) {
-  // The JIT should use the static relocation model in ppc32 mode, PIC in ppc64.
   // FIXME: This should be moved to TargetJITInfo!!
-  if (Subtarget.isPPC64()) {
-    // We use PIC codegen in ppc64 mode, because otherwise we'd have to use many
-    // instructions to materialize arbitrary global variable + function +
-    // constant pool addresses.
-    setRelocationModel(Reloc::PIC_);
+  if (Subtarget.isPPC64())
     // Temporary workaround for the inability of PPC64 JIT to handle jump
     // tables.
-    DisableJumpTables = true;      
-  } else {
-    setRelocationModel(Reloc::Static);
-  }
-  
+    Options.DisableJumpTables = true;
+
   // Inform the subtarget that we are in JIT mode.  FIXME: does this break macho
   // writing?
   Subtarget.SetJITMode();
-  
+
   // Machine code emitter pass for PowerPC.
   PM.add(createPPCJITCodeEmitterPass(*this, JCE));
 

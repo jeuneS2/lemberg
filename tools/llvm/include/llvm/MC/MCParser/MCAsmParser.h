@@ -11,6 +11,7 @@
 #define LLVM_MC_MCASMPARSER_H
 
 #include "llvm/Support/DataTypes.h"
+#include "llvm/ADT/ArrayRef.h"
 
 namespace llvm {
 class AsmToken;
@@ -20,11 +21,11 @@ class MCAsmParserExtension;
 class MCContext;
 class MCExpr;
 class MCStreamer;
+class MCTargetAsmParser;
 class SMLoc;
+class SMRange;
 class SourceMgr;
 class StringRef;
-class Target;
-class TargetAsmParser;
 class Twine;
 
 /// MCAsmParser - Generic assembler parser interface, for use by target specific
@@ -37,7 +38,7 @@ private:
   MCAsmParser(const MCAsmParser &);   // DO NOT IMPLEMENT
   void operator=(const MCAsmParser &);  // DO NOT IMPLEMENT
 
-  TargetAsmParser *TargetParser;
+  MCTargetAsmParser *TargetParser;
 
   unsigned ShowParsedOperands : 1;
 
@@ -60,8 +61,11 @@ public:
   /// getStreamer - Return the output streamer for the assembler.
   virtual MCStreamer &getStreamer() = 0;
 
-  TargetAsmParser &getTargetParser() const { return *TargetParser; }
-  void setTargetParser(TargetAsmParser &P);
+  MCTargetAsmParser &getTargetParser() const { return *TargetParser; }
+  void setTargetParser(MCTargetAsmParser &P);
+
+  virtual unsigned getAssemblerDialect() { return 0;}
+  virtual void setAssemblerDialect(unsigned i) { }
 
   bool getShowParsedOperands() const { return ShowParsedOperands; }
   void setShowParsedOperands(bool Value) { ShowParsedOperands = Value; }
@@ -71,14 +75,18 @@ public:
 
   /// Warning - Emit a warning at the location \arg L, with the message \arg
   /// Msg.
-  virtual void Warning(SMLoc L, const Twine &Msg) = 0;
+  ///
+  /// \return The return value is true, if warnings are fatal.
+  virtual bool Warning(SMLoc L, const Twine &Msg,
+                       ArrayRef<SMRange> Ranges = ArrayRef<SMRange>()) = 0;
 
   /// Error - Emit an error at the location \arg L, with the message \arg
   /// Msg.
   ///
   /// \return The return value is always true, as an idiomatic convenience to
   /// clients.
-  virtual bool Error(SMLoc L, const Twine &Msg) = 0;
+  virtual bool Error(SMLoc L, const Twine &Msg,
+                     ArrayRef<SMRange> Ranges = ArrayRef<SMRange>()) = 0;
 
   /// Lex - Get the next AsmToken in the stream, possibly handling file
   /// inclusion first.
@@ -88,7 +96,8 @@ public:
   const AsmToken &getTok();
 
   /// \brief Report an error at the current lexer location.
-  bool TokError(const Twine &Msg);
+  bool TokError(const Twine &Msg,
+                ArrayRef<SMRange> Ranges = ArrayRef<SMRange>());
 
   /// ParseIdentifier - Parse an identifier or string (as a quoted identifier)
   /// and set \arg Res to the identifier contents.
@@ -129,7 +138,7 @@ public:
 };
 
 /// \brief Create an MCAsmParser instance.
-MCAsmParser *createMCAsmParser(const Target &, SourceMgr &, MCContext &,
+MCAsmParser *createMCAsmParser(SourceMgr &, MCContext &,
                                MCStreamer &, const MCAsmInfo &);
 
 } // End llvm namespace

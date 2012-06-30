@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 //
 // This file defines some helpful functions for dealing with the possibility of
-// Unix signals occuring while your program is running.
+// Unix signals occurring while your program is running.
 //
 //===----------------------------------------------------------------------===//
 
@@ -30,6 +30,10 @@
 #include <dlfcn.h>
 #include <cxxabi.h>
 #endif
+#if HAVE_MACH_MACH_H
+#include <mach/mach.h>
+#endif
+
 using namespace llvm;
 
 static RETSIGTYPE SignalHandler(int Sig);  // defined below.
@@ -261,6 +265,22 @@ static void PrintStackTrace(void *) {
 /// SIGSEGV) is delivered to the process, print a stack trace and then exit.
 void llvm::sys::PrintStackTraceOnErrorSignal() {
   AddSignalHandler(PrintStackTrace, 0);
+
+#if defined(__APPLE__)
+  // Environment variable to disable any kind of crash dialog.
+  if (getenv("LLVM_DISABLE_CRASH_REPORT")) {
+    mach_port_t self = mach_task_self();
+
+    exception_mask_t mask = EXC_MASK_CRASH;
+
+    kern_return_t ret = task_set_exception_ports(self, 
+                             mask,
+                             MACH_PORT_NULL,
+                             EXCEPTION_STATE_IDENTITY | MACH_EXCEPTION_CODES, 
+                             THREAD_STATE_NONE);
+    (void)ret;
+  }
+#endif
 }
 
 
@@ -273,6 +293,9 @@ void llvm::sys::PrintStackTraceOnErrorSignal() {
 // and abort.
 
 #ifdef __APPLE__
+
+#include <signal.h>
+#include <pthread.h>
 
 int raise(int sig) {
   return pthread_kill(pthread_self(), sig);
@@ -290,9 +313,6 @@ void __assert_rtn(const char *func,
             expr, file, line);
   abort();
 }
-
-#include <signal.h>
-#include <pthread.h>
 
 void abort() {
   raise(SIGABRT);

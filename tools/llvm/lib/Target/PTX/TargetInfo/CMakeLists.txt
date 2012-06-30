@@ -4,4 +4,4 @@ add_llvm_library(LLVMPTXInfo
   PTXTargetInfo.cpp
   )
 
-add_dependencies(LLVMPTXInfo PTXCodeGenTable_gen)
+add_dependencies(LLVMPTXInfo PTXCommonTableGen)

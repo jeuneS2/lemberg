@@ -20,6 +20,7 @@
 #include "llvm/Config/config.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/system_error.h"
 #include "llvm/ADT/STLExtras.h"
 #include <cctype>
 #include <cerrno>
@@ -84,7 +85,7 @@ void raw_ostream::SetBuffered() {
 }
 
 void raw_ostream::SetBufferAndMode(char *BufferStart, size_t Size,
-                                    BufferKind Mode) {
+                                   BufferKind Mode) {
   assert(((Mode == Unbuffered && BufferStart == 0 && Size == 0) ||
           (Mode != Unbuffered && BufferStart && Size)) &&
          "stream must be unbuffered or have at least one byte");
@@ -121,7 +122,8 @@ raw_ostream &raw_ostream::operator<<(unsigned long N) {
 raw_ostream &raw_ostream::operator<<(long N) {
   if (N <  0) {
     *this << '-';
-    N = -N;
+    // Avoid undefined behavior on LONG_MIN with a cast.
+    N = -(unsigned long)N;
   }
 
   return this->operator<<(static_cast<unsigned long>(N));
@@ -284,7 +286,7 @@ raw_ostream &raw_ostream::write(unsigned char C) {
 
 raw_ostream &raw_ostream::write(const char *Ptr, size_t Size) {
   // Group exceptional cases into a single branch.
-  if (BUILTIN_EXPECT(OutBufCur+Size > OutBufEnd, false)) {
+  if (BUILTIN_EXPECT(size_t(OutBufEnd - OutBufCur) < Size, false)) {
     if (BUILTIN_EXPECT(!OutBufStart, false)) {
       if (BufferMode == Unbuffered) {
         write_impl(Ptr, Size);
@@ -622,6 +624,19 @@ raw_ostream &raw_fd_ostream::resetColor() {
   if (sys::Process::ColorNeedsFlush())
     flush();
   const char *colorcode = sys::Process::ResetColor();
+  if (colorcode) {
+    size_t len = strlen(colorcode);
+    write(colorcode, len);
+    // don't account colors towards output characters
+    pos -= len;
+  }
+  return *this;
+}
+
+raw_ostream &raw_fd_ostream::reverseColor() {
+  if (sys::Process::ColorNeedsFlush())
+    flush();
+  const char *colorcode = sys::Process::OutputReverse();
   if (colorcode) {
     size_t len = strlen(colorcode);
     write(colorcode, len);

@@ -15,6 +15,8 @@
 #ifndef LLVM_TARGET_POWERPC_H
 #define LLVM_TARGET_POWERPC_H
 
+#include "MCTargetDesc/PPCBaseInfo.h"
+#include "MCTargetDesc/PPCMCTargetDesc.h"
 #include <string>
 
 // GCC #defines PPC on Linux but we use it as our namespace name
@@ -23,30 +25,17 @@
 namespace llvm {
   class PPCTargetMachine;
   class FunctionPass;
-  class formatted_raw_ostream;
   class JITCodeEmitter;
-  class Target;
   class MachineInstr;
   class AsmPrinter;
   class MCInst;
-  class MCCodeEmitter;
-  class MCContext;
-  class TargetMachine;
-  class TargetAsmBackend;
-  
+
   FunctionPass *createPPCBranchSelectionPass();
   FunctionPass *createPPCISelDag(PPCTargetMachine &TM);
   FunctionPass *createPPCJITCodeEmitterPass(PPCTargetMachine &TM,
                                             JITCodeEmitter &MCE);
-  MCCodeEmitter *createPPCMCCodeEmitter(const Target &, TargetMachine &TM,
-                                        MCContext &Ctx);
-  TargetAsmBackend *createPPCAsmBackend(const Target &, const std::string &);
-  
   void LowerPPCMachineInstrToMCInst(const MachineInstr *MI, MCInst &OutMI,
-                                    AsmPrinter &AP);
-  
-  extern Target ThePPC32Target;
-  extern Target ThePPC64Target;
+                                    AsmPrinter &AP, bool isDarwin);
   
   namespace PPCII {
     
@@ -80,14 +69,5 @@ namespace llvm {
   } // end namespace PPCII
   
 } // end namespace llvm;
-
-// Defines symbolic names for PowerPC registers.  This defines a mapping from
-// register name to register number.
-//
-#include "PPCGenRegisterNames.inc"
-
-// Defines symbolic names for the PowerPC instructions.
-//
-#include "PPCGenInstrNames.inc"
 
 #endif

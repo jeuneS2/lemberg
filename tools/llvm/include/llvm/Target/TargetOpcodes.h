@@ -71,6 +71,10 @@ namespace TargetOpcode {
     /// REG_SEQUENCE - This variadic instruction is used to form a register that
     /// represent a consecutive sequence of sub-registers. It's used as register
     /// coalescing / allocation aid and must be eliminated before code emission.
+    // In SDNode form, the first operand encodes the register class created by
+    // the REG_SEQUENCE, while each subsequent pair names a vreg + subreg index
+    // pair.  Once it has been lowered to a MachineInstr, the regclass operand
+    // is no longer present.
     /// e.g. v1027 = REG_SEQUENCE v1024, 3, v1025, 4, v1026, 5
     /// After register coalescing references of v1024 should be replace with
     /// v1027:3, v1025 with v1027:4, etc.
@@ -78,7 +82,12 @@ namespace TargetOpcode {
 
     /// COPY - Target-independent register copy. This instruction can also be
     /// used to copy between subregisters of virtual registers.
-    COPY = 13
+    COPY = 13,
+
+    /// BUNDLE - This instruction represents an instruction bundle. Instructions
+    /// which immediately follow a BUNDLE instruction which are marked with
+    /// 'InsideBundle' flag are inside the bundle.
+    BUNDLE
   };
 } // end namespace TargetOpcode
 } // end namespace llvm

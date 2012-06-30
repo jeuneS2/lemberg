@@ -54,7 +54,6 @@
 using namespace llvm;
 
 STATISTIC(NumInvokes, "Number of invokes replaced");
-STATISTIC(NumUnwinds, "Number of unwinds replaced");
 STATISTIC(NumSpilled, "Number of registers live across unwind edges");
 
 static cl::opt<bool> ExpensiveEHSupport("enable-correct-eh-support",
@@ -66,7 +65,7 @@ namespace {
     Constant *AbortFn;
 
     // Used for expensive EH support.
-    const Type *JBLinkTy;
+    StructType *JBLinkTy;
     GlobalVariable *JBListHead;
     Constant *SetJmpFn, *LongJmpFn, *StackSaveFn, *StackRestoreFn;
     bool useExpensiveEHSupport;
@@ -120,26 +119,18 @@ FunctionPass *llvm::createLowerInvokePass(const TargetLowering *TLI,
 // doInitialization - Make sure that there is a prototype for abort in the
 // current module.
 bool LowerInvoke::doInitialization(Module &M) {
-  const Type *VoidPtrTy =
-          Type::getInt8PtrTy(M.getContext());
+  Type *VoidPtrTy = Type::getInt8PtrTy(M.getContext());
   if (useExpensiveEHSupport) {
     // Insert a type for the linked list of jump buffers.
     unsigned JBSize = TLI ? TLI->getJumpBufSize() : 0;
     JBSize = JBSize ? JBSize : 200;
-    const Type *JmpBufTy = ArrayType::get(VoidPtrTy, JBSize);
+    Type *JmpBufTy = ArrayType::get(VoidPtrTy, JBSize);
 
-    { // The type is recursive, so use a type holder.
-      std::vector<const Type*> Elements;
-      Elements.push_back(JmpBufTy);
-      OpaqueType *OT = OpaqueType::get(M.getContext());
-      Elements.push_back(PointerType::getUnqual(OT));
-      PATypeHolder JBLType(StructType::get(M.getContext(), Elements));
-      OT->refineAbstractTypeTo(JBLType.get());  // Complete the cycle.
-      JBLinkTy = JBLType.get();
-      M.addTypeName("llvm.sjljeh.jmpbufty", JBLinkTy);
-    }
+    JBLinkTy = StructType::create(M.getContext(), "llvm.sjljeh.jmpbufty");
+    Type *Elts[] = { JmpBufTy, PointerType::getUnqual(JBLinkTy) };
+    JBLinkTy->setBody(Elts);
 
-    const Type *PtrJBList = PointerType::getUnqual(JBLinkTy);
+    Type *PtrJBList = PointerType::getUnqual(JBLinkTy);
 
     // Now that we've done that, insert the jmpbuf list head global, unless it
     // already exists.
@@ -184,8 +175,7 @@ bool LowerInvoke::insertCheapEHSupport(Function &F) {
       SmallVector<Value*,16> CallArgs(II->op_begin(), II->op_end() - 3);
       // Insert a normal call instruction...
       CallInst *NewCall = CallInst::Create(II->getCalledValue(),
-                                           CallArgs.begin(), CallArgs.end(),
-                                           "",II);
+                                           CallArgs, "", II);
       NewCall->takeName(II);
       NewCall->setCallingConv(II->getCallingConv());
       NewCall->setAttributes(II->getAttributes());
@@ -202,20 +192,6 @@ bool LowerInvoke::insertCheapEHSupport(Function &F) {
       BB->getInstList().erase(II);
 
       ++NumInvokes; Changed = true;
-    } else if (UnwindInst *UI = dyn_cast<UnwindInst>(BB->getTerminator())) {
-      // Insert a call to abort()
-      CallInst::Create(AbortFn, "", UI)->setTailCall();
-
-      // Insert a return instruction.  This really should be a "barrier", as it
-      // is unreachable.
-      ReturnInst::Create(F.getContext(),
-                         F.getReturnType()->isVoidTy() ?
-                          0 : Constant::getNullValue(F.getReturnType()), UI);
-
-      // Remove the unwind instruction now.
-      BB->getInstList().erase(UI);
-
-      ++NumUnwinds; Changed = true;
     }
   return Changed;
 }
@@ -249,14 +225,14 @@ void LowerInvoke::rewriteExpensiveInvoke(InvokeInst *II, unsigned InvokeNo,
   CallInst* StackSaveRet = CallInst::Create(StackSaveFn, "ssret", II);
   new StoreInst(StackSaveRet, StackPtr, true, II); // volatile
 
-  BasicBlock::iterator NI = II->getNormalDest()->getFirstNonPHI();
+  BasicBlock::iterator NI = II->getNormalDest()->getFirstInsertionPt();
   // nonvolatile.
   new StoreInst(Constant::getNullValue(Type::getInt32Ty(II->getContext())), 
                 InvokeNum, false, NI);
 
-  Instruction* StackPtrLoad = new LoadInst(StackPtr, "stackptr.restore", true,
-                                           II->getUnwindDest()->getFirstNonPHI()
-                                           );
+  Instruction* StackPtrLoad =
+    new LoadInst(StackPtr, "stackptr.restore", true,
+                 II->getUnwindDest()->getFirstInsertionPt());
   CallInst::Create(StackRestoreFn, StackPtrLoad, "")->insertAfter(StackPtrLoad);
     
   // Add a switch case to our unwind block.
@@ -265,8 +241,7 @@ void LowerInvoke::rewriteExpensiveInvoke(InvokeInst *II, unsigned InvokeNo,
   // Insert a normal call instruction.
   SmallVector<Value*,16> CallArgs(II->op_begin(), II->op_end() - 3);
   CallInst *NewCall = CallInst::Create(II->getCalledValue(),
-                                       CallArgs.begin(), CallArgs.end(), "",
-                                       II);
+                                       CallArgs, "", II);
   NewCall->takeName(II);
   NewCall->setCallingConv(II->getCallingConv());
   NewCall->setAttributes(II->getAttributes());
@@ -315,7 +290,7 @@ splitLiveRangesLiveAcrossInvokes(SmallVectorImpl<InvokeInst*> &Invokes) {
     ++AfterAllocaInsertPt;
   for (Function::arg_iterator AI = F->arg_begin(), E = F->arg_end();
        AI != E; ++AI) {
-    const Type *Ty = AI->getType();
+    Type *Ty = AI->getType();
     // Aggregate types can't be cast, but are legal argument types, so we have
     // to handle them differently. We use an extract/insert pair as a
     // lightweight method to achieve the same goal.
@@ -414,8 +389,8 @@ splitLiveRangesLiveAcrossInvokes(SmallVectorImpl<InvokeInst*> &Invokes) {
 
 bool LowerInvoke::insertExpensiveEHSupport(Function &F) {
   SmallVector<ReturnInst*,16> Returns;
-  SmallVector<UnwindInst*,16> Unwinds;
   SmallVector<InvokeInst*,16> Invokes;
+  UnreachableInst* UnreachablePlaceholder = 0;
 
   for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB)
     if (ReturnInst *RI = dyn_cast<ReturnInst>(BB->getTerminator())) {
@@ -424,14 +399,11 @@ bool LowerInvoke::insertExpensiveEHSupport(Function &F) {
       Returns.push_back(RI);
     } else if (InvokeInst *II = dyn_cast<InvokeInst>(BB->getTerminator())) {
       Invokes.push_back(II);
-    } else if (UnwindInst *UI = dyn_cast<UnwindInst>(BB->getTerminator())) {
-      Unwinds.push_back(UI);
     }
 
-  if (Unwinds.empty() && Invokes.empty()) return false;
+  if (Invokes.empty()) return false;
 
   NumInvokes += Invokes.size();
-  NumUnwinds += Unwinds.size();
 
   // TODO: This is not an optimal way to do this.  In particular, this always
   // inserts setjmp calls into the entries of functions with invoke instructions
@@ -465,8 +437,7 @@ bool LowerInvoke::insertExpensiveEHSupport(Function &F) {
 
     Value *Idx[] = { Constant::getNullValue(Type::getInt32Ty(F.getContext())),
                      ConstantInt::get(Type::getInt32Ty(F.getContext()), 1) };
-    OldJmpBufPtr = GetElementPtrInst::Create(JmpBuf, &Idx[0], &Idx[2],
-                                             "OldBuf",
+    OldJmpBufPtr = GetElementPtrInst::Create(JmpBuf, Idx, "OldBuf",
                                              EntryBB->getTerminator());
 
     // Copy the JBListHead to the alloca.
@@ -497,9 +468,10 @@ bool LowerInvoke::insertExpensiveEHSupport(Function &F) {
 
     // Insert a load in the Catch block, and a switch on its value.  By default,
     // we go to a block that just does an unwind (which is the correct action
-    // for a standard call).
+    // for a standard call). We insert an unreachable instruction here and
+    // modify the block to jump to the correct unwinding pad later.
     BasicBlock *UnwindBB = BasicBlock::Create(F.getContext(), "unwindbb", &F);
-    Unwinds.push_back(new UnwindInst(F.getContext(), UnwindBB));
+    UnreachablePlaceholder = new UnreachableInst(F.getContext(), UnwindBB);
 
     Value *CatchLoad = new LoadInst(InvokeNum, "invoke.num", true, CatchBB);
     SwitchInst *CatchSwitch =
@@ -512,8 +484,7 @@ bool LowerInvoke::insertExpensiveEHSupport(Function &F) {
                                                      "setjmp.cont");
 
     Idx[1] = ConstantInt::get(Type::getInt32Ty(F.getContext()), 0);
-    Value *JmpBufPtr = GetElementPtrInst::Create(JmpBuf, &Idx[0], &Idx[2],
-                                                 "TheJmpBuf",
+    Value *JmpBufPtr = GetElementPtrInst::Create(JmpBuf, Idx, "TheJmpBuf",
                                                  EntryBB->getTerminator());
     JmpBufPtr = new BitCastInst(JmpBufPtr,
                         Type::getInt8PtrTy(F.getContext()),
@@ -567,13 +538,12 @@ bool LowerInvoke::insertExpensiveEHSupport(Function &F) {
   // Get a pointer to the jmpbuf and longjmp.
   Value *Idx[] = { Constant::getNullValue(Type::getInt32Ty(F.getContext())),
                    ConstantInt::get(Type::getInt32Ty(F.getContext()), 0) };
-  Idx[0] = GetElementPtrInst::Create(BufPtr, &Idx[0], &Idx[2], "JmpBuf",
-                                     UnwindBlock);
+  Idx[0] = GetElementPtrInst::Create(BufPtr, Idx, "JmpBuf", UnwindBlock);
   Idx[0] = new BitCastInst(Idx[0],
              Type::getInt8PtrTy(F.getContext()),
                            "tmp", UnwindBlock);
   Idx[1] = ConstantInt::get(Type::getInt32Ty(F.getContext()), 1);
-  CallInst::Create(LongJmpFn, &Idx[0], &Idx[2], "", UnwindBlock);
+  CallInst::Create(LongJmpFn, Idx, "", UnwindBlock);
   new UnreachableInst(F.getContext(), UnwindBlock);
 
   // Set up the term block ("throw without a catch").
@@ -583,11 +553,10 @@ bool LowerInvoke::insertExpensiveEHSupport(Function &F) {
   CallInst::Create(AbortFn, "",
                    TermBlock->getTerminator())->setTailCall();
 
-
-  // Replace all unwinds with a branch to the unwind handler.
-  for (unsigned i = 0, e = Unwinds.size(); i != e; ++i) {
-    BranchInst::Create(UnwindHandler, Unwinds[i]);
-    Unwinds[i]->eraseFromParent();
+  // Replace the inserted unreachable with a branch to the unwind handler.
+  if (UnreachablePlaceholder) {
+    BranchInst::Create(UnwindHandler, UnreachablePlaceholder);
+    UnreachablePlaceholder->eraseFromParent();
   }
 
   // Finally, for any returns from this function, if this function contains an

@@ -3,9 +3,9 @@
 ; RUN: grep roth         %t1.s | count 8
 ; RUN: grep roti.*5      %t1.s | count 1
 ; RUN: grep roti.*27     %t1.s | count 1
-; RUN grep rothi.*5      %t1.s | count 2
-; RUN grep rothi.*11     %t1.s | count 1
-; RUN grep rothi.*,.3    %t1.s | count 1
+; RUN: grep rothi.*5      %t1.s | count 2
+; RUN: grep rothi.*11     %t1.s | count 1
+; RUN: grep rothi.*,.3    %t1.s | count 1
 ; RUN: grep andhi        %t1.s | count 4
 ; RUN: grep shlhi        %t1.s | count 4
 ; RUN: cat %t1.s | FileCheck %s
@@ -163,7 +163,7 @@ define i8 @rotri8(i8 %A) {
 define <2 x float> @test1(<4 x float> %param )
 {
 ; CHECK: test1
-; CHECK: rotqbyi
+; CHECK: shufb
   %el = extractelement <4 x float> %param, i32 1
   %vec1 = insertelement <1 x float> undef, float %el, i32 0
   %rv = shufflevector <1 x float> %vec1, <1 x float> undef, <2 x i32><i32 0,i32 0>

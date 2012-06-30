@@ -1,13 +1,12 @@
-; RUN: opt < %s -indvars -S > %t
-; RUN: grep select %t | count 2
-; RUN: grep {icmp ne i32.\* } %t
+; RUN: opt < %s -analyze -scalar-evolution -S | FileCheck %s
 
-; Indvars should be able to insert a canonical induction variable
-; for the bb6 loop without using a maximum calculation (icmp, select)
-; because it should be able to prove that the comparison is guarded
-; by an appropriate conditional branch. Unfortunately, indvars is
-; not yet able to find the comparison for the other two loops in
-; this testcase.
+; Indvars should be able to find the trip count for the bb6 loop
+; without using a maximum calculation (icmp, select) because it should
+; be able to prove that the comparison is guarded by an appropriate
+; conditional branch. Unfortunately, indvars is not yet able to find
+; the comparison for the other two loops in this testcase.
+;
+; CHECK: Loop %bb6: backedge-taken count is (-1 + %w)
 
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:128:128"
 target triple = "i386-apple-darwin9"
@@ -173,7 +172,7 @@ bb23:		; preds = %bb24, %bb.nph
 	%55 = mul i32 %y.21, %w		; <i32> [#uses=1]
 	%.sum5 = add i32 %55, %.sum3		; <i32> [#uses=1]
 	%56 = getelementptr i8* %j, i32 %.sum5		; <i8*> [#uses=1]
-	tail call void @llvm.memcpy.i32(i8* %56, i8* %54, i32 %w, i32 1)
+	tail call void @llvm.memcpy.p0i8.p0i8.i32(i8* %56, i8* %54, i32 %w, i32 1, i1 false)
 	%57 = add i32 %y.21, 1		; <i32> [#uses=2]
 	br label %bb24
 
@@ -190,7 +189,7 @@ bb26:		; preds = %bb24.bb26_crit_edge, %bb22
 	%60 = getelementptr i8* %j, i32 %.sum4		; <i8*> [#uses=1]
 	%61 = mul i32 %x, %w		; <i32> [#uses=1]
 	%62 = sdiv i32 %61, 2		; <i32> [#uses=1]
-	tail call void @llvm.memset.i32(i8* %60, i8 -128, i32 %62, i32 1)
+	tail call void @llvm.memset.p0i8.i32(i8* %60, i8 -128, i32 %62, i32 1, i1 false)
 	ret void
 
 bb29:		; preds = %bb20, %entry
@@ -208,7 +207,7 @@ bb30:		; preds = %bb31, %bb.nph11
 	%67 = getelementptr i8* %r, i32 %66		; <i8*> [#uses=1]
 	%68 = mul i32 %y.310, %w		; <i32> [#uses=1]
 	%69 = getelementptr i8* %j, i32 %68		; <i8*> [#uses=1]
-	tail call void @llvm.memcpy.i32(i8* %69, i8* %67, i32 %w, i32 1)
+	tail call void @llvm.memcpy.p0i8.p0i8.i32(i8* %69, i8* %67, i32 %w, i32 1, i1 false)
 	%70 = add i32 %y.310, 1		; <i32> [#uses=2]
 	br label %bb31
 
@@ -224,13 +223,12 @@ bb33:		; preds = %bb31.bb33_crit_edge, %bb29
 	%73 = getelementptr i8* %j, i32 %72		; <i8*> [#uses=1]
 	%74 = mul i32 %x, %w		; <i32> [#uses=1]
 	%75 = sdiv i32 %74, 2		; <i32> [#uses=1]
-	tail call void @llvm.memset.i32(i8* %73, i8 -128, i32 %75, i32 1)
+	tail call void @llvm.memset.p0i8.i32(i8* %73, i8 -128, i32 %75, i32 1, i1 false)
 	ret void
 
 return:		; preds = %bb20
 	ret void
 }
 
-declare void @llvm.memcpy.i32(i8*, i8*, i32, i32) nounwind
-
-declare void @llvm.memset.i32(i8*, i8, i32, i32) nounwind
+declare void @llvm.memcpy.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, i1) nounwind
+declare void @llvm.memset.p0i8.i32(i8* nocapture, i8, i32, i32, i1) nounwind

@@ -29,11 +29,11 @@ protected:
 public:
   JITMemoryManager() : HasGOT(false) {}
   virtual ~JITMemoryManager();
-  
+
   /// CreateDefaultMemManager - This is used to create the default
   /// JIT Memory Manager if the client does not provide one to the JIT.
   static JITMemoryManager *CreateDefaultMemManager();
-  
+
   /// setMemoryWritable - When code generation is in progress,
   /// the code pages may need permissions changed.
   virtual void setMemoryWritable() = 0;
@@ -47,6 +47,17 @@ public:
   /// debugging, and may be turned on by default in debug mode.
   virtual void setPoisonMemory(bool poison) = 0;
 
+  /// getPointerToNamedFunction - This method returns the address of the
+  /// specified function. As such it is only useful for resolving library
+  /// symbols, not code generated symbols.
+  ///
+  /// If AbortOnFailure is false and no function with the given name is
+  /// found, this function silently returns a null pointer. Otherwise,
+  /// it prints a message to stderr and aborts.
+  ///
+  virtual void *getPointerToNamedFunction(const std::string &Name,
+                                          bool AbortOnFailure = true) = 0;
+
   //===--------------------------------------------------------------------===//
   // Global Offset Table Management
   //===--------------------------------------------------------------------===//
@@ -55,16 +66,16 @@ public:
   /// method is invoked to allocate it.  This method is required to set HasGOT
   /// to true.
   virtual void AllocateGOT() = 0;
-  
+
   /// isManagingGOT - Return true if the AllocateGOT method is called.
   bool isManagingGOT() const {
     return HasGOT;
   }
-  
+
   /// getGOTBase - If this is managing a Global Offset Table, this method should
   /// return a pointer to its base.
   virtual uint8_t *getGOTBase() const = 0;
-  
+
   //===--------------------------------------------------------------------===//
   // Main Allocation Functions
   //===--------------------------------------------------------------------===//
@@ -91,15 +102,31 @@ public:
   /// startFunctionBody.
   virtual uint8_t *allocateStub(const GlobalValue* F, unsigned StubSize,
                                 unsigned Alignment) = 0;
-  
+
   /// endFunctionBody - This method is called when the JIT is done codegen'ing
   /// the specified function.  At this point we know the size of the JIT
   /// compiled function.  This passes in FunctionStart (which was returned by
-  /// the startFunctionBody method) and FunctionEnd which is a pointer to the 
+  /// the startFunctionBody method) and FunctionEnd which is a pointer to the
   /// actual end of the function.  This method should mark the space allocated
   /// and remember where it is in case the client wants to deallocate it.
   virtual void endFunctionBody(const Function *F, uint8_t *FunctionStart,
                                uint8_t *FunctionEnd) = 0;
+
+  /// allocateCodeSection - Allocate a memory block of (at least) the given
+  /// size suitable for executable code. The SectionID is a unique identifier
+  /// assigned by the JIT and passed through to the memory manager for
+  /// the instance class to use if it needs to communicate to the JIT about
+  /// a given section after the fact.
+  virtual uint8_t *allocateCodeSection(uintptr_t Size, unsigned Alignment,
+                                       unsigned SectionID) = 0;
+
+  /// allocateDataSection - Allocate a memory block of (at least) the given
+  /// size suitable for data. The SectionID is a unique identifier
+  /// assigned by the JIT and passed through to the memory manager for
+  /// the instance class to use if it needs to communicate to the JIT about
+  /// a given section after the fact.
+  virtual uint8_t *allocateDataSection(uintptr_t Size, unsigned Alignment,
+                                       unsigned SectionID) = 0;
 
   /// allocateSpace - Allocate a memory block of the given size.  This method
   /// cannot be called between calls to startFunctionBody and endFunctionBody.
@@ -113,12 +140,12 @@ public:
   /// been deallocated yet.  This is never called when the JIT is currently
   /// emitting a function.
   virtual void deallocateFunctionBody(void *Body) = 0;
-  
+
   /// startExceptionTable - When we finished JITing the function, if exception
   /// handling is set, we emit the exception table.
   virtual uint8_t* startExceptionTable(const Function* F,
                                        uintptr_t &ActualSize) = 0;
-  
+
   /// endExceptionTable - This method is called when the JIT is done emitting
   /// the exception table.
   virtual void endExceptionTable(const Function *F, uint8_t *TableStart,

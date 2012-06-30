@@ -15,9 +15,9 @@
 #ifndef TARGET_SPARC_H
 #define TARGET_SPARC_H
 
+#include "MCTargetDesc/SparcMCTargetDesc.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Target/TargetMachine.h"
-#include <cassert>
 
 namespace llvm {
   class FunctionPass;
@@ -28,20 +28,7 @@ namespace llvm {
   FunctionPass *createSparcDelaySlotFillerPass(TargetMachine &TM);
   FunctionPass *createSparcFPMoverPass(TargetMachine &TM);
 
-  extern Target TheSparcTarget;
-  extern Target TheSparcV9Target;
-
 } // end namespace llvm;
-
-// Defines symbolic names for Sparc registers.  This defines a mapping from
-// register name to register number.
-//
-#include "SparcGenRegisterNames.inc"
-
-// Defines symbolic names for the Sparc instructions.
-//
-#include "SparcGenInstrNames.inc"
-
 
 namespace llvm {
   // Enums corresponding to Sparc condition codes, both icc's and fcc's.  These
@@ -86,7 +73,6 @@ namespace llvm {
   
   inline static const char *SPARCCondCodeToString(SPCC::CondCodes CC) {
     switch (CC) {
-    default: llvm_unreachable("Unknown condition code");
     case SPCC::ICC_NE:  return "ne";
     case SPCC::ICC_E:   return "e";
     case SPCC::ICC_G:   return "g";
@@ -115,7 +101,8 @@ namespace llvm {
     case SPCC::FCC_LE:  return "le";
     case SPCC::FCC_ULE: return "ule";
     case SPCC::FCC_O:   return "o";
-    }       
+    }
+    llvm_unreachable("Invalid cond code");
   }
 }  // end namespace llvm
 #endif

@@ -1,4 +1,4 @@
-; RUN: llc < %s -mtriple=thumbv7-apple-darwin -mcpu=cortex-a8 -disable-fp-elim                       | FileCheck %s
+; RUN: llc < %s -mtriple=thumbv7-apple-darwin -mcpu=cortex-a8 -relocation-model=dynamic-no-pic -disable-fp-elim | FileCheck %s
 ; RUN: llc < %s -mtriple=thumbv7-apple-darwin -mcpu=cortex-a8 -relocation-model=pic -disable-fp-elim | FileCheck %s --check-prefix=PIC
 ; rdar://7353541
 ; rdar://7354376
@@ -8,26 +8,25 @@
 define void @t1(i32* nocapture %vals, i32 %c) nounwind {
 entry:
 ; CHECK: t1:
-; CHECK: cbz
+; CHECK: bxeq lr
+
   %0 = icmp eq i32 %c, 0                          ; <i1> [#uses=1]
   br i1 %0, label %return, label %bb.nph
 
 bb.nph:                                           ; preds = %entry
-; CHECK: BB#1
-; CHECK: movw r2, :lower16:L_GV$non_lazy_ptr
-; CHECK: movt r2, :upper16:L_GV$non_lazy_ptr
-; CHECK: ldr r2, [r2]
-; CHECK: ldr r3, [r2]
-; CHECK: LBB0_2
+; CHECK: movw r[[R2:[0-9]+]], :lower16:L_GV$non_lazy_ptr
+; CHECK: movt r[[R2]], :upper16:L_GV$non_lazy_ptr
+; CHECK: ldr{{(.w)?}} r[[R2b:[0-9]+]], [r[[R2]]
+; CHECK: ldr{{.*}}, [r[[R2b]]
+; CHECK: LBB0_
 ; CHECK-NOT: LCPI0_0:
 
-; PIC: BB#1
-; PIC: movw r2, :lower16:(L_GV$non_lazy_ptr-(LPC0_0+4))
-; PIC: movt r2, :upper16:(L_GV$non_lazy_ptr-(LPC0_0+4))
-; PIC: add r2, pc
-; PIC: ldr r2, [r2]
-; PIC: ldr r3, [r2]
-; PIC: LBB0_2
+; PIC: movw r[[R2:[0-9]+]], :lower16:(L_GV$non_lazy_ptr-(LPC0_0+4))
+; PIC: movt r[[R2]], :upper16:(L_GV$non_lazy_ptr-(LPC0_0+4))
+; PIC: add r[[R2]], pc
+; PIC: ldr{{(.w)?}} r[[R2b:[0-9]+]], [r[[R2]]
+; PIC: ldr{{.*}}, [r[[R2b]]
+; PIC: LBB0_
 ; PIC-NOT: LCPI0_0:
 ; PIC: .section
   %.pre = load i32* @GV, align 4                  ; <i32> [#uses=1]
@@ -52,12 +51,11 @@ return:                                           ; preds = %bb, %entry
 define void @t2(i8* %ptr1, i8* %ptr2) nounwind {
 entry:
 ; CHECK: t2:
-; CHECK: mov.w r3, #1065353216
-; CHECK: vdup.32 q{{.*}}, r3
+; CHECK: vmov.f32 q{{.*}}, #1.000000e+00
   br i1 undef, label %bb1, label %bb2
 
 bb1:
-; CHECK-NEXT: %bb1
+; CHECK: %bb1
   %indvar = phi i32 [ %indvar.next, %bb1 ], [ 0, %entry ]
   %tmp1 = shl i32 %indvar, 2
   %gep1 = getelementptr i8* %ptr1, i32 %tmp1
@@ -88,16 +86,16 @@ define zeroext i16 @t3(i8 zeroext %data, i16 zeroext %crc) nounwind readnone {
 bb.nph:
 ; CHECK: bb.nph
 ; CHECK: movw {{(r[0-9])|(lr)}}, #32768
-; CHECK: movs {{(r[0-9])|(lr)}}, #8
-; CHECK: movw [[REGISTER:(r[0-9])|(lr)]], #16386
-; CHECK: movw {{(r[0-9])|(lr)}}, #65534
-; CHECK: movt {{(r[0-9])|(lr)}}, #65535
+; CHECK: movs {{(r[0-9]+)|(lr)}}, #0
+; CHECK: movw [[REGISTER:(r[0-9]+)|(lr)]], #16386
+; CHECK: movw {{(r[0-9]+)|(lr)}}, #65534
+; CHECK: movt {{(r[0-9]+)|(lr)}}, #65535
   br label %bb
 
 bb:                                               ; preds = %bb, %bb.nph
 ; CHECK: bb
-; CHECK: eor.w {{(r[0-9])|(lr)}}, {{(r[0-9])|(lr)}}, [[REGISTER]]
 ; CHECK: eor.w
+; CHECK: eor.w {{(r[0-9])|(lr)}}, {{(r[0-9])|(lr)}}, [[REGISTER]]
 ; CHECK-NOT: eor
 ; CHECK: and
   %data_addr.013 = phi i8 [ %data, %bb.nph ], [ %8, %bb ] ; <i8> [#uses=2]

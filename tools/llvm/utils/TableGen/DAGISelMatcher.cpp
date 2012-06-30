@@ -10,10 +10,12 @@
 #include "DAGISelMatcher.h"
 #include "CodeGenDAGPatterns.h"
 #include "CodeGenTarget.h"
-#include "Record.h"
+#include "llvm/TableGen/Record.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/ADT/StringExtras.h"
 using namespace llvm;
+
+void Matcher::anchor() { }
 
 void Matcher::dump() const {
   print(errs(), 0);
@@ -83,6 +85,15 @@ ScopeMatcher::~ScopeMatcher() {
 }
 
 
+CheckPredicateMatcher::CheckPredicateMatcher(const TreePredicateFn &pred)
+  : Matcher(CheckPredicate), Pred(pred.getOrigPatFragRecord()) {}
+
+TreePredicateFn CheckPredicateMatcher::getPredicate() const {
+  return TreePredicateFn(Pred);
+}
+
+
+
 // printImpl methods.
 
 void ScopeMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
@@ -129,7 +140,7 @@ printImpl(raw_ostream &OS, unsigned indent) const {
 }
 
 void CheckPredicateMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
-  OS.indent(indent) << "CheckPredicate " << PredName << '\n';
+  OS.indent(indent) << "CheckPredicate " << getPredicate().getFnName() << '\n';
 }
 
 void CheckOpcodeMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
@@ -263,7 +274,7 @@ unsigned CheckPatternPredicateMatcher::getHashImpl() const {
 }
 
 unsigned CheckPredicateMatcher::getHashImpl() const {
-  return HashString(PredName);
+  return HashString(getPredicate().getFnName());
 }
 
 unsigned CheckOpcodeMatcher::getHashImpl() const {
@@ -301,7 +312,6 @@ bool CheckOpcodeMatcher::isEqualImpl(const Matcher *M) const {
           Opcode.getEnumName();
 }
 
-
 bool EmitNodeMatcherCommon::isEqualImpl(const Matcher *m) const {
   const EmitNodeMatcherCommon *M = cast<EmitNodeMatcherCommon>(m);
   return M->OpcodeName == OpcodeName && M->VTs == VTs &&
@@ -315,6 +325,10 @@ unsigned EmitNodeMatcherCommon::getHashImpl() const {
   return (HashString(OpcodeName) << 4) | Operands.size();
 }
 
+
+void EmitNodeMatcher::anchor() { }
+
+void MorphNodeToMatcher::anchor() { }
 
 unsigned MarkGlueResultsMatcher::getHashImpl() const {
   return HashUnsigneds(GlueResultNodes.begin(), GlueResultNodes.end());

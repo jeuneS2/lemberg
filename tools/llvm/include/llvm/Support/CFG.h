@@ -33,7 +33,7 @@ class PredIterator : public std::iterator<std::forward_iterator_tag,
   USE_iterator It;
 
   inline void advancePastNonTerminators() {
-    // Loop to ignore non terminator uses (for example PHI nodes).
+    // Loop to ignore non terminator uses (for example BlockAddresses).
     while (!It.atEnd() && !isa<TerminatorInst>(*It))
       ++It;
   }
@@ -70,6 +70,12 @@ public:
   /// terminator of the successor.
   unsigned getOperandNo() const {
     return It.getOperandNo();
+  }
+
+  /// getUse - Return the operand Use in the predecessor's terminator
+  /// of the successor.
+  Use &getUse() const {
+    return It.getUse();
   }
 };
 
@@ -109,11 +115,18 @@ public:
   // TODO: This can be random access iterator, only operator[] missing.
 
   explicit inline SuccIterator(Term_ T) : Term(T), idx(0) {// begin iterator
-    assert(T && "getTerminator returned null!");
   }
   inline SuccIterator(Term_ T, bool)                       // end iterator
-    : Term(T), idx(Term->getNumSuccessors()) {
-    assert(T && "getTerminator returned null!");
+    : Term(T) {
+    if (Term)
+      idx = Term->getNumSuccessors();
+    else
+      // Term == NULL happens, if a basic block is not fully constructed and
+      // consequently getTerminator() returns NULL. In this case we construct a
+      // SuccIterator which describes a basic block that has zero successors.
+      // Defining SuccIterator for incomplete and malformed CFGs is especially
+      // useful for debugging.
+      idx = 0;
   }
 
   inline const Self &operator=(const Self &I) {
@@ -201,6 +214,7 @@ public:
 
   /// Get the source BB of this iterator.
   inline BB_ *getSource() {
+    assert(Term && "Source not available, if basic block was malformed");
     return Term->getParent();
   }
 };
@@ -306,6 +320,7 @@ template <> struct GraphTraits<Function*> : public GraphTraits<BasicBlock*> {
   typedef Function::iterator nodes_iterator;
   static nodes_iterator nodes_begin(Function *F) { return F->begin(); }
   static nodes_iterator nodes_end  (Function *F) { return F->end(); }
+  static unsigned       size       (Function *F) { return F->size(); }
 };
 template <> struct GraphTraits<const Function*> :
   public GraphTraits<const BasicBlock*> {
@@ -315,6 +330,7 @@ template <> struct GraphTraits<const Function*> :
   typedef Function::const_iterator nodes_iterator;
   static nodes_iterator nodes_begin(const Function *F) { return F->begin(); }
   static nodes_iterator nodes_end  (const Function *F) { return F->end(); }
+  static unsigned       size       (const Function *F) { return F->size(); }
 };
 
 

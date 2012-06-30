@@ -17,6 +17,8 @@ namespace llvm {
 //                                 User Class
 //===----------------------------------------------------------------------===//
 
+void User::anchor() {}
+
 // replaceUsesOfWith - Replaces all references to the "From" definition with
 // references to the "To" definition.
 //
@@ -40,14 +42,12 @@ void User::replaceUsesOfWith(Value *From, Value *To) {
 //===----------------------------------------------------------------------===//
 
 Use *User::allocHungoffUses(unsigned N) const {
-  Use *Begin = static_cast<Use*>(::operator new(sizeof(Use) * N
-                                                + sizeof(AugmentedUse)
-                                                - sizeof(Use)));
+  // Allocate the array of Uses, followed by a pointer (with bottom bit set) to
+  // the User.
+  size_t size = N * sizeof(Use) + sizeof(Use::UserRef);
+  Use *Begin = static_cast<Use*>(::operator new(size));
   Use *End = Begin + N;
-  PointerIntPair<User*, 1, unsigned>&
-    ref(static_cast<AugmentedUse&>(End[-1]).ref);
-  ref.setPointer(const_cast<User*>(this));
-  ref.setInt(1);
+  (void) new(End) Use::UserRef(const_cast<User*>(this), 1);
   return Use::initTags(Begin, End);
 }
 

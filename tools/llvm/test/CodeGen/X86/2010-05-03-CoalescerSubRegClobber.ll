@@ -1,4 +1,4 @@
-; RUN: llc -pre-RA-sched=list-burr < %s | FileCheck %s
+; RUN: llc < %s -mcpu=generic | FileCheck %s
 ; PR6941
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-s0:64:64-f80:128:128-n8:16:32:64"
 target triple = "x86_64-apple-darwin10.0.0"
@@ -22,8 +22,8 @@ while.end:                                        ; preds = %while.cond, %entry
   %conv = zext i32 %v to i64                      ; <i64> [#uses=1]
   %conv14 = zext i32 %div11 to i64                ; <i64> [#uses=1]
 ; Verify that we don't clobber %eax after putting the imulq result in %rax
-; CHECK: imulq	%r{{.}}x, %r[[RES:.]]x
-; CHECK-NOT: movl	{{.*}}, %e[[RES]]x
+; CHECK: imulq	%r{{.}}x, %r[[RES:..]]
+; CHECK-NOT: movl	{{.*}}, %e[[RES]]
 ; CHECK: div
   %mul = mul i64 %conv14, %conv                   ; <i64> [#uses=1]
   %conv16 = zext i32 %div to i64                  ; <i64> [#uses=1]

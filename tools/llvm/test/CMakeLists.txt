@@ -24,74 +24,58 @@ else() # Default for all other unix like systems.
   set(SHLIBPATH_VAR "LD_LIBRARY_PATH")
 endif()
 
-include(FindPythonInterp)
-if(PYTHONINTERP_FOUND)
-  set(LIT_ARGS "${LLVM_LIT_ARGS}")
-  separate_arguments(LIT_ARGS)
+set(LIT_ARGS "${LLVM_LIT_ARGS}")
+separate_arguments(LIT_ARGS)
 
-  get_directory_property(DEFINITIONS COMPILE_DEFINITIONS)
-  foreach(DEF ${DEFINITIONS})
-    set(DEFS "${DEFS} -D${DEF}")
-  endforeach()
-  get_directory_property(INC_DIRS INCLUDE_DIRECTORIES)
-  foreach(INC_DIR ${INC_DIRS})
-    set(IDIRS "${IDIRS} -I${INC_DIR}")
-  endforeach()
-  string(REPLACE "<CMAKE_CXX_COMPILER>" "${CMAKE_CXX_COMPILER}" TEST_COMPILE_CXX_CMD ${CMAKE_CXX_COMPILE_OBJECT})
-  string(REPLACE "<DEFINES>"            "${DEFS}"               TEST_COMPILE_CXX_CMD ${TEST_COMPILE_CXX_CMD})
-  string(REPLACE "<FLAGS>"              "${CMAKE_CXX_FLAGS}"    TEST_COMPILE_CXX_CMD ${TEST_COMPILE_CXX_CMD})
-  string(REPLACE "-o"                   ""                      TEST_COMPILE_CXX_CMD ${TEST_COMPILE_CXX_CMD})
-  string(REGEX REPLACE "<[^>]+>"        ""                      TEST_COMPILE_CXX_CMD ${TEST_COMPILE_CXX_CMD})
-  set(TEST_COMPILE_CXX_CMD "${TEST_COMPILE_CXX_CMD} ${IDIRS}")
-  if(NOT MSVC)
-    set(TEST_COMPILE_CXX_CMD "${TEST_COMPILE_CXX_CMD} -x c++")
-  endif()
-  configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/site.exp.in
-    ${CMAKE_CURRENT_BINARY_DIR}/site.exp)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/site.exp.in
+  ${CMAKE_CURRENT_BINARY_DIR}/site.exp)
 
-  MAKE_DIRECTORY(${CMAKE_CURRENT_BINARY_DIR}/Unit)
+MAKE_DIRECTORY(${CMAKE_CURRENT_BINARY_DIR}/Unit)
 
-  # Configuration-time: See Unit/lit.site.cfg.in
-  set(LLVM_BUILD_MODE "%(build_mode)s")
+# Configuration-time: See Unit/lit.site.cfg.in
+set(LLVM_BUILD_MODE "%(build_mode)s")
 
-  set(LLVM_SOURCE_DIR ${LLVM_MAIN_SRC_DIR})
-  set(LLVM_BINARY_DIR ${LLVM_BINARY_DIR})
-  set(LLVM_TOOLS_DIR "${LLVM_TOOLS_BINARY_DIR}/%(build_config)s")
-  set(LLVMGCCDIR "")
-  set(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE})
-  set(ENABLE_SHARED ${LLVM_SHARED_LIBS_ENABLED})
-  set(SHLIBPATH_VAR ${SHLIBPATH_VAR})
+set(LLVM_SOURCE_DIR ${LLVM_MAIN_SRC_DIR})
+set(LLVM_BINARY_DIR ${LLVM_BINARY_DIR})
+set(LLVM_TOOLS_DIR "${LLVM_TOOLS_BINARY_DIR}/%(build_config)s")
+set(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE})
+set(ENABLE_SHARED ${LLVM_SHARED_LIBS_ENABLED})
+set(SHLIBPATH_VAR ${SHLIBPATH_VAR})
 
-  configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.in
-    ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
-    @ONLY)
-  configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/Unit/lit.site.cfg.in
-    ${CMAKE_CURRENT_BINARY_DIR}/Unit/lit.site.cfg
-    @ONLY)
-
-  add_custom_target(check
-    COMMAND ${PYTHON_EXECUTABLE}
-                ${LLVM_SOURCE_DIR}/utils/lit/lit.py
-                --param llvm_site_config=${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
-                --param llvm_unit_site_config=${CMAKE_CURRENT_BINARY_DIR}/Unit/lit.site.cfg
-                --param build_config=${CMAKE_CFG_INTDIR}
-                --param build_mode=${RUNTIME_BUILD_MODE}
-                ${LIT_ARGS}
-                ${CMAKE_CURRENT_BINARY_DIR}
-                COMMENT "Running LLVM regression tests")
-  set_target_properties(check PROPERTIES FOLDER "Tests")
-
-  add_custom_target(check.deps)
-  add_dependencies(check check.deps)
-  add_dependencies(check.deps
-                UnitTests
-                BugpointPasses LLVMHello
-                llc lli llvm-ar llvm-as llvm-dis llvm-extract
-                llvm-ld llvm-link llvm-mc llvm-nm macho-dump opt
-                FileCheck count not)
-  set_target_properties(check.deps PROPERTIES FOLDER "Tests")
-
+if(LLVM_ENABLE_ASSERTIONS AND NOT MSVC_IDE)
+  set(ENABLE_ASSERTIONS "1")
+else()
+  set(ENABLE_ASSERTIONS "0")
 endif()
+
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.in
+  ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
+  @ONLY)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/Unit/lit.site.cfg.in
+  ${CMAKE_CURRENT_BINARY_DIR}/Unit/lit.site.cfg
+  @ONLY)
+
+add_custom_target(check
+  COMMAND ${PYTHON_EXECUTABLE}
+              ${LLVM_SOURCE_DIR}/utils/lit/lit.py
+              --param llvm_site_config=${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
+              --param llvm_unit_site_config=${CMAKE_CURRENT_BINARY_DIR}/Unit/lit.site.cfg
+              --param build_config=${CMAKE_CFG_INTDIR}
+              --param build_mode=${RUNTIME_BUILD_MODE}
+              ${LIT_ARGS}
+              ${CMAKE_CURRENT_BINARY_DIR}
+              COMMENT "Running LLVM regression tests")
+
+add_custom_target(check.deps)
+add_dependencies(check check.deps)
+add_dependencies(check.deps
+              UnitTests
+              BugpointPasses LLVMHello
+              llc lli llvm-ar llvm-as llvm-dis llvm-extract llvm-dwarfdump
+              llvm-ld llvm-link llvm-mc llvm-nm llvm-objdump llvm-readobj
+              macho-dump opt
+              FileCheck count not json-bench)
+set_target_properties(check.deps PROPERTIES FOLDER "Tests")

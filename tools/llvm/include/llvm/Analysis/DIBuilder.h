@@ -16,6 +16,7 @@
 #define LLVM_ANALYSIS_DIBUILDER_H
 
 #include "llvm/Support/DataTypes.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 
 namespace llvm {
@@ -36,10 +37,12 @@ namespace llvm {
   class DINameSpace;
   class DIVariable;
   class DISubrange;
+  class DILexicalBlockFile;
   class DILexicalBlock;
   class DISubprogram;
   class DITemplateTypeParameter;
   class DITemplateValueParameter;
+  class DIObjCProperty;
 
   class DIBuilder {
     private:
@@ -47,8 +50,18 @@ namespace llvm {
     LLVMContext & VMContext;
     MDNode *TheCU;
 
+    MDNode *TempEnumTypes;
+    MDNode *TempRetainTypes;
+    MDNode *TempSubprograms;
+    MDNode *TempGVs;
+
     Function *DeclareFn;     // llvm.dbg.declare
     Function *ValueFn;       // llvm.dbg.value
+
+    SmallVector<Value *, 4> AllEnumTypes;
+    SmallVector<Value *, 4> AllRetainTypes;
+    SmallVector<Value *, 4> AllSubprograms;
+    SmallVector<Value *, 4> AllGVs;
 
     DIBuilder(const DIBuilder &);       // DO NOT IMPLEMENT
     void operator=(const DIBuilder &);  // DO NOT IMPLEMENT
@@ -57,6 +70,9 @@ namespace llvm {
     explicit DIBuilder(Module &M);
     const MDNode *getCU() { return TheCU; }
     enum ComplexAddrKind { OpPlus=1, OpDeref };
+
+    /// finalize - Construct any deferred debug info descriptors.
+    void finalize();
 
     /// createCompileUnit - A CompileUnit provides an anchor for all debugging
     /// information generated during this instance of compilation.
@@ -82,6 +98,9 @@ namespace llvm {
                            
     /// createEnumerator - Create a single enumerator value.
     DIEnumerator createEnumerator(StringRef Name, uint64_t Val);
+
+    /// createNullPtrType - Create C++0x nullptr type.
+    DIType createNullPtrType(StringRef Name);
 
     /// createBasicType - Create debugging information entry for a basic 
     /// type.
@@ -116,8 +135,9 @@ namespace llvm {
     /// @param Name        Typedef name.
     /// @param File        File where this type is defined.
     /// @param LineNo      Line number.
+    /// @param Context     The surrounding context for the typedef.
     DIType createTypedef(DIType Ty, StringRef Name, DIFile File, 
-                         unsigned LineNo);
+                         unsigned LineNo, DIDescriptor Context);
 
     /// createFriend - Create debugging information entry for a 'friend'.
     DIType createFriend(DIType Ty, DIType FriendTy);
@@ -133,6 +153,7 @@ namespace llvm {
                              unsigned Flags);
 
     /// createMemberType - Create debugging information entry for a member.
+    /// @param Scope        Member scope.
     /// @param Name         Member name.
     /// @param File         File where this member is defined.
     /// @param LineNo       Line number.
@@ -141,11 +162,68 @@ namespace llvm {
     /// @param OffsetInBits Member offset.
     /// @param Flags        Flags to encode member attribute, e.g. private
     /// @param Ty           Parent type.
-    DIType createMemberType(StringRef Name, DIFile File,
+    DIType createMemberType(DIDescriptor Scope, StringRef Name, DIFile File,
                             unsigned LineNo, uint64_t SizeInBits, 
                             uint64_t AlignInBits, uint64_t OffsetInBits, 
                             unsigned Flags, DIType Ty);
 
+    /// createObjCIVar - Create debugging information entry for Objective-C
+    /// instance variable.
+    /// @param Name         Member name.
+    /// @param File         File where this member is defined.
+    /// @param LineNo       Line number.
+    /// @param SizeInBits   Member size.
+    /// @param AlignInBits  Member alignment.
+    /// @param OffsetInBits Member offset.
+    /// @param Flags        Flags to encode member attribute, e.g. private
+    /// @param Ty           Parent type.
+    /// @param PropertyName Name of the Objective C property assoicated with
+    ///                     this ivar.
+    /// @param GetterName   Name of the Objective C property getter selector.
+    /// @param SetterName   Name of the Objective C property setter selector.
+    /// @param PropertyAttributes Objective C property attributes.
+    DIType createObjCIVar(StringRef Name, DIFile File,
+                          unsigned LineNo, uint64_t SizeInBits, 
+                          uint64_t AlignInBits, uint64_t OffsetInBits, 
+                          unsigned Flags, DIType Ty,
+                          StringRef PropertyName = StringRef(),
+                          StringRef PropertyGetterName = StringRef(),
+                          StringRef PropertySetterName = StringRef(),
+                          unsigned PropertyAttributes = 0);
+
+    /// createObjCIVar - Create debugging information entry for Objective-C
+    /// instance variable.
+    /// @param Name         Member name.
+    /// @param File         File where this member is defined.
+    /// @param LineNo       Line number.
+    /// @param SizeInBits   Member size.
+    /// @param AlignInBits  Member alignment.
+    /// @param OffsetInBits Member offset.
+    /// @param Flags        Flags to encode member attribute, e.g. private
+    /// @param Ty           Parent type.
+    /// @param Property     Property associated with this ivar.
+    DIType createObjCIVar(StringRef Name, DIFile File,
+                          unsigned LineNo, uint64_t SizeInBits, 
+                          uint64_t AlignInBits, uint64_t OffsetInBits, 
+                          unsigned Flags, DIType Ty,
+                          MDNode *PropertyNode);
+
+    /// createObjCProperty - Create debugging information entry for Objective-C
+    /// property.
+    /// @param Name         Property name.
+    /// @param File         File where this property is defined.
+    /// @param LineNumber   Line number.
+    /// @param GetterName   Name of the Objective C property getter selector.
+    /// @param SetterName   Name of the Objective C property setter selector.
+    /// @param PropertyAttributes Objective C property attributes.
+    /// @param Ty           Type.
+    DIObjCProperty createObjCProperty(StringRef Name,
+				      DIFile File, unsigned LineNumber,
+				      StringRef GetterName,
+				      StringRef SetterName,
+				      unsigned PropertyAttributes,
+				      DIType Ty);
+      
     /// createClassType - Create debugging information entry for a class.
     /// @param Scope        Scope in which this class is defined.
     /// @param Name         class name.
@@ -269,6 +347,10 @@ namespace llvm {
     DIType createTemporaryType();
     DIType createTemporaryType(DIFile F);
 
+    /// createForwardDecl - Create a temporary forward-declared type.
+    DIType createForwardDecl(unsigned Tag, StringRef Name, DIFile F,
+                             unsigned Line, unsigned RuntimeLang = 0);
+
     /// retainType - Retain DIType in a module even if it is not referenced 
     /// through debug info anchors.
     void retainType(DIType T);
@@ -278,7 +360,7 @@ namespace llvm {
     DIDescriptor createUnspecifiedParameter();
 
     /// getOrCreateArray - Get a DIArray, create one if required.
-    DIArray getOrCreateArray(Value *const *Elements, unsigned NumElements);
+    DIArray getOrCreateArray(ArrayRef<Value *> Elements);
 
     /// getOrCreateSubrange - Create a descriptor for a value range.  This
     /// implicitly uniques the values returned.
@@ -345,14 +427,13 @@ namespace llvm {
     /// @param File        File where this variable is defined.
     /// @param LineNo      Line number.
     /// @param Ty          Variable Type
-    /// @param Addr        A pointer to a vector of complex address operations.
-    /// @param NumAddr     Num of address operations in the vector.
+    /// @param Addr        An array of complex address operations.
     /// @param ArgNo       If this variable is an arugment then this argument's
     ///                    number. 1 indicates 1st argument.
     DIVariable createComplexVariable(unsigned Tag, DIDescriptor Scope,
                                      StringRef Name, DIFile F, unsigned LineNo,
-                                     DIType Ty, Value *const *Addr,
-                                     unsigned NumAddr, unsigned ArgNo = 0);
+                                     DIType Ty, ArrayRef<Value *> Addr,
+                                     unsigned ArgNo = 0);
 
     /// createFunction - Create a new descriptor for the specified subprogram.
     /// See comments in DISubprogram for descriptions of these fields.
@@ -364,18 +445,23 @@ namespace llvm {
     /// @param Ty            Function type.
     /// @param isLocalToUnit True if this function is not externally visible..
     /// @param isDefinition  True if this is a function definition.
+    /// @param ScopeLine     Set to the beginning of the scope this starts
     /// @param Flags         e.g. is this function prototyped or not.
     ///                      This flags are used to emit dwarf attributes.
     /// @param isOptimized   True if optimization is ON.
     /// @param Fn            llvm::Function pointer.
+    /// @param TParam        Function template parameters.
     DISubprogram createFunction(DIDescriptor Scope, StringRef Name,
                                 StringRef LinkageName,
                                 DIFile File, unsigned LineNo,
                                 DIType Ty, bool isLocalToUnit,
                                 bool isDefinition,
+                                unsigned ScopeLine,
                                 unsigned Flags = 0,
                                 bool isOptimized = false,
-                                Function *Fn = 0);
+                                Function *Fn = 0,
+                                MDNode *TParam = 0,
+                                MDNode *Decl = 0);
 
     /// createMethod - Create a new descriptor for the specified C++ method.
     /// See comments in DISubprogram for descriptions of these fields.
@@ -387,7 +473,7 @@ namespace llvm {
     /// @param Ty            Function type.
     /// @param isLocalToUnit True if this function is not externally visible..
     /// @param isDefinition  True if this is a function definition.
-    /// @param Virtuality    Attributes describing virutallness. e.g. pure 
+    /// @param Virtuality    Attributes describing virtualness. e.g. pure 
     ///                      virtual function.
     /// @param VTableIndex   Index no of this method in virtual table.
     /// @param VTableHolder  Type that holds vtable.
@@ -395,6 +481,7 @@ namespace llvm {
     ///                      This flags are used to emit dwarf attributes.
     /// @param isOptimized   True if optimization is ON.
     /// @param Fn            llvm::Function pointer.
+    /// @param TParam        Function template parameters.
     DISubprogram createMethod(DIDescriptor Scope, StringRef Name,
                               StringRef LinkageName,
                               DIFile File, unsigned LineNo,
@@ -404,7 +491,8 @@ namespace llvm {
                               MDNode *VTableHolder = 0,
                               unsigned Flags = 0,
                               bool isOptimized = false,
-                              Function *Fn = 0);
+                              Function *Fn = 0,
+                              MDNode *TParam = 0);
 
     /// createNameSpace - This creates new descriptor for a namespace
     /// with the specified parent scope.
@@ -416,6 +504,14 @@ namespace llvm {
                                 DIFile File, unsigned LineNo);
 
 
+    /// createLexicalBlockFile - This creates a descriptor for a lexical
+    /// block with a new file attached. This merely extends the existing
+    /// lexical block as it crosses a file.
+    /// @param Scope       Lexical block.
+    /// @param File        Source file.
+    DILexicalBlockFile createLexicalBlockFile(DIDescriptor Scope,
+                                              DIFile File);
+    
     /// createLexicalBlock - This creates a descriptor for a lexical block
     /// with the specified parent context.
     /// @param Scope       Parent lexical scope.

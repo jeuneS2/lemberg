@@ -1,4 +1,4 @@
-//===- XCoreRegisterInfo.h - XCore Register Information Impl ----*- C++ -*-===//
+//===-- XCoreRegisterInfo.h - XCore Register Information Impl ---*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -15,7 +15,9 @@
 #define XCOREREGISTERINFO_H
 
 #include "llvm/Target/TargetRegisterInfo.h"
-#include "XCoreGenRegisterInfo.h.inc"
+
+#define GET_REGINFO_HEADER
+#include "XCoreGenRegisterInfo.inc"
 
 namespace llvm {
 
@@ -42,11 +44,13 @@ public:
 
   /// Code Generation virtual methods...
 
-  const unsigned *getCalleeSavedRegs(const MachineFunction *MF = 0) const;
+  const uint16_t *getCalleeSavedRegs(const MachineFunction *MF = 0) const;
 
   BitVector getReservedRegs(const MachineFunction &MF) const;
   
   bool requiresRegisterScavenging(const MachineFunction &MF) const;
+
+  bool useFPForScavengingIndex(const MachineFunction &MF) const;
 
   void eliminateCallFramePseudoInstr(MachineFunction &MF,
                                      MachineBasicBlock &MBB,
@@ -56,23 +60,10 @@ public:
                            int SPAdj, RegScavenger *RS = NULL) const;
 
   // Debug information queries.
-  unsigned getRARegister() const;
   unsigned getFrameRegister(const MachineFunction &MF) const;
 
-  //! Return the array of argument passing registers
-  /*!
-    \note The size of this array is returned by getArgRegsSize().
-    */
-  static const unsigned *getArgRegs(const MachineFunction *MF = 0);
-
-  //! Return the size of the argument passing register array
-  static unsigned getNumArgRegs(const MachineFunction *MF = 0);
-  
   //! Return whether to emit frame moves
   static bool needsFrameMoves(const MachineFunction &MF);
-
-  //! Get DWARF debugging register number
-  int getDwarfRegNum(unsigned RegNum, bool isEH) const;
 };
 
 } // end namespace llvm

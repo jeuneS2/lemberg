@@ -1,4 +1,4 @@
-//====- X86InstrMMX.td - Describe the MMX Instruction Set --*- tablegen -*-===//
+//===-- X86InstrMMX.td - Describe the MMX Instruction Set --*- tablegen -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -105,19 +105,23 @@ multiclass sse12_cvt_pint<bits<8> opc, RegisterClass SrcRC, RegisterClass DstRC,
                          Intrinsic Int, X86MemOperand x86memop, PatFrag ld_frag,
                          string asm, Domain d> {
   def irr : PI<opc, MRMSrcReg, (outs DstRC:$dst), (ins SrcRC:$src), asm,
-                        [(set DstRC:$dst, (Int SrcRC:$src))], d>;
+                        [(set DstRC:$dst, (Int SrcRC:$src))], 
+                        IIC_DEFAULT, d>;
   def irm : PI<opc, MRMSrcMem, (outs DstRC:$dst), (ins x86memop:$src), asm,
-                        [(set DstRC:$dst, (Int (ld_frag addr:$src)))], d>;
+                        [(set DstRC:$dst, (Int (ld_frag addr:$src)))], 
+                        IIC_DEFAULT, d>;
 }
 
 multiclass sse12_cvt_pint_3addr<bits<8> opc, RegisterClass SrcRC,
                     RegisterClass DstRC, Intrinsic Int, X86MemOperand x86memop,
                     PatFrag ld_frag, string asm, Domain d> {
   def irr : PI<opc, MRMSrcReg, (outs DstRC:$dst),(ins DstRC:$src1, SrcRC:$src2),
-              asm, [(set DstRC:$dst, (Int DstRC:$src1, SrcRC:$src2))], d>;
+              asm, [(set DstRC:$dst, (Int DstRC:$src1, SrcRC:$src2))], 
+              IIC_DEFAULT, d>;
   def irm : PI<opc, MRMSrcMem, (outs DstRC:$dst),
                    (ins DstRC:$src1, x86memop:$src2), asm,
-              [(set DstRC:$dst, (Int DstRC:$src1, (ld_frag addr:$src2)))], d>;
+              [(set DstRC:$dst, (Int DstRC:$src1, (ld_frag addr:$src2)))], 
+              IIC_DEFAULT, d>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -175,25 +179,25 @@ def MMX_MOVQ64mr : MMXI<0x7F, MRMDestMem, (outs), (ins i64mem:$dst, VR64:$src),
                         "movq\t{$src, $dst|$dst, $src}",
                         [(store (x86mmx VR64:$src), addr:$dst)]>;
 
-def MMX_MOVDQ2Qrr : SDIi8<0xD6, MRMSrcReg, (outs VR64:$dst), (ins VR128:$src),
-                          "movdq2q\t{$src, $dst|$dst, $src}",
+def MMX_MOVDQ2Qrr : SDIi8<0xD6, MRMSrcReg, (outs VR64:$dst),
+                          (ins VR128:$src), "movdq2q\t{$src, $dst|$dst, $src}",
                           [(set VR64:$dst,
                             (x86mmx (bitconvert
                             (i64 (vector_extract (v2i64 VR128:$src),
                                   (iPTR 0))))))]>;
 
-def MMX_MOVQ2DQrr : SSDIi8<0xD6, MRMSrcReg, (outs VR128:$dst), (ins VR64:$src),
-                           "movq2dq\t{$src, $dst|$dst, $src}",
+def MMX_MOVQ2DQrr : SSDIi8<0xD6, MRMSrcReg, (outs VR128:$dst),
+                            (ins VR64:$src), "movq2dq\t{$src, $dst|$dst, $src}",
           [(set VR128:$dst,
             (v2i64 (scalar_to_vector
                               (i64 (bitconvert (x86mmx VR64:$src))))))]>;
 
 let neverHasSideEffects = 1 in
-def MMX_MOVQ2FR64rr: SSDIi8<0xD6, MRMSrcReg, (outs FR64:$dst), (ins VR64:$src),
-                           "movq2dq\t{$src, $dst|$dst, $src}", []>;
+def MMX_MOVQ2FR64rr: SSDIi8<0xD6, MRMSrcReg, (outs FR64:$dst),
+                       (ins VR64:$src), "movq2dq\t{$src, $dst|$dst, $src}", []>;
 
-def MMX_MOVFR642Qrr: SDIi8<0xD6, MRMSrcReg, (outs VR64:$dst), (ins FR64:$src),
-                           "movdq2q\t{$src, $dst|$dst, $src}", []>;
+def MMX_MOVFR642Qrr: SDIi8<0xD6, MRMSrcReg, (outs VR64:$dst),
+                       (ins FR64:$src), "movdq2q\t{$src, $dst|$dst, $src}", []>;
 
 def MMX_MOVNTQmr  : MMXI<0xE7, MRMDestMem, (outs), (ins i64mem:$dst, VR64:$src),
                          "movntq\t{$src, $dst|$dst, $src}",
@@ -285,7 +289,7 @@ let Constraints = "$src1 = $dst" in
 defm MMX_PAND : MMXI_binop_rm_int<0xDB, "pand", int_x86_mmx_pand, 1>;
 defm MMX_POR  : MMXI_binop_rm_int<0xEB, "por" , int_x86_mmx_por,  1>;
 defm MMX_PXOR : MMXI_binop_rm_int<0xEF, "pxor", int_x86_mmx_pxor, 1>;
-defm MMX_PANDN : MMXI_binop_rm_int<0xDF, "pandn", int_x86_mmx_pandn, 1>;
+defm MMX_PANDN : MMXI_binop_rm_int<0xDF, "pandn", int_x86_mmx_pandn>;
 
 // Shift Instructions
 defm MMX_PSRLW : MMXI_binop_rmi_int<0xD1, 0x71, MRM2r, "psrlw",

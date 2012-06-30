@@ -1,4 +1,4 @@
-; RUN: llc < %s -march=x86 -post-RA-scheduler=false | FileCheck %s
+; RUN: llc < %s -mcpu=generic -march=x86 -post-RA-scheduler=false | FileCheck %s
 ; rdar://7226797
 
 ; LLVM should omit the testl and use the flags result from the orl.
@@ -9,7 +9,7 @@ entry:
   %0 = ptrtoint float* %A to i32                  ; <i32> [#uses=1]
   %1 = and i32 %0, 3                              ; <i32> [#uses=1]
   %2 = xor i32 %IA, 1                             ; <i32> [#uses=1]
-; CHECK:      orl %ecx, %edx
+; CHECK:      orl %e
 ; CHECK-NEXT: je
   %3 = or i32 %2, %1                              ; <i32> [#uses=1]
   %4 = icmp eq i32 %3, 0                          ; <i1> [#uses=1]

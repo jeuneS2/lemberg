@@ -85,16 +85,10 @@ public:
     ///
     SparseBitVector<> AliveBlocks;
 
-    /// NumUses - Number of uses of this register across the entire function.
-    ///
-    unsigned NumUses;
-
     /// Kills - List of MachineInstruction's which are the last use of this
     /// virtual register (kill it) in their basic block.
     ///
     std::vector<MachineInstr*> Kills;
-
-    VarInfo() : NumUses(0) {}
 
     /// removeKill - Delete a kill corresponding to the specified
     /// machine instruction. Returns true if there was a kill
@@ -166,6 +160,9 @@ private:   // Intermediate data structures
   /// the last use of the whole register.
   bool HandlePhysRegKill(unsigned Reg, MachineInstr *MI);
 
+  /// HandleRegMask - Call HandlePhysRegKill for all registers clobbered by Mask.
+  void HandleRegMask(const MachineOperand&);
+
   void HandlePhysRegUse(unsigned Reg, MachineInstr *MI);
   void HandlePhysRegDef(unsigned Reg, MachineInstr *MI,
                         SmallVector<unsigned, 4> &Defs);
@@ -231,6 +228,7 @@ public:
     }
 
     assert(Removed && "Register is not used by this instruction!");
+    (void)Removed;
     return true;
   }
 
@@ -265,6 +263,7 @@ public:
       }
     }
     assert(Removed && "Register is not defined by this instruction!");
+    (void)Removed;
     return true;
   }
   

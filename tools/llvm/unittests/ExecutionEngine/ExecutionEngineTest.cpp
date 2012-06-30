@@ -22,20 +22,22 @@ namespace {
 class ExecutionEngineTest : public testing::Test {
 protected:
   ExecutionEngineTest()
-    : M(new Module("<main>", getGlobalContext())),
-      Engine(EngineBuilder(M).create()) {
+    : M(new Module("<main>", getGlobalContext())), Error(""),
+      Engine(EngineBuilder(M).setErrorStr(&Error).create()) {
   }
 
   virtual void SetUp() {
-    ASSERT_TRUE(Engine.get() != NULL);
+    ASSERT_TRUE(Engine.get() != NULL) << "EngineBuilder returned error: '"
+      << Error << "'";
   }
 
-  GlobalVariable *NewExtGlobal(const Type *T, const Twine &Name) {
+  GlobalVariable *NewExtGlobal(Type *T, const Twine &Name) {
     return new GlobalVariable(*M, T, false,  // Not constant.
                               GlobalValue::ExternalLinkage, NULL, Name);
   }
 
   Module *const M;
+  std::string Error;
   const OwningPtr<ExecutionEngine> Engine;
 };
 

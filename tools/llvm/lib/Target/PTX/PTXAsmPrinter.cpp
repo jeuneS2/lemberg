@@ -14,106 +14,74 @@
 
 #define DEBUG_TYPE "ptx-asm-printer"
 
+#include "PTXAsmPrinter.h"
 #include "PTX.h"
 #include "PTXMachineFunctionInfo.h"
+#include "PTXParamManager.h"
+#include "PTXRegisterInfo.h"
 #include "PTXTargetMachine.h"
+#include "llvm/Argument.h"
 #include "llvm/DerivedTypes.h"
+#include "llvm/Function.h"
 #include "llvm/Module.h"
 #include "llvm/ADT/SmallString.h"
-#include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/Twine.h"
+#include "llvm/Analysis/DebugInfo.h"
 #include "llvm/CodeGen/AsmPrinter.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCExpr.h"
+#include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Target/Mangler.h"
 #include "llvm/Target/TargetLoweringObjectFile.h"
-#include "llvm/Target/TargetRegistry.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
+#include "llvm/Support/Path.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
-namespace {
-class PTXAsmPrinter : public AsmPrinter {
-public:
-  explicit PTXAsmPrinter(TargetMachine &TM, MCStreamer &Streamer)
-    : AsmPrinter(TM, Streamer) {}
-
-  const char *getPassName() const { return "PTX Assembly Printer"; }
-
-  bool doFinalization(Module &M);
-
-  virtual void EmitStartOfAsmFile(Module &M);
-
-  virtual bool runOnMachineFunction(MachineFunction &MF);
-
-  virtual void EmitFunctionBodyStart();
-  virtual void EmitFunctionBodyEnd() { OutStreamer.EmitRawText(Twine("}")); }
-
-  virtual void EmitInstruction(const MachineInstr *MI);
-
-  void printOperand(const MachineInstr *MI, int opNum, raw_ostream &OS);
-  void printMemOperand(const MachineInstr *MI, int opNum, raw_ostream &OS,
-                       const char *Modifier = 0);
-  void printParamOperand(const MachineInstr *MI, int opNum, raw_ostream &OS,
-                         const char *Modifier = 0);
-
-  // autogen'd.
-  void printInstruction(const MachineInstr *MI, raw_ostream &OS);
-  static const char *getRegisterName(unsigned RegNo);
-
-private:
-  void EmitVariableDeclaration(const GlobalVariable *gv);
-  void EmitFunctionDeclaration();
-}; // class PTXAsmPrinter
-} // namespace
-
 static const char PARAM_PREFIX[] = "__param_";
+static const char RETURN_PREFIX[] = "__ret_";
 
-static const char *getRegisterTypeName(unsigned RegNo) {
-#define TEST_REGCLS(cls, clsstr)                \
-  if (PTX::cls ## RegisterClass->contains(RegNo)) return # clsstr;
-  TEST_REGCLS(Preds, pred);
-  TEST_REGCLS(RRegu16, u16);
-  TEST_REGCLS(RRegu32, u32);
-  TEST_REGCLS(RRegu64, u64);
-  TEST_REGCLS(RRegf32, f32);
-  TEST_REGCLS(RRegf64, f64);
-#undef TEST_REGCLS
-
-  llvm_unreachable("Not in any register class!");
-  return NULL;
-}
-
-static const char *getInstructionTypeName(const MachineInstr *MI) {
-  for (int i = 0, e = MI->getNumOperands(); i != e; ++i) {
-    const MachineOperand &MO = MI->getOperand(i);
-    if (MO.getType() == MachineOperand::MO_Register)
-      return getRegisterTypeName(MO.getReg());
+static const char *getRegisterTypeName(unsigned RegType) {
+  switch (RegType) {
+  default:
+    llvm_unreachable("Unknown register type");
+  case PTXRegisterType::Pred:
+    return ".pred";
+  case PTXRegisterType::B16:
+    return ".b16";
+  case PTXRegisterType::B32:
+    return ".b32";
+  case PTXRegisterType::B64:
+    return ".b64";
+  case PTXRegisterType::F32:
+    return ".f32";
+  case PTXRegisterType::F64:
+    return ".f64";
   }
-
-  llvm_unreachable("No reg operand found in instruction!");
-  return NULL;
 }
 
 static const char *getStateSpaceName(unsigned addressSpace) {
   switch (addressSpace) {
   default: llvm_unreachable("Unknown state space");
-  case PTX::GLOBAL:    return "global";
-  case PTX::CONSTANT:  return "const";
-  case PTX::LOCAL:     return "local";
-  case PTX::PARAMETER: return "param";
-  case PTX::SHARED:    return "shared";
+  case PTXStateSpace::Global:    return "global";
+  case PTXStateSpace::Constant:  return "const";
+  case PTXStateSpace::Local:     return "local";
+  case PTXStateSpace::Parameter: return "param";
+  case PTXStateSpace::Shared:    return "shared";
   }
-  return NULL;
 }
 
-static const char *getTypeName(const Type* type) {
+static const char *getTypeName(Type* type) {
   while (true) {
     switch (type->getTypeID()) {
       default: llvm_unreachable("Unknown type");
@@ -128,7 +96,7 @@ static const char *getTypeName(const Type* type) {
         }
       case Type::ArrayTyID:
       case Type::PointerTyID:
-        type = dyn_cast<const SequentialType>(type)->getElementType();
+        type = dyn_cast<SequentialType>(type)->getElementType();
         break;
     }
   }
@@ -168,119 +136,133 @@ void PTXAsmPrinter::EmitStartOfAsmFile(Module &M)
 {
   const PTXSubtarget& ST = TM.getSubtarget<PTXSubtarget>();
 
-  OutStreamer.EmitRawText(Twine("\t.version " + ST.getPTXVersionString()));
-  OutStreamer.EmitRawText(Twine("\t.target " + ST.getTargetString() +
+  // Emit the PTX .version and .target attributes
+  OutStreamer.EmitRawText(Twine("\t.version ") + ST.getPTXVersionString());
+  OutStreamer.EmitRawText(Twine("\t.target ") + ST.getTargetString() +
                                 (ST.supportsDouble() ? ""
-                                                     : ", map_f64_to_f32")));
+                                                     : ", map_f64_to_f32"));
+  // .address_size directive is optional, but it must immediately follow
+  // the .target directive if present within a module
+  if (ST.supportsPTX23()) {
+    const char *addrSize = ST.is64Bit() ? "64" : "32";
+    OutStreamer.EmitRawText(Twine("\t.address_size ") + addrSize);
+  }
+
   OutStreamer.AddBlankLine();
 
+  // Define any .file directives
+  DebugInfoFinder DbgFinder;
+  DbgFinder.processModule(M);
+
+  for (DebugInfoFinder::iterator I = DbgFinder.compile_unit_begin(),
+       E = DbgFinder.compile_unit_end(); I != E; ++I) {
+    DICompileUnit DIUnit(*I);
+    StringRef FN = DIUnit.getFilename();
+    StringRef Dir = DIUnit.getDirectory();
+    GetOrCreateSourceID(FN, Dir);
+  }
+
+  OutStreamer.AddBlankLine();
+
+  // declare external functions
+  for (Module::const_iterator i = M.begin(), e = M.end();
+       i != e; ++i)
+    EmitFunctionDeclaration(i);
+  
   // declare global variables
   for (Module::const_global_iterator i = M.global_begin(), e = M.global_end();
        i != e; ++i)
     EmitVariableDeclaration(i);
 }
 
-bool PTXAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
-  SetupMachineFunction(MF);
-  EmitFunctionDeclaration();
-  EmitFunctionBody();
-  return false;
-}
-
 void PTXAsmPrinter::EmitFunctionBodyStart() {
   OutStreamer.EmitRawText(Twine("{"));
 
   const PTXMachineFunctionInfo *MFI = MF->getInfo<PTXMachineFunctionInfo>();
+  const PTXParamManager &PM = MFI->getParamManager();
 
-  // Print local variable definition
-  for (PTXMachineFunctionInfo::reg_iterator
-       i = MFI->localVarRegBegin(), e = MFI->localVarRegEnd(); i != e; ++ i) {
-    unsigned reg = *i;
+  // Print register definitions
+  SmallString<128> regDefs;
+  raw_svector_ostream os(regDefs);
+  unsigned numRegs;
 
-    std::string def = "\t.reg .";
-    def += getRegisterTypeName(reg);
-    def += ' ';
-    def += getRegisterName(reg);
-    def += ';';
-    OutStreamer.EmitRawText(Twine(def));
+  // pred
+  numRegs = MFI->countRegisters(PTXRegisterType::Pred, PTXRegisterSpace::Reg);
+  if(numRegs > 0)
+    os << "\t.reg .pred %p<" << numRegs << ">;\n";
+
+  // i16
+  numRegs = MFI->countRegisters(PTXRegisterType::B16, PTXRegisterSpace::Reg);
+  if(numRegs > 0)
+    os << "\t.reg .b16 %rh<" << numRegs << ">;\n";
+
+  // i32
+  numRegs = MFI->countRegisters(PTXRegisterType::B32, PTXRegisterSpace::Reg);
+  if(numRegs > 0)
+    os << "\t.reg .b32 %r<" << numRegs << ">;\n";
+
+  // i64
+  numRegs = MFI->countRegisters(PTXRegisterType::B64, PTXRegisterSpace::Reg);
+  if(numRegs > 0)
+    os << "\t.reg .b64 %rd<" << numRegs << ">;\n";
+
+  // f32
+  numRegs = MFI->countRegisters(PTXRegisterType::F32, PTXRegisterSpace::Reg);
+  if(numRegs > 0)
+    os << "\t.reg .f32 %f<" << numRegs << ">;\n";
+
+  // f64
+  numRegs = MFI->countRegisters(PTXRegisterType::F64, PTXRegisterSpace::Reg);
+  if(numRegs > 0)
+    os << "\t.reg .f64 %fd<" << numRegs << ">;\n";
+
+  // Local params
+  for (PTXParamManager::param_iterator i = PM.local_begin(), e = PM.local_end();
+       i != e; ++i)
+    os << "\t.param .b" << PM.getParamSize(*i) << ' ' << PM.getParamName(*i)
+       << ";\n";
+
+  OutStreamer.EmitRawText(os.str());
+
+
+  const MachineFrameInfo* FrameInfo = MF->getFrameInfo();
+  DEBUG(dbgs() << "Have " << FrameInfo->getNumObjects()
+               << " frame object(s)\n");
+  for (unsigned i = 0, e = FrameInfo->getNumObjects(); i != e; ++i) {
+    DEBUG(dbgs() << "Size of object: " << FrameInfo->getObjectSize(i) << "\n");
+    if (FrameInfo->getObjectSize(i) > 0) {
+      OutStreamer.EmitRawText("\t.local .align " +
+                              Twine(FrameInfo->getObjectAlignment(i)) +
+                              " .b8 __local" +
+                              Twine(i) +
+                              "[" +
+                              Twine(FrameInfo->getObjectSize(i)) +
+                              "];");
+    }
   }
+
+  //unsigned Index = 1;
+  // Print parameter passing params
+  //for (PTXMachineFunctionInfo::param_iterator
+  //     i = MFI->paramBegin(), e = MFI->paramEnd(); i != e; ++i) {
+  //  std::string def = "\t.param .b";
+  //  def += utostr(*i);
+  //  def += " __ret_";
+  //  def += utostr(Index);
+  //  Index++;
+  //  def += ";";
+  //  OutStreamer.EmitRawText(Twine(def));
+  //}
+}
+
+void PTXAsmPrinter::EmitFunctionBodyEnd() {
+  OutStreamer.EmitRawText(Twine("}"));
 }
 
 void PTXAsmPrinter::EmitInstruction(const MachineInstr *MI) {
-  std::string str;
-  str.reserve(64);
-
-  // Write instruction to str
-  raw_string_ostream OS(str);
-  printInstruction(MI, OS);
-  OS << ';';
-  OS.flush();
-
-  // Replace "%type" if found
-  size_t pos;
-  if ((pos = str.find("%type")) != std::string::npos)
-    str.replace(pos, /*strlen("%type")==*/5, getInstructionTypeName(MI));
-
-  StringRef strref = StringRef(str);
-  OutStreamer.EmitRawText(strref);
-}
-
-void PTXAsmPrinter::printOperand(const MachineInstr *MI, int opNum,
-                                 raw_ostream &OS) {
-  const MachineOperand &MO = MI->getOperand(opNum);
-
-  switch (MO.getType()) {
-    default:
-      llvm_unreachable("<unknown operand type>");
-      break;
-    case MachineOperand::MO_GlobalAddress:
-      OS << *Mang->getSymbol(MO.getGlobal());
-      break;
-    case MachineOperand::MO_Immediate:
-      OS << (int) MO.getImm();
-      break;
-    case MachineOperand::MO_Register:
-      OS << getRegisterName(MO.getReg());
-      break;
-    case MachineOperand::MO_FPImmediate:
-      APInt constFP = MO.getFPImm()->getValueAPF().bitcastToAPInt();
-      bool  isFloat = MO.getFPImm()->getType()->getTypeID() == Type::FloatTyID;
-      // Emit 0F for 32-bit floats and 0D for 64-bit doubles.
-      if (isFloat) {
-        OS << "0F";
-      }
-      else {
-        OS << "0D";
-      }
-      // Emit the encoded floating-point value.
-      if (constFP.getZExtValue() > 0) {
-        OS << constFP.toString(16, false);
-      }
-      else {
-        OS << "00000000";
-        // If We have a double-precision zero, pad to 8-bytes.
-        if (!isFloat) {
-          OS << "00000000";
-        }
-      }
-      break;
-  }
-}
-
-void PTXAsmPrinter::printMemOperand(const MachineInstr *MI, int opNum,
-                                    raw_ostream &OS, const char *Modifier) {
-  printOperand(MI, opNum, OS);
-
-  if (MI->getOperand(opNum+1).isImm() && MI->getOperand(opNum+1).getImm() == 0)
-    return; // don't print "+0"
-
-  OS << "+";
-  printOperand(MI, opNum+1, OS);
-}
-
-void PTXAsmPrinter::printParamOperand(const MachineInstr *MI, int opNum,
-                                      raw_ostream &OS, const char *Modifier) {
-  OS << PARAM_PREFIX << (int) MI->getOperand(opNum).getImm() + 1;
+  MCInst TmpInst;
+  LowerPTXMachineInstrToMCInst(MI, TmpInst, *this);
+  OutStreamer.EmitInstruction(TmpInst);
 }
 
 void PTXAsmPrinter::EmitVariableDeclaration(const GlobalVariable *gv) {
@@ -292,111 +274,288 @@ void PTXAsmPrinter::EmitVariableDeclaration(const GlobalVariable *gv) {
 
   assert(gvsym->isUndefined() && "Cannot define a symbol twice!");
 
-  std::string decl;
+  SmallString<128> decl;
+  raw_svector_ostream os(decl);
 
   // check if it is defined in some other translation unit
   if (gv->isDeclaration())
-    decl += ".extern ";
+    os << ".extern ";
 
   // state space: e.g., .global
-  decl += ".";
-  decl += getStateSpaceName(gv->getType()->getAddressSpace());
-  decl += " ";
+  os << '.' << getStateSpaceName(gv->getType()->getAddressSpace()) << ' ';
 
   // alignment (optional)
   unsigned alignment = gv->getAlignment();
-  if (alignment != 0) {
-    decl += ".align ";
-    decl += utostr(Log2_32(gv->getAlignment()));
-    decl += " ";
+  if (alignment != 0)
+    os << ".align " << gv->getAlignment() << ' ';
+
+
+  if (PointerType::classof(gv->getType())) {
+    PointerType* pointerTy = dyn_cast<PointerType>(gv->getType());
+    Type* elementTy = pointerTy->getElementType();
+
+    if (elementTy->isArrayTy()) {
+      assert(elementTy->isArrayTy() && "Only pointers to arrays are supported");
+
+      ArrayType* arrayTy = dyn_cast<ArrayType>(elementTy);
+      elementTy = arrayTy->getElementType();
+
+      unsigned numElements = arrayTy->getNumElements();
+
+      while (elementTy->isArrayTy()) {
+        arrayTy = dyn_cast<ArrayType>(elementTy);
+        elementTy = arrayTy->getElementType();
+
+        numElements *= arrayTy->getNumElements();
+      }
+
+      // FIXME: isPrimitiveType() == false for i16?
+      assert(elementTy->isSingleValueType() &&
+             "Non-primitive types are not handled");
+
+      // Find the size of the element in bits
+      unsigned elementSize = elementTy->getPrimitiveSizeInBits();
+
+      os << ".b" << elementSize << ' ' << gvsym->getName()
+         << '[' << numElements << ']';
+    } else {
+      os << ".b8" << gvsym->getName() << "[]";
+    }
+
+    // handle string constants (assume ConstantArray means string)
+    if (gv->hasInitializer()) {
+      const Constant *C = gv->getInitializer();
+      if (const ConstantArray *CA = dyn_cast<ConstantArray>(C)) {
+        os << " = {";
+
+        for (unsigned i = 0, e = C->getNumOperands(); i != e; ++i) {
+          if (i > 0)
+            os << ',';
+
+          os << "0x";
+          os.write_hex(cast<ConstantInt>(CA->getOperand(i))->getZExtValue());
+        }
+
+        os << '}';
+      }
+    }
+  } else {
+    // Note: this is currently the fall-through case and most likely generates
+    //       incorrect code.
+    os << getTypeName(gv->getType()) << ' ' << gvsym->getName();
+
+    if (isa<ArrayType>(gv->getType()) || isa<PointerType>(gv->getType()))
+      os << "[]";
   }
 
-  decl += getTypeName(gv->getType());
-  decl += " ";
+  os << ';';
 
-  decl += gvsym->getName();
-
-  if (ArrayType::classof(gv->getType()) || PointerType::classof(gv->getType()))
-    decl += "[]";
-
-  decl += ";";
-
-  OutStreamer.EmitRawText(Twine(decl));
-
+  OutStreamer.EmitRawText(os.str());
   OutStreamer.AddBlankLine();
 }
 
-void PTXAsmPrinter::EmitFunctionDeclaration() {
+void PTXAsmPrinter::EmitFunctionEntryLabel() {
   // The function label could have already been emitted if two symbols end up
   // conflicting due to asm renaming.  Detect this and emit an error.
-  if (!CurrentFnSym->isUndefined()) {
+  if (!CurrentFnSym->isUndefined())
     report_fatal_error("'" + Twine(CurrentFnSym->getName()) +
                        "' label emitted multiple times to assembly file");
-    return;
-  }
 
   const PTXMachineFunctionInfo *MFI = MF->getInfo<PTXMachineFunctionInfo>();
+  const PTXParamManager &PM = MFI->getParamManager();
   const bool isKernel = MFI->isKernel();
-  unsigned reg;
+  const PTXSubtarget& ST = TM.getSubtarget<PTXSubtarget>();
 
-  std::string decl = isKernel ? ".entry" : ".func";
+  SmallString<128> decl;
+  raw_svector_ostream os(decl);
+  os << (isKernel ? ".entry" : ".func");
 
-  // Print return register
-  reg = MFI->retReg();
-  if (!isKernel && reg != PTX::NoRegister) {
-    decl += " (.reg ."; // FIXME: could it return in .param space?
-    decl += getRegisterTypeName(reg);
-    decl += " ";
-    decl += getRegisterName(reg);
-    decl += ")";
+  if (!isKernel) {
+    os << " (";
+    if (ST.useParamSpaceForDeviceArgs()) {
+      for (PTXParamManager::param_iterator i = PM.ret_begin(), e = PM.ret_end(),
+           b = i; i != e; ++i) {
+        if (i != b)
+          os << ", ";
+
+        os << ".param .b" << PM.getParamSize(*i) << ' ' << PM.getParamName(*i);
+      }
+    } else {
+      for (PTXMachineFunctionInfo::reg_iterator
+           i = MFI->retreg_begin(), e = MFI->retreg_end(), b = i;
+           i != e; ++i) {
+        if (i != b)
+          os << ", ";
+
+        os << ".reg " << getRegisterTypeName(MFI->getRegisterType(*i)) << ' '
+           << MFI->getRegisterName(*i);
+      }
+    }
+    os << ')';
   }
 
   // Print function name
-  decl += " ";
-  decl += CurrentFnSym->getName().str();
+  os << ' ' << CurrentFnSym->getName() << " (";
 
-  // Print parameter list
-  if (!MFI->argRegEmpty()) {
-    decl += " (";
-    if (isKernel) {
-      unsigned cnt = 0;
-      //for (int i = 0, e = MFI->getNumArg(); i != e; ++i) {
-      for(PTXMachineFunctionInfo::reg_reverse_iterator
-          i = MFI->argRegReverseBegin(), e = MFI->argRegReverseEnd(), b = i;
-          i != e; ++i) {
-        reg = *i;
-        assert(reg != PTX::NoRegister && "Not a valid register!");
-        if (i != b)
-          decl += ", ";
-        decl += ".param .";
-        decl += getRegisterTypeName(reg);
-        decl += " ";
-        decl += PARAM_PREFIX;
-        decl += utostr(++cnt);
+  const Function *F = MF->getFunction();
+
+  // Print parameters
+  if (isKernel || ST.useParamSpaceForDeviceArgs()) {
+    /*for (PTXParamManager::param_iterator i = PM.arg_begin(), e = PM.arg_end(),
+         b = i; i != e; ++i) {
+      if (i != b)
+        os << ", ";
+
+      os << ".param .b" << PM.getParamSize(*i) << ' ' << PM.getParamName(*i);
+    }*/
+    int Counter = 1;
+    for (Function::const_arg_iterator i = F->arg_begin(), e = F->arg_end(),
+         b = i; i != e; ++i) {
+      if (i != b)
+        os << ", ";
+      const Type *ArgType = (*i).getType();
+      os << ".param .b";
+      if (ArgType->isPointerTy()) {
+        if (ST.is64Bit())
+          os << "64";
+        else
+          os << "32";
+      } else {
+        os << ArgType->getPrimitiveSizeInBits();
       }
-    } else {
-      for (PTXMachineFunctionInfo::reg_reverse_iterator
-           i = MFI->argRegReverseBegin(), e = MFI->argRegReverseEnd(), b = i;
-           i != e; ++i) {
-        reg = *i;
-        assert(reg != PTX::NoRegister && "Not a valid register!");
-        if (i != b)
-          decl += ", ";
-        decl += ".reg .";
-        decl += getRegisterTypeName(reg);
-        decl += " ";
-        decl += getRegisterName(reg);
+      if (ArgType->isPointerTy() && ST.emitPtrAttribute()) {
+        const PointerType *PtrType = dyn_cast<const PointerType>(ArgType);
+        os << " .ptr";
+        switch (PtrType->getAddressSpace()) {
+        default:
+          llvm_unreachable("Unknown address space in argument");
+        case PTXStateSpace::Global:
+          os << " .global";
+          break;
+        case PTXStateSpace::Shared:
+          os << " .shared";
+          break;
+        }
       }
+      os << " __param_" << Counter++;
     }
-    decl += ")";
-  }
+  } else {
+    for (PTXMachineFunctionInfo::reg_iterator
+         i = MFI->argreg_begin(), e = MFI->argreg_end(), b = i;
+         i != e; ++i) {
+      if (i != b)
+        os << ", ";
 
+      os << ".reg " << getRegisterTypeName(MFI->getRegisterType(*i)) << ' '
+         << MFI->getRegisterName(*i);
+    }
+  }
+  os << ')';
+
+  OutStreamer.EmitRawText(os.str());
+}
+
+void PTXAsmPrinter::EmitFunctionDeclaration(const Function* func)
+{
+  const PTXSubtarget& ST = TM.getSubtarget<PTXSubtarget>();
+	
+  std::string decl = "";
+
+  // hard-coded emission of extern vprintf function 
+  
+  if (func->getName() == "printf" || func->getName() == "puts") {		
+    decl += ".extern .func (.param .b32 __param_1) vprintf (.param .b";
+    if (ST.is64Bit())	
+      decl += "64";
+    else				
+      decl += "32";
+    decl += " __param_2, .param .b";
+    if (ST.is64Bit())	
+      decl += "64";
+    else				
+      decl += "32";
+    decl += " __param_3)\n";
+  }
+  
   OutStreamer.EmitRawText(Twine(decl));
 }
 
-#include "PTXGenAsmWriter.inc"
+unsigned PTXAsmPrinter::GetOrCreateSourceID(StringRef FileName,
+                                            StringRef DirName) {
+  // If FE did not provide a file name, then assume stdin.
+  if (FileName.empty())
+    return GetOrCreateSourceID("<stdin>", StringRef());
+
+  // MCStream expects full path name as filename.
+  if (!DirName.empty() && !sys::path::is_absolute(FileName)) {
+    SmallString<128> FullPathName = DirName;
+    sys::path::append(FullPathName, FileName);
+    // Here FullPathName will be copied into StringMap by GetOrCreateSourceID.
+    return GetOrCreateSourceID(StringRef(FullPathName), StringRef());
+  }
+
+  StringMapEntry<unsigned> &Entry = SourceIdMap.GetOrCreateValue(FileName);
+  if (Entry.getValue())
+    return Entry.getValue();
+
+  unsigned SrcId = SourceIdMap.size();
+  Entry.setValue(SrcId);
+
+  // Print out a .file directive to specify files for .loc directives.
+  OutStreamer.EmitDwarfFileDirective(SrcId, "", Entry.getKey());
+
+  return SrcId;
+}
+
+MCOperand PTXAsmPrinter::GetSymbolRef(const MachineOperand &MO,
+                                      const MCSymbol *Symbol) {
+  const MCExpr *Expr;
+  Expr = MCSymbolRefExpr::Create(Symbol, MCSymbolRefExpr::VK_None, OutContext);
+  return MCOperand::CreateExpr(Expr);
+}
+
+MCOperand PTXAsmPrinter::lowerOperand(const MachineOperand &MO) {
+  MCOperand MCOp;
+  const PTXMachineFunctionInfo *MFI = MF->getInfo<PTXMachineFunctionInfo>();
+  unsigned EncodedReg;
+  switch (MO.getType()) {
+  default:
+    llvm_unreachable("Unknown operand type");
+  case MachineOperand::MO_Register:
+    if (MO.getReg() > 0) {
+      // Encode the register
+      EncodedReg = MFI->getEncodedRegister(MO.getReg());
+    } else {
+      EncodedReg = 0;
+    }
+    MCOp = MCOperand::CreateReg(EncodedReg);
+    break;
+  case MachineOperand::MO_Immediate:
+    MCOp = MCOperand::CreateImm(MO.getImm());
+    break;
+  case MachineOperand::MO_MachineBasicBlock:
+    MCOp = MCOperand::CreateExpr(MCSymbolRefExpr::Create(
+                                 MO.getMBB()->getSymbol(), OutContext));
+    break;
+  case MachineOperand::MO_GlobalAddress:
+    MCOp = GetSymbolRef(MO, Mang->getSymbol(MO.getGlobal()));
+    break;
+  case MachineOperand::MO_ExternalSymbol:
+    MCOp = GetSymbolRef(MO, GetExternalSymbolSymbol(MO.getSymbolName()));
+    break;
+  case MachineOperand::MO_FPImmediate:
+    APFloat Val = MO.getFPImm()->getValueAPF();
+    bool ignored;
+    Val.convert(APFloat::IEEEdouble, APFloat::rmTowardZero, &ignored);
+    MCOp = MCOperand::CreateFPImm(Val.convertToDouble());
+    break;
+  }
+
+  return MCOp;
+}
 
 // Force static initialization.
 extern "C" void LLVMInitializePTXAsmPrinter() {
-  RegisterAsmPrinter<PTXAsmPrinter> X(ThePTXTarget);
+  RegisterAsmPrinter<PTXAsmPrinter> X(ThePTX32Target);
+  RegisterAsmPrinter<PTXAsmPrinter> Y(ThePTX64Target);
 }

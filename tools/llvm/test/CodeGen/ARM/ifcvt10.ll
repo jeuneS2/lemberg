@@ -1,4 +1,4 @@
-; RUN: llc < %s -mtriple=arm-apple-darwin -mcpu=cortex-a9 | FileCheck %s
+; RUN: llc < %s -mtriple=arm-apple-ios -mcpu=cortex-a9 | FileCheck %s
 ; rdar://8402126
 ; Make sure if-converter is not predicating vldmia and ldmia. These are
 ; micro-coded and would have long issue latency even if predicated on
@@ -9,9 +9,9 @@ entry:
 ; CHECK: t:
 ; CHECK: vpop {d8}
 ; CHECK-NOT: vpopne
-; CHECK: ldmia sp!, {r7, pc}
+; CHECK: pop {r7, pc}
 ; CHECK: vpop {d8}
-; CHECK: ldmia sp!, {r7, pc}
+; CHECK: pop {r7, pc}
   br i1 undef, label %if.else, label %if.then
 
 if.then:                                          ; preds = %entry

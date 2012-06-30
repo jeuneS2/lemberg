@@ -6,5 +6,5 @@
 
 // CHECK: ('_symbols', [
 // CHECK:      (('st_name', 0x00000001) # '.Lfoo'
-// CHECK-NEXT:  ('st_bind', 0x00000001)
-// CHECK: (('sh_name', 0x00000024) # '.strtab'
+// CHECK-NEXT:  ('st_bind', 0x1)
+// CHECK: (('sh_name', 0x0000001b) # '.strtab'

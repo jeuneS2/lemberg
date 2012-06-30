@@ -1,4 +1,4 @@
-//===-- SPU.h - Top-level interface for Cell SPU Target ----------*- C++ -*-==//
+//===-- SPU.h - Top-level interface for Cell SPU Target ---------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -15,6 +15,7 @@
 #ifndef LLVM_TARGET_IBMCELLSPU_H
 #define LLVM_TARGET_IBMCELLSPU_H
 
+#include "MCTargetDesc/SPUMCTargetDesc.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace llvm {
@@ -25,11 +26,6 @@ namespace llvm {
   FunctionPass *createSPUISelDag(SPUTargetMachine &TM);
   FunctionPass *createSPUNopFillerPass(SPUTargetMachine &tm);
 
-  extern Target TheCellSPUTarget;
 }
-
-// Defines symbolic names for the SPU instructions.
-//
-#include "SPUGenInstrNames.inc"
 
 #endif /* LLVM_TARGET_IBMCELLSPU_H */

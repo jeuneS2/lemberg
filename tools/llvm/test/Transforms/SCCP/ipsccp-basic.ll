@@ -90,6 +90,8 @@ A:
   %c = call i64 @test4c(i64 %b)
   ret i64 %c
 B:
+  %val = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+           catch i8* null
   ret i64 0
 }
 ; CHECK: define i64 @test4b()
@@ -121,12 +123,14 @@ A:
   %c = call i64 @test5c({i64,i64} %a)
   ret i64 %c
 B:
+  %val = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+           catch i8* null
   ret i64 0
 }
 
 ; CHECK: define i64 @test5b()
 ; CHECK:     A:
-; CHECK-NEXT:  %c = call i64 @test5c(%0 %a)
+; CHECK-NEXT:  %c = call i64 @test5c({ i64, i64 } %a)
 ; CHECK-NEXT:  ret i64 5
 
 define internal i64 @test5c({i64,i64} %a) {
@@ -153,7 +157,7 @@ define i64 @test6b() {
 
 %T = type {i32,i32}
 
-define internal {i32, i32} @test7a(i32 %A) {
+define internal %T @test7a(i32 %A) {
   %X = add i32 1, %A
   %mrv0 = insertvalue %T undef, i32 %X, 0
   %mrv1 = insertvalue %T %mrv0, i32 %A, 1
@@ -164,8 +168,8 @@ define internal {i32, i32} @test7a(i32 %A) {
 }
 
 define i32 @test7b() {
-	%X = call {i32, i32} @test7a(i32 17)
-        %Y = extractvalue {i32, i32} %X, 0
+	%X = call %T @test7a(i32 17)
+        %Y = extractvalue %T %X, 0
 	%Z = add i32 %Y, %Y
 	ret i32 %Z
 ; CHECK: define i32 @test7b
@@ -204,3 +208,22 @@ entry:
         ret void
 }
 
+declare i32 @__gxx_personality_v0(...)
+
+;;======================== test10
+
+define i32 @test10a() nounwind {
+entry:
+  %call = call i32 @test10b(i32 undef)
+  ret i32 %call
+; CHECK: define i32 @test10a
+; CHECK: ret i32 0
+}
+
+define internal i32 @test10b(i32 %x) nounwind {
+entry:
+  %r = and i32 %x, 1
+  ret i32 %r
+; CHECK: define internal i32 @test10b
+; CHECK: ret i32 undef
+}

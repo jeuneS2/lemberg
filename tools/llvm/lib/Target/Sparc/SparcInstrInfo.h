@@ -1,4 +1,4 @@
-//===- SparcInstrInfo.h - Sparc Instruction Information ---------*- C++ -*-===//
+//===-- SparcInstrInfo.h - Sparc Instruction Information --------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -14,8 +14,11 @@
 #ifndef SPARCINSTRUCTIONINFO_H
 #define SPARCINSTRUCTIONINFO_H
 
-#include "llvm/Target/TargetInstrInfo.h"
 #include "SparcRegisterInfo.h"
+#include "llvm/Target/TargetInstrInfo.h"
+
+#define GET_INSTRINFO_HEADER
+#include "SparcGenInstrInfo.inc"
 
 namespace llvm {
 
@@ -31,7 +34,7 @@ namespace SPII {
   };
 }
 
-class SparcInstrInfo : public TargetInstrInfoImpl {
+class SparcInstrInfo : public SparcGenInstrInfo {
   const SparcRegisterInfo RI;
   const SparcSubtarget& Subtarget;
 public:
@@ -59,6 +62,13 @@ public:
   virtual unsigned isStoreToStackSlot(const MachineInstr *MI,
                                       int &FrameIndex) const;
 
+  /// emitFrameIndexDebugValue - Emit a target-dependent form of
+  /// DBG_VALUE encoding the address of a frame index.
+  virtual MachineInstr *emitFrameIndexDebugValue(MachineFunction &MF,
+                                                 int FrameIx,
+                                                 uint64_t Offset,
+                                                 const MDNode *MDPtr,
+                                                 DebugLoc dl) const;
 
   virtual bool AnalyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
                              MachineBasicBlock *&FBB,

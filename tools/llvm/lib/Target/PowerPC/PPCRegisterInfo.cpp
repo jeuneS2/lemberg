@@ -1,4 +1,4 @@
-//===- PPCRegisterInfo.cpp - PowerPC Register Information -------*- C++ -*-===//
+//===-- PPCRegisterInfo.cpp - PowerPC Register Information ----------------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -13,10 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "reginfo"
+#include "PPCRegisterInfo.h"
 #include "PPC.h"
 #include "PPCInstrBuilder.h"
 #include "PPCMachineFunctionInfo.h"
-#include "PPCRegisterInfo.h"
 #include "PPCFrameLowering.h"
 #include "PPCSubtarget.h"
 #include "llvm/CallingConv.h"
@@ -28,7 +28,6 @@
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
-#include "llvm/CodeGen/MachineLocation.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/RegisterScavenging.h"
 #include "llvm/Target/TargetFrameLowering.h"
@@ -44,15 +43,17 @@
 #include "llvm/ADT/STLExtras.h"
 #include <cstdlib>
 
-// FIXME (64-bit): Eventually enable by default.
+#define GET_REGINFO_TARGET_DESC
+#include "PPCGenRegisterInfo.inc"
+
 namespace llvm {
-cl::opt<bool> EnablePPC32RS("enable-ppc32-regscavenger",
+cl::opt<bool> DisablePPC32RS("disable-ppc32-regscavenger",
                                    cl::init(false),
-                                   cl::desc("Enable PPC32 register scavenger"),
+                                   cl::desc("Disable PPC32 register scavenger"),
                                    cl::Hidden);
-cl::opt<bool> EnablePPC64RS("enable-ppc64-regscavenger",
+cl::opt<bool> DisablePPC64RS("disable-ppc64-regscavenger",
                                    cl::init(false),
-                                   cl::desc("Enable PPC64 register scavenger"),
+                                   cl::desc("Disable PPC64 register scavenger"),
                                    cl::Hidden);
 }
 
@@ -61,56 +62,15 @@ using namespace llvm;
 // FIXME (64-bit): Should be inlined.
 bool
 PPCRegisterInfo::requiresRegisterScavenging(const MachineFunction &) const {
-  return ((EnablePPC32RS && !Subtarget.isPPC64()) ||
-          (EnablePPC64RS && Subtarget.isPPC64()));
-}
-
-/// getRegisterNumbering - Given the enum value for some register, e.g.
-/// PPC::F14, return the number that it corresponds to (e.g. 14).
-unsigned PPCRegisterInfo::getRegisterNumbering(unsigned RegEnum) {
-  using namespace PPC;
-  switch (RegEnum) {
-  case 0: return 0;
-  case R0 :  case X0 :  case F0 :  case V0 : case CR0:  case CR0LT: return  0;
-  case R1 :  case X1 :  case F1 :  case V1 : case CR1:  case CR0GT: return  1;
-  case R2 :  case X2 :  case F2 :  case V2 : case CR2:  case CR0EQ: return  2;
-  case R3 :  case X3 :  case F3 :  case V3 : case CR3:  case CR0UN: return  3;
-  case R4 :  case X4 :  case F4 :  case V4 : case CR4:  case CR1LT: return  4;
-  case R5 :  case X5 :  case F5 :  case V5 : case CR5:  case CR1GT: return  5;
-  case R6 :  case X6 :  case F6 :  case V6 : case CR6:  case CR1EQ: return  6;
-  case R7 :  case X7 :  case F7 :  case V7 : case CR7:  case CR1UN: return  7;
-  case R8 :  case X8 :  case F8 :  case V8 : case CR2LT: return  8;
-  case R9 :  case X9 :  case F9 :  case V9 : case CR2GT: return  9;
-  case R10:  case X10:  case F10:  case V10: case CR2EQ: return 10;
-  case R11:  case X11:  case F11:  case V11: case CR2UN: return 11;
-  case R12:  case X12:  case F12:  case V12: case CR3LT: return 12;
-  case R13:  case X13:  case F13:  case V13: case CR3GT: return 13;
-  case R14:  case X14:  case F14:  case V14: case CR3EQ: return 14;
-  case R15:  case X15:  case F15:  case V15: case CR3UN: return 15;
-  case R16:  case X16:  case F16:  case V16: case CR4LT: return 16;
-  case R17:  case X17:  case F17:  case V17: case CR4GT: return 17;
-  case R18:  case X18:  case F18:  case V18: case CR4EQ: return 18;
-  case R19:  case X19:  case F19:  case V19: case CR4UN: return 19;
-  case R20:  case X20:  case F20:  case V20: case CR5LT: return 20;
-  case R21:  case X21:  case F21:  case V21: case CR5GT: return 21;
-  case R22:  case X22:  case F22:  case V22: case CR5EQ: return 22;
-  case R23:  case X23:  case F23:  case V23: case CR5UN: return 23;
-  case R24:  case X24:  case F24:  case V24: case CR6LT: return 24;
-  case R25:  case X25:  case F25:  case V25: case CR6GT: return 25;
-  case R26:  case X26:  case F26:  case V26: case CR6EQ: return 26;
-  case R27:  case X27:  case F27:  case V27: case CR6UN: return 27;
-  case R28:  case X28:  case F28:  case V28: case CR7LT: return 28;
-  case R29:  case X29:  case F29:  case V29: case CR7GT: return 29;
-  case R30:  case X30:  case F30:  case V30: case CR7EQ: return 30;
-  case R31:  case X31:  case F31:  case V31: case CR7UN: return 31;
-  default:
-    llvm_unreachable("Unhandled reg in PPCRegisterInfo::getRegisterNumbering!");
-  }
+  return ((!DisablePPC32RS && !Subtarget.isPPC64()) ||
+          (!DisablePPC64RS && Subtarget.isPPC64()));
 }
 
 PPCRegisterInfo::PPCRegisterInfo(const PPCSubtarget &ST,
                                  const TargetInstrInfo &tii)
-  : PPCGenRegisterInfo(PPC::ADJCALLSTACKDOWN, PPC::ADJCALLSTACKUP),
+  : PPCGenRegisterInfo(ST.isPPC64() ? PPC::LR8 : PPC::LR,
+                       ST.isPPC64() ? 0 : 1,
+                       ST.isPPC64() ? 0 : 1),
     Subtarget(ST), TII(tii) {
   ImmToIdxMap[PPC::LD]   = PPC::LDX;    ImmToIdxMap[PPC::STD]  = PPC::STDX;
   ImmToIdxMap[PPC::LBZ]  = PPC::LBZX;   ImmToIdxMap[PPC::STB]  = PPC::STBX;
@@ -138,122 +98,22 @@ PPCRegisterInfo::getPointerRegClass(unsigned Kind) const {
   return &PPC::GPRCRegClass;
 }
 
-const unsigned*
+const uint16_t*
 PPCRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
-  // 32-bit Darwin calling convention. 
-  static const unsigned Darwin32_CalleeSavedRegs[] = {
-              PPC::R13, PPC::R14, PPC::R15,
-    PPC::R16, PPC::R17, PPC::R18, PPC::R19,
-    PPC::R20, PPC::R21, PPC::R22, PPC::R23,
-    PPC::R24, PPC::R25, PPC::R26, PPC::R27,
-    PPC::R28, PPC::R29, PPC::R30, PPC::R31,
-
-    PPC::F14, PPC::F15, PPC::F16, PPC::F17,
-    PPC::F18, PPC::F19, PPC::F20, PPC::F21,
-    PPC::F22, PPC::F23, PPC::F24, PPC::F25,
-    PPC::F26, PPC::F27, PPC::F28, PPC::F29,
-    PPC::F30, PPC::F31,
-    
-    PPC::CR2, PPC::CR3, PPC::CR4,
-    PPC::V20, PPC::V21, PPC::V22, PPC::V23,
-    PPC::V24, PPC::V25, PPC::V26, PPC::V27,
-    PPC::V28, PPC::V29, PPC::V30, PPC::V31,
-    
-    PPC::CR2LT, PPC::CR2GT, PPC::CR2EQ, PPC::CR2UN,
-    PPC::CR3LT, PPC::CR3GT, PPC::CR3EQ, PPC::CR3UN,
-    PPC::CR4LT, PPC::CR4GT, PPC::CR4EQ, PPC::CR4UN,
-    
-    PPC::LR,  0
-  };
-
-  // 32-bit SVR4 calling convention.
-  static const unsigned SVR4_CalleeSavedRegs[] = {
-                        PPC::R14, PPC::R15,
-    PPC::R16, PPC::R17, PPC::R18, PPC::R19,
-    PPC::R20, PPC::R21, PPC::R22, PPC::R23,
-    PPC::R24, PPC::R25, PPC::R26, PPC::R27,
-    PPC::R28, PPC::R29, PPC::R30, PPC::R31,
-
-    PPC::F14, PPC::F15, PPC::F16, PPC::F17,
-    PPC::F18, PPC::F19, PPC::F20, PPC::F21,
-    PPC::F22, PPC::F23, PPC::F24, PPC::F25,
-    PPC::F26, PPC::F27, PPC::F28, PPC::F29,
-    PPC::F30, PPC::F31,
-    
-    PPC::CR2, PPC::CR3, PPC::CR4,
-    
-    PPC::VRSAVE,
-    
-    PPC::V20, PPC::V21, PPC::V22, PPC::V23,
-    PPC::V24, PPC::V25, PPC::V26, PPC::V27,
-    PPC::V28, PPC::V29, PPC::V30, PPC::V31,
-    
-    PPC::CR2LT, PPC::CR2GT, PPC::CR2EQ, PPC::CR2UN,
-    PPC::CR3LT, PPC::CR3GT, PPC::CR3EQ, PPC::CR3UN,
-    PPC::CR4LT, PPC::CR4GT, PPC::CR4EQ, PPC::CR4UN,
-    
-    0
-  };
-  // 64-bit Darwin calling convention. 
-  static const unsigned Darwin64_CalleeSavedRegs[] = {
-    PPC::X14, PPC::X15,
-    PPC::X16, PPC::X17, PPC::X18, PPC::X19,
-    PPC::X20, PPC::X21, PPC::X22, PPC::X23,
-    PPC::X24, PPC::X25, PPC::X26, PPC::X27,
-    PPC::X28, PPC::X29, PPC::X30, PPC::X31,
-    
-    PPC::F14, PPC::F15, PPC::F16, PPC::F17,
-    PPC::F18, PPC::F19, PPC::F20, PPC::F21,
-    PPC::F22, PPC::F23, PPC::F24, PPC::F25,
-    PPC::F26, PPC::F27, PPC::F28, PPC::F29,
-    PPC::F30, PPC::F31,
-    
-    PPC::CR2, PPC::CR3, PPC::CR4,
-    PPC::V20, PPC::V21, PPC::V22, PPC::V23,
-    PPC::V24, PPC::V25, PPC::V26, PPC::V27,
-    PPC::V28, PPC::V29, PPC::V30, PPC::V31,
-    
-    PPC::CR2LT, PPC::CR2GT, PPC::CR2EQ, PPC::CR2UN,
-    PPC::CR3LT, PPC::CR3GT, PPC::CR3EQ, PPC::CR3UN,
-    PPC::CR4LT, PPC::CR4GT, PPC::CR4EQ, PPC::CR4UN,
-    
-    PPC::LR8,  0
-  };
-
-  // 64-bit SVR4 calling convention.
-  static const unsigned SVR4_64_CalleeSavedRegs[] = {
-    PPC::X14, PPC::X15,
-    PPC::X16, PPC::X17, PPC::X18, PPC::X19,
-    PPC::X20, PPC::X21, PPC::X22, PPC::X23,
-    PPC::X24, PPC::X25, PPC::X26, PPC::X27,
-    PPC::X28, PPC::X29, PPC::X30, PPC::X31,
-
-    PPC::F14, PPC::F15, PPC::F16, PPC::F17,
-    PPC::F18, PPC::F19, PPC::F20, PPC::F21,
-    PPC::F22, PPC::F23, PPC::F24, PPC::F25,
-    PPC::F26, PPC::F27, PPC::F28, PPC::F29,
-    PPC::F30, PPC::F31,
-
-    PPC::CR2, PPC::CR3, PPC::CR4,
-
-    PPC::VRSAVE,
-
-    PPC::V20, PPC::V21, PPC::V22, PPC::V23,
-    PPC::V24, PPC::V25, PPC::V26, PPC::V27,
-    PPC::V28, PPC::V29, PPC::V30, PPC::V31,
-
-    PPC::CR2LT, PPC::CR2GT, PPC::CR2EQ, PPC::CR2UN,
-    PPC::CR3LT, PPC::CR3GT, PPC::CR3EQ, PPC::CR3UN,
-    PPC::CR4LT, PPC::CR4GT, PPC::CR4EQ, PPC::CR4UN,
-
-    0
-  };
-  
   if (Subtarget.isDarwinABI())
-    return Subtarget.isPPC64() ? Darwin64_CalleeSavedRegs :
-                                 Darwin32_CalleeSavedRegs;
+    return Subtarget.isPPC64() ? CSR_Darwin64_SaveList :
+                                 CSR_Darwin32_SaveList;
 
-  return Subtarget.isPPC64() ? SVR4_64_CalleeSavedRegs : SVR4_CalleeSavedRegs;
+  return Subtarget.isPPC64() ? CSR_SVR464_SaveList : CSR_SVR432_SaveList;
+}
+
+const unsigned*
+PPCRegisterInfo::getCallPreservedMask(CallingConv::ID CC) const {
+  if (Subtarget.isDarwinABI())
+    return Subtarget.isPPC64() ? CSR_Darwin64_RegMask :
+                                 CSR_Darwin32_RegMask;
+
+  return Subtarget.isPPC64() ? CSR_SVR464_RegMask : CSR_SVR432_RegMask;
 }
 
 BitVector PPCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
@@ -286,9 +146,6 @@ BitVector PPCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
     Reserved.set(PPC::R13);
     Reserved.set(PPC::R31);
 
-    if (!requiresRegisterScavenging(MF))
-      Reserved.set(PPC::R0);    // FIXME (64-bit): Remove
-
     Reserved.set(PPC::X0);
     Reserved.set(PPC::X1);
     Reserved.set(PPC::X13);
@@ -298,7 +155,7 @@ BitVector PPCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
     if (Subtarget.isSVR4ABI()) {
       Reserved.set(PPC::X2);
     }
-    // Reserve R2 on Darwin to hack around the problem of save/restore of CR
+    // Reserve X2 on Darwin to hack around the problem of save/restore of CR
     // when the stack frame is too big to address directly; we need two regs.
     // This is a hack.
     if (Subtarget.isDarwinABI()) {
@@ -312,6 +169,29 @@ BitVector PPCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   return Reserved;
 }
 
+unsigned
+PPCRegisterInfo::getRegPressureLimit(const TargetRegisterClass *RC,
+                                         MachineFunction &MF) const {
+  const TargetFrameLowering *TFI = MF.getTarget().getFrameLowering();
+  const unsigned DefaultSafety = 1;
+
+  switch (RC->getID()) {
+  default:
+    return 0;
+  case PPC::G8RCRegClassID:
+  case PPC::GPRCRegClassID: {
+    unsigned FP = TFI->hasFP(MF) ? 1 : 0;
+    return 32 - FP - DefaultSafety;
+  }
+  case PPC::F8RCRegClassID:
+  case PPC::F4RCRegClassID:
+  case PPC::VRRCRegClassID:
+    return 32 - DefaultSafety;
+  case PPC::CRRCRegClassID:
+    return 8 - DefaultSafety;
+  }
+}
+
 //===----------------------------------------------------------------------===//
 // Stack Frame Processing methods
 //===----------------------------------------------------------------------===//
@@ -319,7 +199,8 @@ BitVector PPCRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
 void PPCRegisterInfo::
 eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
                               MachineBasicBlock::iterator I) const {
-  if (GuaranteedTailCallOpt && I->getOpcode() == PPC::ADJCALLSTACKUP) {
+  if (MF.getTarget().Options.GuaranteedTailCallOpt &&
+      I->getOpcode() == PPC::ADJCALLSTACKUP) {
     // Add (actually subtract) back the amount the callee popped on return.
     if (int CalleeAmt =  I->getOperand(1).getImm()) {
       bool is64Bit = Subtarget.isPPC64();
@@ -334,8 +215,9 @@ eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
       DebugLoc dl = MI->getDebugLoc();
 
       if (isInt<16>(CalleeAmt)) {
-        BuildMI(MBB, I, dl, TII.get(ADDIInstr), StackReg).addReg(StackReg).
-          addImm(CalleeAmt);
+        BuildMI(MBB, I, dl, TII.get(ADDIInstr), StackReg)
+          .addReg(StackReg, RegState::Kill)
+          .addImm(CalleeAmt);
       } else {
         MachineBasicBlock::iterator MBBI = I;
         BuildMI(MBB, MBBI, dl, TII.get(LISInstr), TmpReg)
@@ -343,9 +225,8 @@ eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
         BuildMI(MBB, MBBI, dl, TII.get(ORIInstr), TmpReg)
           .addReg(TmpReg, RegState::Kill)
           .addImm(CalleeAmt & 0xFFFF);
-        BuildMI(MBB, MBBI, dl, TII.get(ADDInstr))
-          .addReg(StackReg)
-          .addReg(StackReg)
+        BuildMI(MBB, MBBI, dl, TII.get(ADDInstr), StackReg)
+          .addReg(StackReg, RegState::Kill)
           .addReg(TmpReg);
       }
     }
@@ -442,12 +323,12 @@ void PPCRegisterInfo::lowerDynamicAlloc(MachineBasicBlock::iterator II,
     if (requiresRegisterScavenging(MF)) // FIXME (64-bit): Use "true" part.
       BuildMI(MBB, II, dl, TII.get(PPC::STDUX))
         .addReg(Reg, RegState::Kill)
-        .addReg(PPC::X1)
+        .addReg(PPC::X1, RegState::Define)
         .addReg(MI.getOperand(1).getReg());
     else
       BuildMI(MBB, II, dl, TII.get(PPC::STDUX))
         .addReg(PPC::X0, RegState::Kill)
-        .addReg(PPC::X1)
+        .addReg(PPC::X1, RegState::Define)
         .addReg(MI.getOperand(1).getReg());
 
     if (!MI.getOperand(1).isKill())
@@ -463,7 +344,7 @@ void PPCRegisterInfo::lowerDynamicAlloc(MachineBasicBlock::iterator II,
   } else {
     BuildMI(MBB, II, dl, TII.get(PPC::STWUX))
       .addReg(Reg, RegState::Kill)
-      .addReg(PPC::R1)
+      .addReg(PPC::R1, RegState::Define)
       .addReg(MI.getOperand(1).getReg());
 
     if (!MI.getOperand(1).isKill())
@@ -494,35 +375,82 @@ void PPCRegisterInfo::lowerCRSpilling(MachineBasicBlock::iterator II,
                                       unsigned FrameIndex, int SPAdj,
                                       RegScavenger *RS) const {
   // Get the instruction.
-  MachineInstr &MI = *II;       // ; SPILL_CR <SrcReg>, <offset>, <FI>
+  MachineInstr &MI = *II;       // ; SPILL_CR <SrcReg>, <offset>
   // Get the instruction's basic block.
   MachineBasicBlock &MBB = *MI.getParent();
   DebugLoc dl = MI.getDebugLoc();
 
-  const TargetRegisterClass *G8RC = &PPC::G8RCRegClass;
-  const TargetRegisterClass *GPRC = &PPC::GPRCRegClass;
-  const TargetRegisterClass *RC = Subtarget.isPPC64() ? G8RC : GPRC;
-  unsigned Reg = findScratchRegister(II, RS, RC, SPAdj);
+  // FIXME: Once LLVM supports creating virtual registers here, or the register
+  // scavenger can return multiple registers, stop using reserved registers
+  // here.
+  (void) SPAdj;
+  (void) RS;
+
+  bool LP64 = Subtarget.isPPC64();
+  unsigned Reg = Subtarget.isDarwinABI() ?  (LP64 ? PPC::X2 : PPC::R2) :
+                                            (LP64 ? PPC::X0 : PPC::R0);
   unsigned SrcReg = MI.getOperand(0).getReg();
 
   // We need to store the CR in the low 4-bits of the saved value. First, issue
   // an MFCRpsued to save all of the CRBits and, if needed, kill the SrcReg.
-  BuildMI(MBB, II, dl, TII.get(PPC::MFCRpseud), Reg)
+  BuildMI(MBB, II, dl, TII.get(LP64 ? PPC::MFCR8pseud : PPC::MFCRpseud), Reg)
           .addReg(SrcReg, getKillRegState(MI.getOperand(0).isKill()));
     
   // If the saved register wasn't CR0, shift the bits left so that they are in
   // CR0's slot.
   if (SrcReg != PPC::CR0)
     // rlwinm rA, rA, ShiftBits, 0, 31.
-    BuildMI(MBB, II, dl, TII.get(PPC::RLWINM), Reg)
+    BuildMI(MBB, II, dl, TII.get(LP64 ? PPC::RLWINM8 : PPC::RLWINM), Reg)
       .addReg(Reg, RegState::Kill)
-      .addImm(PPCRegisterInfo::getRegisterNumbering(SrcReg) * 4)
+      .addImm(getPPCRegisterNumbering(SrcReg) * 4)
       .addImm(0)
       .addImm(31);
 
-  addFrameReference(BuildMI(MBB, II, dl, TII.get(PPC::STW))
+  addFrameReference(BuildMI(MBB, II, dl, TII.get(LP64 ? PPC::STW8 : PPC::STW))
                     .addReg(Reg, getKillRegState(MI.getOperand(1).getImm())),
                     FrameIndex);
+
+  // Discard the pseudo instruction.
+  MBB.erase(II);
+}
+
+void PPCRegisterInfo::lowerCRRestore(MachineBasicBlock::iterator II,
+                                      unsigned FrameIndex, int SPAdj,
+                                      RegScavenger *RS) const {
+  // Get the instruction.
+  MachineInstr &MI = *II;       // ; <DestReg> = RESTORE_CR <offset>
+  // Get the instruction's basic block.
+  MachineBasicBlock &MBB = *MI.getParent();
+  DebugLoc dl = MI.getDebugLoc();
+
+  // FIXME: Once LLVM supports creating virtual registers here, or the register
+  // scavenger can return multiple registers, stop using reserved registers
+  // here.
+  (void) SPAdj;
+  (void) RS;
+
+  bool LP64 = Subtarget.isPPC64();
+  unsigned Reg = Subtarget.isDarwinABI() ?  (LP64 ? PPC::X2 : PPC::R2) :
+                                            (LP64 ? PPC::X0 : PPC::R0);
+  unsigned DestReg = MI.getOperand(0).getReg();
+  assert(MI.definesRegister(DestReg) &&
+    "RESTORE_CR does not define its destination");
+
+  addFrameReference(BuildMI(MBB, II, dl, TII.get(LP64 ? PPC::LWZ8 : PPC::LWZ),
+                              Reg), FrameIndex);
+
+  // If the reloaded register isn't CR0, shift the bits right so that they are
+  // in the right CR's slot.
+  if (DestReg != PPC::CR0) {
+    unsigned ShiftBits = getPPCRegisterNumbering(DestReg)*4;
+    // rlwinm r11, r11, 32-ShiftBits, 0, 31.
+    BuildMI(MBB, II, dl, TII.get(LP64 ? PPC::RLWINM8 : PPC::RLWINM), Reg)
+             .addReg(Reg).addImm(32-ShiftBits).addImm(0)
+             .addImm(31);
+  }
+
+  BuildMI(MBB, II, dl, TII.get(LP64 ? PPC::MTCRF8 : PPC::MTCRF), DestReg)
+             .addReg(Reg);
 
   // Discard the pseudo instruction.
   MBB.erase(II);
@@ -573,16 +501,23 @@ PPCRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     return;
   }
 
-  // Special case for pseudo-op SPILL_CR.
-  if (requiresRegisterScavenging(MF)) // FIXME (64-bit): Enable by default.
+  // Special case for pseudo-ops SPILL_CR and RESTORE_CR.
+  if (requiresRegisterScavenging(MF)) {
     if (OpC == PPC::SPILL_CR) {
       lowerCRSpilling(II, FrameIndex, SPAdj, RS);
       return;
+    } else if (OpC == PPC::RESTORE_CR) {
+      lowerCRRestore(II, FrameIndex, SPAdj, RS);
+      return;
     }
+  }
 
   // Replace the FrameIndex with base register with GPR1 (SP) or GPR31 (FP).
+
+  bool is64Bit = Subtarget.isPPC64();
   MI.getOperand(FIOperandNo).ChangeToRegister(TFI->hasFP(MF) ?
-                                              PPC::R31 : PPC::R1,
+                                              (is64Bit ? PPC::X31 : PPC::R31) :
+                                                (is64Bit ? PPC::X1 : PPC::R1),
                                               false);
 
   // Figure out if the offset in the instruction is shifted right two bits. This
@@ -619,7 +554,8 @@ PPCRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   // clear can be encoded.  This is extremely uncommon, because normally you
   // only "std" to a stack slot that is at least 4-byte aligned, but it can
   // happen in invalid code.
-  if (isInt<16>(Offset) && (!isIXAddr || (Offset & 3) == 0)) {
+  if (OpC == PPC::DBG_VALUE || // DBG_VALUE is always Reg+Imm
+      (isInt<16>(Offset) && (!isIXAddr || (Offset & 3) == 0))) {
     if (isIXAddr)
       Offset >>= 2;    // The actual encoded value has the low two bits zero.
     MI.getOperand(OffsetOperandNo).ChangeToImmediate(Offset);
@@ -628,19 +564,19 @@ PPCRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   // The offset doesn't fit into a single register, scavenge one to build the
   // offset in.
-  // FIXME: figure out what SPAdj is doing here.
 
-  // FIXME (64-bit): Use "findScratchRegister".
   unsigned SReg;
-  if (requiresRegisterScavenging(MF))
-    SReg = findScratchRegister(II, RS, &PPC::GPRCRegClass, SPAdj);
-  else
-    SReg = PPC::R0;
+  if (requiresRegisterScavenging(MF)) {
+    const TargetRegisterClass *G8RC = &PPC::G8RCRegClass;
+    const TargetRegisterClass *GPRC = &PPC::GPRCRegClass;
+    SReg = findScratchRegister(II, RS, is64Bit ? G8RC : GPRC, SPAdj);
+  } else
+    SReg = is64Bit ? PPC::X0 : PPC::R0;
 
   // Insert a set of rA with the full offset value before the ld, st, or add
-  BuildMI(MBB, II, dl, TII.get(PPC::LIS), SReg)
+  BuildMI(MBB, II, dl, TII.get(is64Bit ? PPC::LIS8 : PPC::LIS), SReg)
     .addImm(Offset >> 16);
-  BuildMI(MBB, II, dl, TII.get(PPC::ORI), SReg)
+  BuildMI(MBB, II, dl, TII.get(is64Bit ? PPC::ORI8 : PPC::ORI), SReg)
     .addReg(SReg, RegState::Kill)
     .addImm(Offset);
 
@@ -662,11 +598,7 @@ PPCRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   unsigned StackReg = MI.getOperand(FIOperandNo).getReg();
   MI.getOperand(OperandBase).ChangeToRegister(StackReg, false);
-  MI.getOperand(OperandBase + 1).ChangeToRegister(SReg, false);
-}
-
-unsigned PPCRegisterInfo::getRARegister() const {
-  return !Subtarget.isPPC64() ? PPC::LR : PPC::LR8;
+  MI.getOperand(OperandBase + 1).ChangeToRegister(SReg, false, false, true);
 }
 
 unsigned PPCRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
@@ -685,10 +617,3 @@ unsigned PPCRegisterInfo::getEHExceptionRegister() const {
 unsigned PPCRegisterInfo::getEHHandlerRegister() const {
   return !Subtarget.isPPC64() ? PPC::R4 : PPC::X4;
 }
-
-int PPCRegisterInfo::getDwarfRegNum(unsigned RegNum, bool isEH) const {
-  // FIXME: Most probably dwarf numbers differs for Linux and Darwin
-  return PPCGenRegisterInfo::getDwarfRegNumFull(RegNum, 0);
-}
-
-#include "PPCGenRegisterInfo.inc"

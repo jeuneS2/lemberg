@@ -38,6 +38,7 @@ class LembergDoubleReg<bits<5> num, string n,
   let Num = num;
   let SubRegs = subregs;
   let SubRegIndices = [sub_even, sub_odd];
+  let CoveredBySubRegs = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -195,225 +196,127 @@ let Namespace = "Lemberg" in {
 
 // Local general purpose registers
 def L0 : RegisterClass<"Lemberg", [i32], 32,
-  [// Unpreserved local regs
+  (add
+   // Unpreserved local regs
    R0_16, R0_17, R0_18, R0_19,
    R0_20, R0_21, R0_22,
    // Callee saved local regs
    R0_23, R0_24, R0_25, R0_26,
    R0_27, R0_28, R0_29, R0_30,
    // Reserved
-   R0_31 ] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	L0Class::iterator
-    L0Class::allocation_order_end(const MachineFunction &MF) const {
-      // The last register on the list above is reserved
-      return end()-1;
-    }
-  }];
-}
+   R0_31 )>;
 
 def L1 : RegisterClass<"Lemberg", [i32], 32,
-  [// Unpreserved local regs
+  (add
+   // Unpreserved local regs
    R1_16, R1_17, R1_18, R1_19,
    R1_20, R1_21, R1_22,
    // Callee saved local regs
    R1_23, R1_24, R1_25, R1_26,
    R1_27, R1_28, R1_29, R1_30,
    // Reserved
-   R1_31 ] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	L1Class::iterator
-    L1Class::allocation_order_end(const MachineFunction &MF) const {
-      // The last register on the list above is reserved
-      return end()-1;
-    }
-  }];
-}
+   R1_31 )>;
 
 def L2 : RegisterClass<"Lemberg", [i32], 32,
-  [// Unpreserved local regs
+  (add
+   // Unpreserved local regs
    R2_16, R2_17, R2_18, R2_19,
    R2_20, R2_21, R2_22,
    // Callee saved local regs
    R2_23, R2_24, R2_25, R2_26,
    R2_27, R2_28, R2_29, R2_30,
    // Reserved
-   R2_31 ] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	L2Class::iterator
-    L2Class::allocation_order_end(const MachineFunction &MF) const {
-      // The last register on the list above is reserved
-      return end()-1;
-    }
-  }];
-}
+   R2_31 )>;
 
 def L3 : RegisterClass<"Lemberg", [i32], 32,
-  [// Unpreserved local regs
+  (add
+   // Unpreserved local regs
    R3_16, R3_17, R3_18, R3_19,
    R3_20, R3_21, R3_22,
    // Callee saved local regs
    R3_23, R3_24, R3_25, R3_26,
    R3_27, R3_28, R3_29, R3_30,
    // Reserved
-   R3_31 ] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	L3Class::iterator
-    L3Class::allocation_order_end(const MachineFunction &MF) const {
-      // The last register on the list above is reserved
-      return end()-1;
-    }
-  }];
-}
+   R3_31 )>;
 
 // Global general purpose registers
 def G : RegisterClass<"Lemberg", [i32], 32, 
-  // Return Values and Arguments
-  [R0, R1, R2, R3,
-  // Not preserved across procedure calls
-  R4, R5, R6, R7, R8, R9,
-  // Callee saved
-  R10, R11, R12, R13, R14,
-  // Reserved
-  R15 ] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	GClass::iterator
-    GClass::allocation_order_end(const MachineFunction &MF) const {
-      // The last register on the list above is reserved
-      return end()-1;
-    }
-  }];
-}
+  (add
+   // Return Values and Arguments
+   R0, R1, R2, R3,
+   // Not preserved across procedure calls
+   R4, R5, R6, R7, R8, R9,
+   // Callee saved
+   R10, R11, R12, R13, R14,
+   // Reserved
+   R15 )>;
 
 // Registers that may be accessed from an individual cluster
 def LG0 : RegisterClass<"Lemberg", [i32], 32,
-  // Return Values and Arguments
-  [R0, R1, R2, R3,
-  // Not preserved across procedure calls
-  R4, R5, R6, R7, R8, R9,
-  R0_16, R0_17, R0_18, R0_19,
-  R0_20, R0_21, R0_22,
-  // Callee saved
-  R10, R11, R12, R13, R14,
-  R0_23, R0_24, R0_25, R0_26,
-  R0_27, R0_28, R0_29, R0_30,
-  // Reserved
-  R15, R0_31 ] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	LG0Class::iterator
-    LG0Class::allocation_order_end(const MachineFunction &MF) const {
-      // The last 2 registers on the list above are reserved
-      return end()-2;
-    }
-  }];
-}
+  (add
+   // Return Values and Arguments
+   R0, R1, R2, R3,
+   // Not preserved across procedure calls
+   R4, R5, R6, R7, R8, R9,
+   R0_16, R0_17, R0_18, R0_19,
+   R0_20, R0_21, R0_22,
+   // Callee saved
+   R10, R11, R12, R13, R14,
+   R0_23, R0_24, R0_25, R0_26,
+   R0_27, R0_28, R0_29, R0_30,
+   // Reserved
+   R15, R0_31 )>;
 
 def LG1 : RegisterClass<"Lemberg", [i32], 32,
-  // Return Values and Arguments
-  [R0, R1, R2, R3,
-  // Not preserved across procedure calls
-  R4, R5, R6, R7, R8, R9,
-  R1_16, R1_17, R1_18, R1_19,
-  R1_20, R1_21, R1_22,
-  // Callee saved
-  R10, R11, R12, R13, R14,
-  R1_23, R1_24, R1_25, R1_26,
-  R1_27, R1_28, R1_29, R1_30,
-  // Reserved
-  R15, R1_31 ] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	LG1Class::iterator
-    LG1Class::allocation_order_end(const MachineFunction &MF) const {
-      // The last 2 registers on the list above are reserved
-      return end()-2;
-    }
-  }];
-}
+  (add
+   // Return Values and Arguments
+   R0, R1, R2, R3,
+   // Not preserved across procedure calls
+   R4, R5, R6, R7, R8, R9,
+   R1_16, R1_17, R1_18, R1_19,
+   R1_20, R1_21, R1_22,
+   // Callee saved
+   R10, R11, R12, R13, R14,
+   R1_23, R1_24, R1_25, R1_26,
+   R1_27, R1_28, R1_29, R1_30,
+   // Reserved
+   R15, R1_31 )>;
 
 def LG2 : RegisterClass<"Lemberg", [i32], 32,
-  // Return Values and Arguments
-  [R0, R1, R2, R3,
-  // Not preserved across procedure calls
-  R4, R5, R6, R7, R8, R9,
-  R2_16, R2_17, R2_18, R2_19,
-  R2_20, R2_21, R2_22,
-  // Callee saved
-  R10, R11, R12, R13, R14,
-  R2_23, R2_24, R2_25, R2_26,
-  R2_27, R2_28, R2_29, R2_30,
-  // Reserved
-  R15, R2_31 ] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	LG2Class::iterator
-    LG2Class::allocation_order_end(const MachineFunction &MF) const {
-      // The last 2 registers on the list above are reserved
-      return end()-2;
-    }
-  }];
-}
+  (add
+   // Return Values and Arguments
+   R0, R1, R2, R3,
+   // Not preserved across procedure calls
+   R4, R5, R6, R7, R8, R9,
+   R2_16, R2_17, R2_18, R2_19,
+   R2_20, R2_21, R2_22,
+   // Callee saved
+   R10, R11, R12, R13, R14,
+   R2_23, R2_24, R2_25, R2_26,
+   R2_27, R2_28, R2_29, R2_30,
+   // Reserved
+   R15, R2_31 )>;
 
 def LG3 : RegisterClass<"Lemberg", [i32], 32,
-  // Return Values and Arguments
-  [R0, R1, R2, R3,
-  // Not preserved across procedure calls
-  R4, R5, R6, R7, R8, R9,
-  R3_16, R3_17, R3_18, R3_19,
-  R3_20, R3_21, R3_22,
-  // Callee saved
-  R10, R11, R12, R13, R14,
-  R3_23, R3_24, R3_25, R3_26,
-  R3_27, R3_28, R3_29, R3_30,
-  // Reserved
-  R15, R3_31 ] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	LG3Class::iterator
-    LG3Class::allocation_order_end(const MachineFunction &MF) const {
-      // The last 2 registers on the list above are reserved
-      return end()-2;
-    }
-  }];
-}
+  (add
+   // Return Values and Arguments
+   R0, R1, R2, R3,
+   // Not preserved across procedure calls
+   R4, R5, R6, R7, R8, R9,
+   R3_16, R3_17, R3_18, R3_19,
+   R3_20, R3_21, R3_22,
+   // Callee saved
+   R10, R11, R12, R13, R14,
+   R3_23, R3_24, R3_25, R3_26,
+   R3_27, R3_28, R3_29, R3_30,
+   // Reserved
+   R15, R3_31 )>;
 
 // All general purpose registers
-def A : RegisterClass<"Lemberg", [i32], 32, 
+def A : RegisterClass<"Lemberg", [i32], 32,
+  (add
    // Return Values and Arguments      
-   [R0, R1, R2, R3,
+   R0, R1, R2, R3,
    // Not preserved across procedure calls
    R4, R5, R6, R7, R8, R9,
    // Unpreserved local regs
@@ -436,50 +339,46 @@ def A : RegisterClass<"Lemberg", [i32], 32,
    R0_29, R1_29, R2_29, R3_29,
    R0_30, R1_30, R2_30, R3_30,
    // Reserved
-   R15, R0_31, R1_31, R2_31, R3_31] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	AClass::iterator
-    AClass::allocation_order_end(const MachineFunction &MF) const {
-      // The last 5 registers on the list above are reserved
-      return end()-5;
-    }
-  }];
-}
+   R15, R0_31, R1_31, R2_31, R3_31 )>;
 
 // Registers that can load global addresses directly
-def LG0Imm : RegisterClass<"Lemberg", [i32], 32, [R0, R1, R2, R3, R0_16, R0_17, R0_18, R0_19]>;
-def LG1Imm : RegisterClass<"Lemberg", [i32], 32, [R0, R1, R2, R3, R1_16, R1_17, R1_18, R1_19]>;
-def LG2Imm : RegisterClass<"Lemberg", [i32], 32, [R0, R1, R2, R3, R2_16, R2_17, R2_18, R2_19]>;
-def LG3Imm : RegisterClass<"Lemberg", [i32], 32, [R0, R1, R2, R3, R3_16, R3_17, R3_18, R3_19]>;
-def GImm   : RegisterClass<"Lemberg", [i32], 32, [R0, R1, R2, R3]>;
+def LG0Imm : RegisterClass<"Lemberg", [i32], 32,
+  (add R0, R1, R2, R3, R0_16, R0_17, R0_18, R0_19)>;
+def LG1Imm : RegisterClass<"Lemberg", [i32], 32, 
+  (add R0, R1, R2, R3, R1_16, R1_17, R1_18, R1_19)>;
+def LG2Imm : RegisterClass<"Lemberg", [i32], 32,
+  (add R0, R1, R2, R3, R2_16, R2_17, R2_18, R2_19)>;
+def LG3Imm : RegisterClass<"Lemberg", [i32], 32,
+  (add R0, R1, R2, R3, R3_16, R3_17, R3_18, R3_19)>;
+def GImm   : RegisterClass<"Lemberg", [i32], 32,
+  (add R0, R1, R2, R3)>;
 
 def AImm : RegisterClass<"Lemberg", [i32], 32,
-  [R0, R1, R2, R3,
+  (add 
+   R0, R1, R2, R3,
    R0_16, R0_17, R0_18, R0_19,
    R1_16, R1_17, R1_18, R1_19,
    R2_16, R2_17, R2_18, R2_19,
-   R3_16, R3_17, R3_18, R3_19] >;
+   R3_16, R3_17, R3_18, R3_19 )>;
 
 // Floating-point registers
 def F : RegisterClass<"Lemberg", [f32, i32], 32,
-  [// Arguments and return value
+  (add
+   // Arguments and return value
    F0, F1, F2, F3,
    // Not preserved across procedure calls
    F4, F5, F6, F7, F8, F9,
    // Callee saved
-   F10, F11, F12, F13, F14, F15] >;
+   F10, F11, F12, F13, F14, F15 )>;
 
 def D : RegisterClass<"Lemberg", [f64], 64,
-  [// Arguments and return value
+  (add
+   // Arguments and return value
    D0, D1,
    // Not preserved across procedure calls
    D2, D3, D4,
    // Callee saved
-   D5, D6, D7] >
+   D5, D6, D7 )>
 {
 	let SubRegClasses = [(F sub_even, sub_odd)];
 }
@@ -489,70 +388,36 @@ let CopyCost = -1 in {
 
   let Size = 32 in {
 	// Condition registers
-    def C : RegisterClass<"Lemberg", [i1], 32, [C1, C2, C3] >;
+    def C : RegisterClass<"Lemberg", [i1], 32, (add C1, C2, C3)>;
   }
 
   // Multiplication results
   def Mul : RegisterClass<"Lemberg", [i32], 32,
-  [MUL0_0, MUL1_0, MUL2_0, MUL3_0,
-   MUL0_1, MUL1_1, MUL2_1, MUL3_1]>;
+  (add
+   MUL0_0, MUL1_0, MUL2_0, MUL3_0,
+   MUL0_1, MUL1_1, MUL2_1, MUL3_1 )>;
 
   // Classes for clusterizing multiplication results
-  def M0 : RegisterClass<"Lemberg", [i32], 32, [MUL0_0, MUL0_1] >;
-  def M1 : RegisterClass<"Lemberg", [i32], 32, [MUL1_0, MUL1_1] >;
-  def M2 : RegisterClass<"Lemberg", [i32], 32, [MUL2_0, MUL2_1] >;
-  def M3 : RegisterClass<"Lemberg", [i32], 32, [MUL3_0, MUL3_1] >;
+  def M0 : RegisterClass<"Lemberg", [i32], 32, (add MUL0_0, MUL0_1)>;
+  def M1 : RegisterClass<"Lemberg", [i32], 32, (add MUL1_0, MUL1_1)>;
+  def M2 : RegisterClass<"Lemberg", [i32], 32, (add MUL2_0, MUL2_1)>;
+  def M3 : RegisterClass<"Lemberg", [i32], 32, (add MUL3_0, MUL3_1)>;
 
   // Class for memory result
-  def Mem : RegisterClass<"Lemberg", [i32], 32, [MEM, MEMHU, MEMHS, MEMBU, MEMBS] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	MemClass::iterator
-    MemClass::allocation_order_end(const MachineFunction &MF) const {
-      // All registers on the list above are reserved
-      return end()-3;
-    }
-  }];
-}
+  def Mem : RegisterClass<"Lemberg", [i32], 32, (add MEM, MEMHU, MEMHS, MEMBU, MEMBS)>;
 
   // Registers for call/return
-  def CallRet : RegisterClass<"Lemberg", [i32], 32, [RB, RO, BA] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	CallRetClass::iterator
-    CallRetClass::allocation_order_end(const MachineFunction &MF) const {
-      // All registers on the list above are reserved
-      return end()-3;
-    }
-  }];
-}
+  def CallRet : RegisterClass<"Lemberg", [i32], 32, (add RB, RO, BA)>;
 
   // All registers that are loaded through ldx
   def X : RegisterClass<"Lemberg", [i32], 32,
-    [MUL0_0, MUL1_0, MUL2_0, MUL3_0,
+    (add
+	 MUL0_0, MUL1_0, MUL2_0, MUL3_0,
 	 MUL0_1, MUL1_1, MUL2_1, MUL3_1,
 	 C1, C2, C3,
 	 F0, F1, F2, F3, F4, F5, F6, F7,
 	 F8, F9, F10, F11, F12, F13, F14, F15,
 	 MEM, MEMHU, MEMHS, MEMBU, MEMBS,
-	 RB, RO, BA] >
-{
-  let MethodProtos = [{
-    iterator allocation_order_end(const MachineFunction &MF) const;
-  }];
-  let MethodBodies = [{
-  	XClass::iterator
-    XClass::allocation_order_end(const MachineFunction &MF) const {
-      // The last 8 registers on the list above are reserved
-      return end()-8;
-    }
-  }];
-}
+	 RB, RO, BA )>;
 
 }

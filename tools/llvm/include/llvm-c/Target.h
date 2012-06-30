@@ -26,9 +26,17 @@
 extern "C" {
 #endif
 
+/**
+ * @defgroup LLVMCTarget Target information
+ * @ingroup LLVMC
+ *
+ * @{
+ */
+
 enum LLVMByteOrdering { LLVMBigEndian, LLVMLittleEndian };
 
 typedef struct LLVMOpaqueTargetData *LLVMTargetDataRef;
+typedef struct LLVMOpaqueTargetLibraryInfotData *LLVMTargetLibraryInfoRef;
 typedef struct LLVMStructLayout *LLVMStructLayoutRef;
 
 /* Declare all of the target-initialization functions that are available. */
@@ -41,6 +49,29 @@ typedef struct LLVMStructLayout *LLVMStructLayoutRef;
 #include "llvm/Config/Targets.def"
 #undef LLVM_TARGET  /* Explicit undef to make SWIG happier */
 
+#define LLVM_TARGET(TargetName) \
+  void LLVMInitialize##TargetName##TargetMC(void);
+#include "llvm/Config/Targets.def"
+#undef LLVM_TARGET  /* Explicit undef to make SWIG happier */
+  
+/* Declare all of the available assembly printer initialization functions. */
+#define LLVM_ASM_PRINTER(TargetName) \
+  void LLVMInitialize##TargetName##AsmPrinter();
+#include "llvm/Config/AsmPrinters.def"
+#undef LLVM_ASM_PRINTER  /* Explicit undef to make SWIG happier */
+
+/* Declare all of the available assembly parser initialization functions. */
+#define LLVM_ASM_PARSER(TargetName) \
+  void LLVMInitialize##TargetName##AsmParser();
+#include "llvm/Config/AsmParsers.def"
+#undef LLVM_ASM_PARSER  /* Explicit undef to make SWIG happier */
+
+/* Declare all of the available disassembler initialization functions. */
+#define LLVM_DISASSEMBLER(TargetName) \
+  void LLVMInitialize##TargetName##Disassembler();
+#include "llvm/Config/Disassemblers.def"
+#undef LLVM_DISASSEMBLER  /* Explicit undef to make SWIG happier */
+  
 /** LLVMInitializeAllTargetInfos - The main program should call this function if
     it wants access to all available targets that LLVM is configured to
     support. */
@@ -58,6 +89,43 @@ static inline void LLVMInitializeAllTargets(void) {
 #include "llvm/Config/Targets.def"
 #undef LLVM_TARGET  /* Explicit undef to make SWIG happier */
 }
+
+/** LLVMInitializeAllTargetMCs - The main program should call this function if
+    it wants access to all available target MC that LLVM is configured to
+    support. */
+static inline void LLVMInitializeAllTargetMCs(void) {
+#define LLVM_TARGET(TargetName) LLVMInitialize##TargetName##TargetMC();
+#include "llvm/Config/Targets.def"
+#undef LLVM_TARGET  /* Explicit undef to make SWIG happier */
+}
+  
+/** LLVMInitializeAllAsmPrinters - The main program should call this function if
+    it wants all asm printers that LLVM is configured to support, to make them
+    available via the TargetRegistry. */
+static inline void LLVMInitializeAllAsmPrinters() {
+#define LLVM_ASM_PRINTER(TargetName) LLVMInitialize##TargetName##AsmPrinter();
+#include "llvm/Config/AsmPrinters.def"
+#undef LLVM_ASM_PRINTER  /* Explicit undef to make SWIG happier */
+}
+  
+/** LLVMInitializeAllAsmParsers - The main program should call this function if
+    it wants all asm parsers that LLVM is configured to support, to make them
+    available via the TargetRegistry. */
+static inline void LLVMInitializeAllAsmParsers() {
+#define LLVM_ASM_PARSER(TargetName) LLVMInitialize##TargetName##AsmParser();
+#include "llvm/Config/AsmParsers.def"
+#undef LLVM_ASM_PARSER  /* Explicit undef to make SWIG happier */
+}
+  
+/** LLVMInitializeAllDisassemblers - The main program should call this function
+    if it wants all disassemblers that LLVM is configured to support, to make
+    them available via the TargetRegistry. */
+static inline void LLVMInitializeAllDisassemblers() {
+#define LLVM_DISASSEMBLER(TargetName) \
+  LLVMInitialize##TargetName##Disassembler();
+#include "llvm/Config/Disassemblers.def"
+#undef LLVM_DISASSEMBLER  /* Explicit undef to make SWIG happier */
+}
   
 /** LLVMInitializeNativeTarget - The main program should call this function to
     initialize the native target corresponding to the host.  This is useful 
@@ -67,6 +135,7 @@ static inline LLVMBool LLVMInitializeNativeTarget(void) {
 #ifdef LLVM_NATIVE_TARGET
   LLVM_NATIVE_TARGETINFO();
   LLVM_NATIVE_TARGET();
+  LLVM_NATIVE_TARGETMC();
   return 0;
 #else
   return 1;
@@ -83,6 +152,11 @@ LLVMTargetDataRef LLVMCreateTargetData(const char *StringRep);
     of the target data.
     See the method llvm::PassManagerBase::add. */
 void LLVMAddTargetData(LLVMTargetDataRef, LLVMPassManagerRef);
+
+/** Adds target library information to a pass manager. This does not take
+    ownership of the target library info.
+    See the method llvm::PassManagerBase::add. */
+void LLVMAddTargetLibraryInfo(LLVMTargetLibraryInfoRef, LLVMPassManagerRef);
 
 /** Converts target data to a target layout string. The string must be disposed
     with LLVMDisposeMessage.
@@ -141,22 +215,20 @@ unsigned LLVMElementAtOffset(LLVMTargetDataRef, LLVMTypeRef StructTy,
 unsigned long long LLVMOffsetOfElement(LLVMTargetDataRef, LLVMTypeRef StructTy,
                                        unsigned Element);
 
-/** Struct layouts are speculatively cached. If a TargetDataRef is alive when
-    types are being refined and removed, this method must be called whenever a
-    struct type is removed to avoid a dangling pointer in this cache.
-    See the method llvm::TargetData::InvalidateStructLayoutInfo. */
-void LLVMInvalidateStructLayout(LLVMTargetDataRef, LLVMTypeRef StructTy);
-
 /** Deallocates a TargetData.
     See the destructor llvm::TargetData::~TargetData. */
 void LLVMDisposeTargetData(LLVMTargetDataRef);
 
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }
 
 namespace llvm {
   class TargetData;
+  class TargetLibraryInfo;
 
   inline TargetData *unwrap(LLVMTargetDataRef P) {
     return reinterpret_cast<TargetData*>(P);
@@ -164,6 +236,15 @@ namespace llvm {
   
   inline LLVMTargetDataRef wrap(const TargetData *P) {
     return reinterpret_cast<LLVMTargetDataRef>(const_cast<TargetData*>(P));
+  }
+
+  inline TargetLibraryInfo *unwrap(LLVMTargetLibraryInfoRef P) {
+    return reinterpret_cast<TargetLibraryInfo*>(P);
+  }
+
+  inline LLVMTargetLibraryInfoRef wrap(const TargetLibraryInfo *P) {
+    TargetLibraryInfo *X = const_cast<TargetLibraryInfo*>(P);
+    return reinterpret_cast<LLVMTargetLibraryInfoRef>(X);
   }
 }
 

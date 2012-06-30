@@ -7,20 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "ARM.h"
-#include "ARMTargetMachine.h"
+#include "MCTargetDesc/ARMBaseInfo.h"
 
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCParser/MCAsmLexer.h"
 #include "llvm/MC/MCParser/MCParsedAsmOperand.h"
+#include "llvm/MC/MCRegisterInfo.h"
+#include "llvm/MC/MCTargetAsmLexer.h"
 
-#include "llvm/Target/TargetAsmLexer.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetRegistry.h"
+#include "llvm/Support/TargetRegistry.h"
 
-#include "llvm/ADT/OwningPtr.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringSwitch.h"
 
 #include <string>
@@ -30,7 +26,7 @@ using namespace llvm;
 
 namespace {
 
-class ARMBaseAsmLexer : public TargetAsmLexer {
+class ARMBaseAsmLexer : public MCTargetAsmLexer {
   const MCAsmInfo &AsmInfo;
 
   const AsmToken &lexDefinite() {
@@ -43,7 +39,7 @@ protected:
 
   rmap_ty RegisterMap;
 
-  void InitRegisterMap(const TargetRegisterInfo *info) {
+  void InitRegisterMap(const MCRegisterInfo *info) {
     unsigned numRegs = info->getNumRegs();
 
     for (unsigned i = 0; i < numRegs; ++i) {
@@ -77,31 +73,23 @@ protected:
   }
 public:
   ARMBaseAsmLexer(const Target &T, const MCAsmInfo &MAI)
-    : TargetAsmLexer(T), AsmInfo(MAI) {
+    : MCTargetAsmLexer(T), AsmInfo(MAI) {
   }
 };
 
 class ARMAsmLexer : public ARMBaseAsmLexer {
 public:
-  ARMAsmLexer(const Target &T, const MCAsmInfo &MAI)
+  ARMAsmLexer(const Target &T, const MCRegisterInfo &MRI, const MCAsmInfo &MAI)
     : ARMBaseAsmLexer(T, MAI) {
-    std::string tripleString("arm-unknown-unknown");
-    std::string featureString;
-    OwningPtr<const TargetMachine>
-      targetMachine(T.createTargetMachine(tripleString, featureString));
-    InitRegisterMap(targetMachine->getRegisterInfo());
+    InitRegisterMap(&MRI);
   }
 };
 
 class ThumbAsmLexer : public ARMBaseAsmLexer {
 public:
-  ThumbAsmLexer(const Target &T, const MCAsmInfo &MAI)
+  ThumbAsmLexer(const Target &T, const MCRegisterInfo &MRI,const MCAsmInfo &MAI)
     : ARMBaseAsmLexer(T, MAI) {
-    std::string tripleString("thumb-unknown-unknown");
-    std::string featureString;
-    OwningPtr<const TargetMachine>
-      targetMachine(T.createTargetMachine(tripleString, featureString));
-    InitRegisterMap(targetMachine->getRegisterInfo());
+    InitRegisterMap(&MRI);
   }
 };
 
@@ -116,11 +104,9 @@ AsmToken ARMBaseAsmLexer::LexTokenUAL() {
     SetError(Lexer->getErrLoc(), Lexer->getErr());
     break;
   case AsmToken::Identifier: {
-    std::string upperCase = lexedToken.getString().str();
-    std::string lowerCase = LowercaseString(upperCase);
-    StringRef lowerRef(lowerCase);
+    std::string lowerCase = lexedToken.getString().lower();
 
-    unsigned regID = MatchRegisterName(lowerRef);
+    unsigned regID = MatchRegisterName(lowerCase);
     // Check for register aliases.
     //   r13 -> sp
     //   r14 -> lr
@@ -147,6 +133,6 @@ AsmToken ARMBaseAsmLexer::LexTokenUAL() {
 }
 
 extern "C" void LLVMInitializeARMAsmLexer() {
-  RegisterAsmLexer<ARMAsmLexer> X(TheARMTarget);
-  RegisterAsmLexer<ThumbAsmLexer> Y(TheThumbTarget);
+  RegisterMCAsmLexer<ARMAsmLexer> X(TheARMTarget);
+  RegisterMCAsmLexer<ThumbAsmLexer> Y(TheThumbTarget);
 }

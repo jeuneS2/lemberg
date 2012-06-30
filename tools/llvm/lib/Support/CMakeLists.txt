@@ -9,10 +9,14 @@ add_llvm_library(LLVMSupport
   APInt.cpp
   APSInt.cpp
   Allocator.cpp
+  BlockFrequency.cpp
+  BranchProbability.cpp
   circular_raw_ostream.cpp
   CommandLine.cpp
   ConstantRange.cpp
   CrashRecoveryContext.cpp
+  DataExtractor.cpp
+  DataStream.cpp
   Debug.cpp
   DeltaAlgorithm.cpp
   DAGDeltaAlgorithm.cpp
@@ -22,10 +26,14 @@ add_llvm_library(LLVMSupport
   FoldingSet.cpp
   FormattedStream.cpp
   GraphWriter.cpp
+  Hashing.cpp
   IntEqClasses.cpp
   IntervalMap.cpp
+  IntrusiveRefCntPtr.cpp
   IsInf.cpp
   IsNAN.cpp
+  Locale.cpp
+  LockFileManager.cpp
   ManagedStatic.cpp
   MemoryBuffer.cpp
   MemoryObject.cpp
@@ -36,16 +44,17 @@ add_llvm_library(LLVMSupport
   SmallVector.cpp
   SourceMgr.cpp
   Statistic.cpp
+  StreamableMemoryObject.cpp
   StringExtras.cpp
   StringMap.cpp
   StringPool.cpp
   StringRef.cpp
   SystemUtils.cpp
-  TargetRegistry.cpp
   Timer.cpp
   ToolOutputFile.cpp
   Triple.cpp
   Twine.cpp
+  YAMLParser.cpp
   raw_os_ostream.cpp
   raw_ostream.cpp
   regcomp.c
@@ -71,6 +80,7 @@ add_llvm_library(LLVMSupport
   SearchForAddressOfSpecialSymbol.cpp
   Signals.cpp
   system_error.cpp
+  TargetRegistry.cpp
   ThreadLocal.cpp
   Threading.cpp
   TimeValue.cpp

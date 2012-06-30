@@ -20,12 +20,14 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
+
+#define GET_INSTRINFO_CTOR
 #include "LembergGenInstrInfo.inc"
 
 using namespace llvm;
 
 LembergInstrInfo::LembergInstrInfo(LembergSubtarget &ST)
-  : TargetInstrInfoImpl(LembergInsts, array_lengthof(LembergInsts)),
+  : LembergGenInstrInfo(Lemberg::ADJCALLSTACKDOWN, Lemberg::ADJCALLSTACKUP),
     RI(ST, *this),
     Subtarget(ST) {}
 
@@ -508,11 +510,11 @@ SubsumesPredicate(const SmallVectorImpl<MachineOperand> &Pred1,
 bool LembergInstrInfo::
 DefinesPredicate(MachineInstr *MI, std::vector<MachineOperand> &Pred) const {
 
-  const TargetInstrDesc &TID = MI->getDesc();
+  const MCInstrDesc &MID = MI->getDesc();
 
   bool Found = false;
 
-  for (unsigned i = 0, e = TID.getNumDefs(); i != e; ++i) {
+  for (unsigned i = 0, e = MID.getNumDefs(); i != e; ++i) {
     const MachineOperand &MO = MI->getOperand(i);
     if (MO.isReg() && Lemberg::CRegClass.contains(MO.getReg())) {
       Pred.push_back(MO);

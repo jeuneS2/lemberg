@@ -1,4 +1,14 @@
+# This CMake module is responsible for interpreting the user defined LLVM_
+# options and executing the appropriate CMake commands to realize the users'
+# selections.
+
 include(AddLLVMDefinitions)
+
+if( CMAKE_COMPILER_IS_GNUCXX )
+  set(LLVM_COMPILER_IS_GCC_COMPATIBLE ON)
+elseif( "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" )
+  set(LLVM_COMPILER_IS_GCC_COMPATIBLE ON)
+endif()
 
 # Run-time build mode; It is used for unittests.
 if(MSVC_IDE)
@@ -13,13 +23,6 @@ else()
   # It might be "."
   set(RUNTIME_BUILD_MODE "${CMAKE_CFG_INTDIR}")
 endif()
-
-set(LIT_ARGS_DEFAULT "-sv")
-if (MSVC OR XCODE)
-  set(LIT_ARGS_DEFAULT "${LIT_ARGS_DEFAULT} --no-progress-bar")
-endif()
-set(LLVM_LIT_ARGS "${LIT_ARGS_DEFAULT}"
-    CACHE STRING "Default options for lit")
 
 if( LLVM_ENABLE_ASSERTIONS )
   # MSVC doesn't like _DEBUG on release builds. See PR 4379.
@@ -46,9 +49,6 @@ if(WIN32)
   else(CYGWIN)
     set(LLVM_ON_WIN32 1)
     set(LLVM_ON_UNIX 0)
-
-    # This is effective only on Win32 hosts to use gnuwin32 tools.
-    set(LLVM_LIT_TOOLS_DIR "" CACHE PATH "Path to GnuWin32 tools")
   endif(CYGWIN)
   set(LTDL_SHLIB_EXT ".dll")
   set(EXEEXT ".exe")
@@ -76,7 +76,7 @@ if( LLVM_ENABLE_PIC )
     # Xcode has -mdynamic-no-pic on by default, which overrides -fPIC. I don't
     # know how to disable this, so just force ENABLE_PIC off for now.
     message(WARNING "-fPIC not supported with Xcode.")
-  elseif( WIN32 )
+  elseif( WIN32 OR CYGWIN)
     # On Windows all code is PIC. MinGW warns if -fPIC is used.
   else()
     include(CheckCXXCompilerFlag)
@@ -84,16 +84,24 @@ if( LLVM_ENABLE_PIC )
     if( SUPPORTS_FPIC_FLAG )
       message(STATUS "Building with -fPIC")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-      set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
     else( SUPPORTS_FPIC_FLAG )
       message(WARNING "-fPIC not supported.")
     endif()
+
+    if( WIN32 OR CYGWIN)
+      # MinGW warns if -fvisibility-inlines-hidden is used.
+    else()
+      check_cxx_compiler_flag("-fvisibility-inlines-hidden" SUPPORTS_FVISIBILITY_INLINES_HIDDEN_FLAG)
+      if( SUPPORTS_FVISIBILITY_INLINES_HIDDEN_FLAG )
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden")
+      endif()
+     endif()
   endif()
 endif()
 
 if( CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32 )
   # TODO: support other platforms and toolchains.
-  option(LLVM_BUILD_32_BITS "Build 32 bits executables and libraries." OFF)
   if( LLVM_BUILD_32_BITS )
     message(STATUS "Building 32 bits executables and libraries.")
     add_llvm_definitions( -m32 )
@@ -102,9 +110,9 @@ if( CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32 )
   endif( LLVM_BUILD_32_BITS )
 endif( CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32 )
 
-if( MSVC_IDE AND ( MSVC90 OR MSVC10 ) )
-  # Only Visual Studio 2008 and 2010 officially supports /MP.
-  # Visual Studio 2005 do support it but it's experimental there.
+# On Win32 using MS tools, provide an option to set the number of parallel jobs
+# to use.
+if( MSVC_IDE )
   set(LLVM_COMPILER_JOBS "0" CACHE STRING
     "Number of parallel compiler jobs. 0 means use all processors. Default is 0.")
   if( NOT LLVM_COMPILER_JOBS STREQUAL "1" )
@@ -128,6 +136,10 @@ endif()
 if( MSVC )
   include(ChooseMSVCCRT)
 
+  if( MSVC11 )
+    add_llvm_definitions(-D_VARIADIC_MAX=10)
+  endif()
+
   # Add definitions that make MSVC much less annoying.
   add_llvm_definitions(
     # For some reason MS wants to deprecate a bunch of standard functions...
@@ -149,11 +161,12 @@ if( MSVC )
     -wd4351 # Suppress 'new behavior: elements of array 'array' will be default initialized'
     -wd4355 # Suppress ''this' : used in base member initializer list'
     -wd4503 # Suppress ''identifier' : decorated name length exceeded, name was truncated'
+    -wd4551 # Suppress 'function call missing argument list'
     -wd4624 # Suppress ''derived class' : destructor could not be generated because a base class destructor is inaccessible'
     -wd4715 # Suppress ''function' : not all control paths return a value'
     -wd4800 # Suppress ''type' : forcing value to bool 'true' or 'false' (performance warning)'
     -wd4065 # Suppress 'switch statement contains 'default' but no 'case' labels'
-
+    -wd4181 # Suppress 'qualifier applied to reference type; ignored'
     -w14062 # Promote "enumerator in switch of enum is not handled" to level 1 warning.
     )
 
@@ -167,19 +180,22 @@ if( MSVC )
   if (LLVM_ENABLE_WERROR)
     add_llvm_definitions( /WX )
   endif (LLVM_ENABLE_WERROR)
-elseif( CMAKE_COMPILER_IS_GNUCXX )
+elseif( LLVM_COMPILER_IS_GCC_COMPATIBLE )
   if (LLVM_ENABLE_WARNINGS)
     add_llvm_definitions( -Wall -W -Wno-unused-parameter -Wwrite-strings )
     if (LLVM_ENABLE_PEDANTIC)
       add_llvm_definitions( -pedantic -Wno-long-long )
     endif (LLVM_ENABLE_PEDANTIC)
+    check_cxx_compiler_flag("-Werror -Wcovered-switch-default" SUPPORTS_COVERED_SWITCH_DEFAULT_FLAG)
+    if( SUPPORTS_COVERED_SWITCH_DEFAULT_FLAG )
+      add_llvm_definitions( -Wcovered-switch-default )
+    endif()
   endif (LLVM_ENABLE_WARNINGS)
   if (LLVM_ENABLE_WERROR)
     add_llvm_definitions( -Werror )
   endif (LLVM_ENABLE_WERROR)
 endif( MSVC )
 
-add_llvm_definitions( -D__STDC_LIMIT_MACROS )
 add_llvm_definitions( -D__STDC_CONSTANT_MACROS )
-
-option(LLVM_INCLUDE_TESTS "Generate build targets for the LLVM unit tests." ON)
+add_llvm_definitions( -D__STDC_FORMAT_MACROS )
+add_llvm_definitions( -D__STDC_LIMIT_MACROS )

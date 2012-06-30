@@ -37,11 +37,13 @@ protected:
 private:
   ARMJITInfo          JITInfo;
   InstrItineraryData  InstrItins;
-  Reloc::Model        DefRelocModel;    // Reloc model before it's overridden.
 
 public:
-  ARMBaseTargetMachine(const Target &T, const std::string &TT,
-                       const std::string &FS, bool isThumb);
+  ARMBaseTargetMachine(const Target &T, StringRef TT,
+                       StringRef CPU, StringRef FS,
+                       const TargetOptions &Options,
+                       Reloc::Model RM, CodeModel::Model CM,
+                       CodeGenOpt::Level OL);
 
   virtual       ARMJITInfo       *getJITInfo()         { return &JITInfo; }
   virtual const ARMSubtarget  *getSubtargetImpl() const { return &Subtarget; }
@@ -50,18 +52,15 @@ public:
   }
 
   // Pass Pipeline Configuration
-  virtual bool addPreISel(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
-  virtual bool addInstSelector(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
-  virtual bool addPreRegAlloc(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
-  virtual bool addPreSched2(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
-  virtual bool addPreEmitPass(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
-  virtual bool addCodeEmitter(PassManagerBase &PM, CodeGenOpt::Level OptLevel,
-                              JITCodeEmitter &MCE);
+  virtual TargetPassConfig *createPassConfig(PassManagerBase &PM);
+
+  virtual bool addCodeEmitter(PassManagerBase &PM, JITCodeEmitter &MCE);
 };
 
 /// ARMTargetMachine - ARM target machine.
 ///
 class ARMTargetMachine : public ARMBaseTargetMachine {
+  virtual void anchor();
   ARMInstrInfo        InstrInfo;
   const TargetData    DataLayout;       // Calculates type size & alignment
   ARMELFWriterInfo    ELFWriterInfo;
@@ -69,8 +68,11 @@ class ARMTargetMachine : public ARMBaseTargetMachine {
   ARMSelectionDAGInfo TSInfo;
   ARMFrameLowering    FrameLowering;
  public:
-  ARMTargetMachine(const Target &T, const std::string &TT,
-                   const std::string &FS);
+  ARMTargetMachine(const Target &T, StringRef TT,
+                   StringRef CPU, StringRef FS,
+                   const TargetOptions &Options,
+                   Reloc::Model RM, CodeModel::Model CM,
+                   CodeGenOpt::Level OL);
 
   virtual const ARMRegisterInfo  *getRegisterInfo() const {
     return &InstrInfo.getRegisterInfo();
@@ -99,6 +101,7 @@ class ARMTargetMachine : public ARMBaseTargetMachine {
 ///   Thumb-1 and Thumb-2.
 ///
 class ThumbTargetMachine : public ARMBaseTargetMachine {
+  virtual void anchor();
   // Either Thumb1InstrInfo or Thumb2InstrInfo.
   OwningPtr<ARMBaseInstrInfo> InstrInfo;
   const TargetData    DataLayout;   // Calculates type size & alignment
@@ -108,8 +111,11 @@ class ThumbTargetMachine : public ARMBaseTargetMachine {
   // Either Thumb1FrameLowering or ARMFrameLowering.
   OwningPtr<ARMFrameLowering> FrameLowering;
 public:
-  ThumbTargetMachine(const Target &T, const std::string &TT,
-                     const std::string &FS);
+  ThumbTargetMachine(const Target &T, StringRef TT,
+                     StringRef CPU, StringRef FS,
+                     const TargetOptions &Options,
+                     Reloc::Model RM, CodeModel::Model CM,
+                     CodeGenOpt::Level OL);
 
   /// returns either Thumb1RegisterInfo or Thumb2RegisterInfo
   virtual const ARMBaseRegisterInfo *getRegisterInfo() const {

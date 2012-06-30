@@ -1,4 +1,4 @@
-//===-- XCoreFrameLowering.h - Frame info for XCore Target -------*- C++ -*-==//
+//===-- XCoreFrameLowering.h - Frame info for XCore Target ------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -41,8 +41,6 @@ namespace llvm {
                                      const TargetRegisterInfo *TRI) const;
 
     bool hasFP(const MachineFunction &MF) const;
-
-    void getInitialFrameState(std::vector<MachineMove> &Moves) const;
 
     void processFunctionBeforeCalleeSavedScan(MachineFunction &MF,
                                               RegScavenger *RS = NULL) const;

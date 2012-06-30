@@ -1,4 +1,4 @@
-add_llvm_target(CppBackend
+add_llvm_target(CppBackendCodeGen
   CPPBackend.cpp
   )
 

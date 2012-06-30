@@ -1,4 +1,4 @@
-//===- PPCInstrInfo.h - PowerPC Instruction Information ---------*- C++ -*-===//
+//===-- PPCInstrInfo.h - PowerPC Instruction Information --------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -11,12 +11,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef POWERPC32_INSTRUCTIONINFO_H
-#define POWERPC32_INSTRUCTIONINFO_H
+#ifndef POWERPC_INSTRUCTIONINFO_H
+#define POWERPC_INSTRUCTIONINFO_H
 
 #include "PPC.h"
-#include "llvm/Target/TargetInstrInfo.h"
 #include "PPCRegisterInfo.h"
+#include "llvm/Target/TargetInstrInfo.h"
+
+#define GET_INSTRINFO_HEADER
+#include "PPCGenInstrInfo.inc"
 
 namespace llvm {
 
@@ -61,7 +64,7 @@ enum PPC970_Unit {
 } // end namespace PPCII
 
 
-class PPCInstrInfo : public TargetInstrInfoImpl {
+class PPCInstrInfo : public PPCGenInstrInfo {
   PPCTargetMachine &TM;
   const PPCRegisterInfo RI;
 
@@ -69,7 +72,7 @@ class PPCInstrInfo : public TargetInstrInfoImpl {
                            unsigned SrcReg, bool isKill, int FrameIdx,
                            const TargetRegisterClass *RC,
                            SmallVectorImpl<MachineInstr*> &NewMIs) const;
-  void LoadRegFromStackSlot(MachineFunction &MF, DebugLoc DL,
+  bool LoadRegFromStackSlot(MachineFunction &MF, DebugLoc DL,
                             unsigned DestReg, int FrameIdx,
                             const TargetRegisterClass *RC,
                             SmallVectorImpl<MachineInstr*> &NewMIs) const;
@@ -85,6 +88,9 @@ public:
   ScheduleHazardRecognizer *
   CreateTargetHazardRecognizer(const TargetMachine *TM,
                                const ScheduleDAG *DAG) const;
+  ScheduleHazardRecognizer *
+  CreateTargetPostRAHazardRecognizer(const InstrItineraryData *II,
+                                     const ScheduleDAG *DAG) const;
 
   unsigned isLoadFromStackSlot(const MachineInstr *MI,
                                int &FrameIndex) const;

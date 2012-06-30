@@ -9,23 +9,32 @@
 
 LEVEL := ..
 
+include $(LEVEL)/Makefile.config
+
 # Build clang if present.
-OPTIONAL_PARALLEL_DIRS := clang
+
+ifneq ($(CLANG_SRC_ROOT),)
+  OPTIONAL_PARALLEL_DIRS := $(CLANG_SRC_ROOT)
+else
+  OPTIONAL_PARALLEL_DIRS := clang
+endif
 
 # Build LLDB if present. Note LLDB must be built last as it depends on the
-# wider LLVM infrastructure (including Clang). 
+# wider LLVM infrastructure (including Clang).
 OPTIONAL_DIRS := lldb
 
 # NOTE: The tools are organized into five groups of four consisting of one
 # large and three small executables. This is done to minimize memory load
 # in parallel builds.  Please retain this ordering.
-DIRS := llvm-config 
+DIRS := llvm-config
 PARALLEL_DIRS := opt llvm-as llvm-dis \
                  llc llvm-ranlib llvm-ar llvm-nm \
                  llvm-ld llvm-prof llvm-link \
                  lli llvm-extract llvm-mc \
                  bugpoint llvm-bcanalyzer llvm-stub \
-                 llvmc llvm-diff macho-dump llvm-objdump
+                 llvm-diff macho-dump llvm-objdump llvm-readobj \
+	         llvm-rtdyld llvm-dwarfdump llvm-cov \
+	         llvm-size llvm-stress
 
 # Let users override the set of tools to build from the command line.
 ifdef ONLY_TOOLS
@@ -33,9 +42,6 @@ ifdef ONLY_TOOLS
   OPTIONAL_DIRS := $(findstring lldb,$(ONLY_TOOLS))
   PARALLEL_DIRS := $(filter-out lldb,$(ONLY_TOOLS))
 endif
-
-include $(LEVEL)/Makefile.config
-
 
 # These libraries build as dynamic libraries (.dylib /.so), they can only be
 # built if ENABLE_PIC is set.
@@ -50,14 +56,6 @@ ifeq ($(ENABLE_PIC),1)
   endif
 
   PARALLEL_DIRS += bugpoint-passes
-
-  # The edis library is only supported if ARM and/or X86 are enabled, and if
-  # LLVM is being built PIC on platforms that support dylibs.
-  ifneq ($(DISABLE_EDIS),1)
-    ifneq ($(filter $(TARGETS_TO_BUILD), X86 ARM),)
-      PARALLEL_DIRS += edis
-    endif
-  endif
 endif
 
 ifdef LLVM_HAS_POLLY

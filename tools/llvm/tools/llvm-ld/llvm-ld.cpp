@@ -37,7 +37,6 @@
 #include "llvm/Support/SystemUtils.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/Signals.h"
-#include "llvm/Config/config.h"
 #include <memory>
 #include <cstring>
 using namespace llvm;
@@ -424,7 +423,7 @@ static void EmitShellScript(char **argv, Module *M) {
     PrintAndExit(ErrMsg, M);
 
   return;
-#endif
+#else
 
   // Output the script to start the program...
   std::string ErrorInfo;
@@ -470,6 +469,7 @@ static void EmitShellScript(char **argv, Module *M) {
   }
   Out2.os() << "    "  << BitcodeOutputFilename << " ${1+\"$@\"}\n";
   Out2.keep();
+#endif
 }
 
 // BuildLinkItems -- This function generates a LinkItemList for the LinkItems
@@ -552,12 +552,12 @@ int main(int argc, char **argv, char **envp) {
   }
 
   // Arrange for the bitcode output file to be deleted on any errors.
-  BitcodeOutputRemover.setFile(sys::Path(BitcodeOutputFilename));
+  BitcodeOutputRemover.setFile(BitcodeOutputFilename);
   sys::RemoveFileOnSignal(sys::Path(BitcodeOutputFilename));
 
   // Arrange for the output file to be deleted on any errors.
   if (!LinkAsLibrary) {
-    OutputRemover.setFile(sys::Path(OutputFilename));
+    OutputRemover.setFile(OutputFilename);
     sys::RemoveFileOnSignal(sys::Path(OutputFilename));
   }
 
@@ -657,7 +657,7 @@ int main(int argc, char **argv, char **envp) {
       AssemblyFile.appendSuffix("s");
 
       // Mark the output files for removal.
-      FileRemover AssemblyFileRemover(AssemblyFile);
+      FileRemover AssemblyFileRemover(AssemblyFile.str());
       sys::RemoveFileOnSignal(AssemblyFile);
 
       // Determine the locations of the llc and gcc programs.
@@ -684,7 +684,7 @@ int main(int argc, char **argv, char **envp) {
       CFile.appendSuffix("cbe.c");
 
       // Mark the output files for removal.
-      FileRemover CFileRemover(CFile);
+      FileRemover CFileRemover(CFile.str());
       sys::RemoveFileOnSignal(CFile);
 
       // Determine the locations of the llc and gcc programs.

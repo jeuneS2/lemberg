@@ -13,8 +13,8 @@
 
 #include "CodeGenTarget.h"
 #include "IntrinsicEmitter.h"
-#include "Record.h"
 #include "StringMatcher.h"
+#include "llvm/TableGen/Record.h"
 #include "llvm/ADT/StringExtras.h"
 #include <algorithm>
 using namespace llvm;
@@ -56,9 +56,6 @@ void IntrinsicEmitter::run(raw_ostream &OS) {
 
   // Emit intrinsic alias analysis mod/ref behavior.
   EmitModRefBehavior(Ints, OS);
-
-  // Emit a list of intrinsics with corresponding GCC builtins.
-  EmitGCCBuiltinList(Ints, OS);
 
   // Emit code to translate GCC builtins into LLVM intrinsics.
   EmitIntrinsicToGCCBuiltinMap(Ints, OS);
@@ -160,17 +157,20 @@ EmitIntrinsicToNameTable(const std::vector<CodeGenIntrinsic> &Ints,
 void IntrinsicEmitter::
 EmitIntrinsicToOverloadTable(const std::vector<CodeGenIntrinsic> &Ints, 
                          raw_ostream &OS) {
-  OS << "// Intrinsic ID to overload table\n";
+  OS << "// Intrinsic ID to overload bitset\n";
   OS << "#ifdef GET_INTRINSIC_OVERLOAD_TABLE\n";
-  OS << "  // Note that entry #0 is the invalid intrinsic!\n";
+  OS << "static const uint8_t OTable[] = {\n";
+  OS << "  0";
   for (unsigned i = 0, e = Ints.size(); i != e; ++i) {
-    OS << "  ";
+    // Add one to the index so we emit a null bit for the invalid #0 intrinsic.
+    if ((i+1)%8 == 0)
+      OS << ",\n  0";
     if (Ints[i].isOverloaded)
-      OS << "true";
-    else
-      OS << "false";
-    OS << ",\n";
+      OS << " | (1<<" << (i+1)%8 << ')';
   }
+  OS << "\n};\n\n";
+  // OTable contains a true bit at the position if the intrinsic is overloaded.
+  OS << "return (OTable[id/8] & (1 << (id%8))) != 0;\n";
   OS << "#endif\n\n";
 }
 
@@ -181,6 +181,8 @@ static void EmitTypeForValueType(raw_ostream &OS, MVT::SimpleValueType VT) {
   } else if (VT == MVT::Other) {
     // MVT::OtherVT is used to mean the empty struct type here.
     OS << "StructType::get(Context)";
+  } else if (VT == MVT::f16) {
+    OS << "Type::getHalfTy(Context)";
   } else if (VT == MVT::f32) {
     OS << "Type::getFloatTy(Context)";
   } else if (VT == MVT::f64) {
@@ -214,7 +216,7 @@ static void EmitTypeGenerate(raw_ostream &OS,
   if (ArgTypes.size() == 1)
     return EmitTypeGenerate(OS, ArgTypes.front(), ArgNo);
 
-  OS << "StructType::get(Context, ";
+  OS << "StructType::get(";
 
   for (std::vector<Record*>::const_iterator
          I = ArgTypes.begin(), E = ArgTypes.end(); I != E; ++I) {
@@ -259,7 +261,7 @@ static void EmitTypeGenerate(raw_ostream &OS, const Record *ArgType,
   } else if (VT == MVT::iPTRAny) {
     // Make sure the user has passed us an argument type to overload. If not,
     // treat it as an ordinary (not overloaded) intrinsic.
-    OS << "(" << ArgNo << " < numTys) ? Tys[" << ArgNo 
+    OS << "(" << ArgNo << " < Tys.size()) ? Tys[" << ArgNo
     << "] : PointerType::getUnqual(";
     EmitTypeGenerate(OS, ArgType->getValueAsDef("ElTy"), ArgNo);
     OS << ")";
@@ -318,7 +320,7 @@ void IntrinsicEmitter::EmitVerifier(const std::vector<CodeGenIntrinsic> &Ints,
   OS << "// Verifier::visitIntrinsicFunctionCall code.\n";
   OS << "#ifdef GET_INTRINSIC_VERIFIER\n";
   OS << "  switch (ID) {\n";
-  OS << "  default: assert(0 && \"Invalid intrinsic!\");\n";
+  OS << "  default: llvm_unreachable(\"Invalid intrinsic!\");\n";
   
   // This checking can emit a lot of very common code.  To reduce the amount of
   // code that we emit, batch up cases that have identical types.  This avoids
@@ -414,7 +416,7 @@ void IntrinsicEmitter::EmitGenerator(const std::vector<CodeGenIntrinsic> &Ints,
   OS << "// Code for generating Intrinsic function declarations.\n";
   OS << "#ifdef GET_INTRINSIC_GENERATOR\n";
   OS << "  switch (id) {\n";
-  OS << "  default: assert(0 && \"Invalid intrinsic!\");\n";
+  OS << "  default: llvm_unreachable(\"Invalid intrinsic!\");\n";
   
   // Similar to GET_INTRINSIC_VERIFIER, batch up cases that have identical
   // types.
@@ -465,6 +467,45 @@ void IntrinsicEmitter::EmitGenerator(const std::vector<CodeGenIntrinsic> &Ints,
   OS << "#endif\n\n";
 }
 
+namespace {
+  enum ModRefKind {
+    MRK_none,
+    MRK_readonly,
+    MRK_readnone
+  };
+
+  ModRefKind getModRefKind(const CodeGenIntrinsic &intrinsic) {
+    switch (intrinsic.ModRef) {
+    case CodeGenIntrinsic::NoMem:
+      return MRK_readnone;
+    case CodeGenIntrinsic::ReadArgMem:
+    case CodeGenIntrinsic::ReadMem:
+      return MRK_readonly;
+    case CodeGenIntrinsic::ReadWriteArgMem:
+    case CodeGenIntrinsic::ReadWriteMem:
+      return MRK_none;
+    }
+    llvm_unreachable("bad mod-ref kind");
+  }
+
+  struct AttributeComparator {
+    bool operator()(const CodeGenIntrinsic *L, const CodeGenIntrinsic *R) const {
+      // Sort throwing intrinsics after non-throwing intrinsics.
+      if (L->canThrow != R->canThrow)
+        return R->canThrow;
+
+      // Try to order by readonly/readnone attribute.
+      ModRefKind LK = getModRefKind(*L);
+      ModRefKind RK = getModRefKind(*R);
+      if (LK != RK) return (LK > RK);
+
+      // Order by argument attributes.
+      // This is reliable because each side is already sorted internally.
+      return (L->ArgumentAttributes < R->ArgumentAttributes);
+    }
+  };
+}
+
 /// EmitAttributes - This emits the Intrinsic::getAttributes method.
 void IntrinsicEmitter::
 EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
@@ -472,84 +513,110 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
   OS << "#ifdef GET_INTRINSIC_ATTRIBUTES\n";
   if (TargetOnly)
     OS << "static AttrListPtr getAttributes(" << TargetPrefix 
-       << "Intrinsic::ID id) {";
+       << "Intrinsic::ID id) {\n";
   else
-    OS << "AttrListPtr Intrinsic::getAttributes(ID id) {";
-  OS << "  // No intrinsic can throw exceptions.\n";
-  OS << "  Attributes Attr = Attribute::NoUnwind;\n";
-  OS << "  switch (id) {\n";
-  OS << "  default: break;\n";
-  unsigned MaxArgAttrs = 0;
+    OS << "AttrListPtr Intrinsic::getAttributes(ID id) {\n";
+
+  // Compute the maximum number of attribute arguments and the map
+  typedef std::map<const CodeGenIntrinsic*, unsigned,
+                   AttributeComparator> UniqAttrMapTy;
+  UniqAttrMapTy UniqAttributes;
+  unsigned maxArgAttrs = 0;
+  unsigned AttrNum = 0;
   for (unsigned i = 0, e = Ints.size(); i != e; ++i) {
-    MaxArgAttrs =
-      std::max(MaxArgAttrs, unsigned(Ints[i].ArgumentAttributes.size()));
-    switch (Ints[i].ModRef) {
-    default: break;
-    case CodeGenIntrinsic::NoMem:
-      OS << "  case " << TargetPrefix << "Intrinsic::" << Ints[i].EnumName 
-         << ":\n";
-      break;
-    }
+    const CodeGenIntrinsic &intrinsic = Ints[i];
+    maxArgAttrs =
+      std::max(maxArgAttrs, unsigned(intrinsic.ArgumentAttributes.size()));
+    unsigned &N = UniqAttributes[&intrinsic];
+    if (N) continue;
+    assert(AttrNum < 256 && "Too many unique attributes for table!");
+    N = ++AttrNum;
   }
-  OS << "    Attr |= Attribute::ReadNone; // These do not access memory.\n";
-  OS << "    break;\n";
+
+  // Emit an array of AttributeWithIndex.  Most intrinsics will have
+  // at least one entry, for the function itself (index ~1), which is
+  // usually nounwind.
+  OS << "  static const uint8_t IntrinsicsToAttributesMap[] = {\n";
+
   for (unsigned i = 0, e = Ints.size(); i != e; ++i) {
-    switch (Ints[i].ModRef) {
-    default: break;
-    case CodeGenIntrinsic::ReadArgMem:
-    case CodeGenIntrinsic::ReadMem:
-      OS << "  case " << TargetPrefix << "Intrinsic::" << Ints[i].EnumName 
-         << ":\n";
-      break;
-    }
+    const CodeGenIntrinsic &intrinsic = Ints[i];
+
+    OS << "    " << UniqAttributes[&intrinsic] << ", // "
+       << intrinsic.Name << "\n";
   }
-  OS << "    Attr |= Attribute::ReadOnly; // These do not write memory.\n";
-  OS << "    break;\n";
-  OS << "  }\n";
-  OS << "  AttributeWithIndex AWI[" << MaxArgAttrs+1 << "];\n";
+  OS << "  };\n\n";
+
+  OS << "  AttributeWithIndex AWI[" << maxArgAttrs+1 << "];\n";
   OS << "  unsigned NumAttrs = 0;\n";
-  OS << "  switch (id) {\n";
-  OS << "  default: break;\n";
-  
-  // Add argument attributes for any intrinsics that have them.
-  for (unsigned i = 0, e = Ints.size(); i != e; ++i) {
-    if (Ints[i].ArgumentAttributes.empty()) continue;
-    
-    OS << "  case " << TargetPrefix << "Intrinsic::" << Ints[i].EnumName 
-       << ":\n";
+  OS << "  if (id != 0) {\n";
+  OS << "    switch(IntrinsicsToAttributesMap[id - ";
+  if (TargetOnly)
+    OS << "Intrinsic::num_intrinsics";
+  else
+    OS << "1";
+  OS << "]) {\n";
+  OS << "    default: llvm_unreachable(\"Invalid attribute number\");\n";
+  for (UniqAttrMapTy::const_iterator I = UniqAttributes.begin(),
+       E = UniqAttributes.end(); I != E; ++I) {
+    OS << "    case " << I->second << ":\n";
 
-    std::vector<std::pair<unsigned, CodeGenIntrinsic::ArgAttribute> > ArgAttrs =
-      Ints[i].ArgumentAttributes;
-    // Sort by argument index.
-    std::sort(ArgAttrs.begin(), ArgAttrs.end());
+    const CodeGenIntrinsic &intrinsic = *(I->first);
 
-    unsigned NumArgsWithAttrs = 0;
+    // Keep track of the number of attributes we're writing out.
+    unsigned numAttrs = 0;
 
-    while (!ArgAttrs.empty()) {
-      unsigned ArgNo = ArgAttrs[0].first;
-      
-      OS << "    AWI[" << NumArgsWithAttrs++ << "] = AttributeWithIndex::get("
-         << ArgNo+1 << ", 0";
+    // The argument attributes are alreadys sorted by argument index.
+    for (unsigned ai = 0, ae = intrinsic.ArgumentAttributes.size(); ai != ae;) {
+      unsigned argNo = intrinsic.ArgumentAttributes[ai].first;
 
-      while (!ArgAttrs.empty() && ArgAttrs[0].first == ArgNo) {
-        switch (ArgAttrs[0].second) {
-        default: assert(0 && "Unknown arg attribute");
+      OS << "      AWI[" << numAttrs++ << "] = AttributeWithIndex::get("
+         << argNo+1 << ", ";
+
+      bool moreThanOne = false;
+
+      do {
+        if (moreThanOne) OS << '|';
+
+        switch (intrinsic.ArgumentAttributes[ai].second) {
         case CodeGenIntrinsic::NoCapture:
-          OS << "|Attribute::NoCapture";
+          OS << "Attribute::NoCapture";
           break;
         }
-        ArgAttrs.erase(ArgAttrs.begin());
+
+        ++ai;
+        moreThanOne = true;
+      } while (ai != ae && intrinsic.ArgumentAttributes[ai].first == argNo);
+
+      OS << ");\n";
+    }
+
+    ModRefKind modRef = getModRefKind(intrinsic);
+
+    if (!intrinsic.canThrow || modRef) {
+      OS << "      AWI[" << numAttrs++ << "] = AttributeWithIndex::get(~0, ";
+      if (!intrinsic.canThrow) {
+        OS << "Attribute::NoUnwind";
+        if (modRef) OS << '|';
+      }
+      switch (modRef) {
+      case MRK_none: break;
+      case MRK_readonly: OS << "Attribute::ReadOnly"; break;
+      case MRK_readnone: OS << "Attribute::ReadNone"; break;
       }
       OS << ");\n";
     }
-    
-    OS << "    NumAttrs = " << NumArgsWithAttrs << ";\n";
-    OS << "    break;\n";
+
+    if (numAttrs) {
+      OS << "      NumAttrs = " << numAttrs << ";\n";
+      OS << "      break;\n";
+    } else {
+      OS << "      return AttrListPtr();\n";
+    }
   }
   
+  OS << "    }\n";
   OS << "  }\n";
-  OS << "  AWI[NumAttrs] = AttributeWithIndex::get(~0, Attr);\n";
-  OS << "  return AttrListPtr::get(AWI, NumAttrs+1);\n";
+  OS << "  return AttrListPtr::get(AWI, NumAttrs);\n";
   OS << "}\n";
   OS << "#endif // GET_INTRINSIC_ATTRIBUTES\n\n";
 }
@@ -557,50 +624,36 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
 /// EmitModRefBehavior - Determine intrinsic alias analysis mod/ref behavior.
 void IntrinsicEmitter::
 EmitModRefBehavior(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS){
-  OS << "// Determine intrinsic alias analysis mod/ref behavior.\n";
-  OS << "#ifdef GET_INTRINSIC_MODREF_BEHAVIOR\n";
-  OS << "switch (iid) {\n";
-  OS << "default:\n    return UnknownModRefBehavior;\n";
+  OS << "// Determine intrinsic alias analysis mod/ref behavior.\n"
+     << "#ifdef GET_INTRINSIC_MODREF_BEHAVIOR\n"
+     << "assert(iid <= Intrinsic::" << Ints.back().EnumName << " && "
+     << "\"Unknown intrinsic.\");\n\n";
+
+  OS << "static const uint8_t IntrinsicModRefBehavior[] = {\n"
+     << "  /* invalid */ UnknownModRefBehavior,\n";
   for (unsigned i = 0, e = Ints.size(); i != e; ++i) {
-    if (Ints[i].ModRef == CodeGenIntrinsic::ReadWriteMem)
-      continue;
-    OS << "case " << TargetPrefix << "Intrinsic::" << Ints[i].EnumName
-      << ":\n";
+    OS << "  /* " << TargetPrefix << Ints[i].EnumName << " */ ";
     switch (Ints[i].ModRef) {
-    default:
-      assert(false && "Unknown Mod/Ref type!");
     case CodeGenIntrinsic::NoMem:
-      OS << "  return DoesNotAccessMemory;\n";
+      OS << "DoesNotAccessMemory,\n";
       break;
     case CodeGenIntrinsic::ReadArgMem:
-      OS << "  return OnlyReadsArgumentPointees;\n";
+      OS << "OnlyReadsArgumentPointees,\n";
       break;
     case CodeGenIntrinsic::ReadMem:
-      OS << "  return OnlyReadsMemory;\n";
+      OS << "OnlyReadsMemory,\n";
       break;
     case CodeGenIntrinsic::ReadWriteArgMem:
-      OS << "  return OnlyAccessesArgumentPointees;\n";
+      OS << "OnlyAccessesArgumentPointees,\n";
+      break;
+    case CodeGenIntrinsic::ReadWriteMem:
+      OS << "UnknownModRefBehavior,\n";
       break;
     }
   }
-  OS << "}\n";
-  OS << "#endif // GET_INTRINSIC_MODREF_BEHAVIOR\n\n";
-}
-
-void IntrinsicEmitter::
-EmitGCCBuiltinList(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS){
-  OS << "// Get the GCC builtin that corresponds to an LLVM intrinsic.\n";
-  OS << "#ifdef GET_GCC_BUILTIN_NAME\n";
-  OS << "  switch (F->getIntrinsicID()) {\n";
-  OS << "  default: BuiltinName = \"\"; break;\n";
-  for (unsigned i = 0, e = Ints.size(); i != e; ++i) {
-    if (!Ints[i].GCCBuiltinName.empty()) {
-      OS << "  case Intrinsic::" << Ints[i].EnumName << ": BuiltinName = \""
-         << Ints[i].GCCBuiltinName << "\"; break;\n";
-    }
-  }
-  OS << "  }\n";
-  OS << "#endif\n\n";
+  OS << "};\n\n"
+     << "return static_cast<ModRefBehavior>(IntrinsicModRefBehavior[iid]);\n"
+     << "#endif // GET_INTRINSIC_MODREF_BEHAVIOR\n\n";
 }
 
 /// EmitTargetBuiltins - All of the builtins in the specified map are for the

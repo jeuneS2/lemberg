@@ -56,21 +56,13 @@ struct ClonedCodeInfo {
   /// call instruction.
   bool ContainsCalls;
   
-  /// ContainsUnwinds - This is set to true if the cloned code contains an
-  /// unwind instruction.
-  bool ContainsUnwinds;
-  
   /// ContainsDynamicAllocas - This is set to true if the cloned code contains
   /// a 'dynamic' alloca.  Dynamic allocas are allocas that are either not in
   /// the entry block or they are in the entry block but are not a constant
   /// size.
   bool ContainsDynamicAllocas;
   
-  ClonedCodeInfo() {
-    ContainsCalls = false;
-    ContainsUnwinds = false;
-    ContainsDynamicAllocas = false;
-  }
+  ClonedCodeInfo() : ContainsCalls(false), ContainsDynamicAllocas(false) {}
 };
 
 
@@ -107,12 +99,6 @@ BasicBlock *CloneBasicBlock(const BasicBlock *BB,
                             const Twine &NameSuffix = "", Function *F = 0,
                             ClonedCodeInfo *CodeInfo = 0);
 
-
-/// CloneLoop - Clone Loop. Clone dominator info for loop insiders. Populate
-/// VMap using old blocks to new blocks mapping.
-Loop *CloneLoop(Loop *L, LPPassManager *LPM, LoopInfo *LI, 
-                ValueToValueMapTy &VMap, Pass *P);
-
 /// CloneFunction - Return a copy of the specified function, but without
 /// embedding the function into another module.  Also, any references specified
 /// in the VMap are changed to refer to their mapped value instead of the
@@ -140,8 +126,8 @@ inline Function *CloneFunction(const Function *F, ClonedCodeInfo *CodeInfo = 0){
 /// Clone OldFunc into NewFunc, transforming the old arguments into references
 /// to VMap values.  Note that if NewFunc already has basic blocks, the ones
 /// cloned into it will be added to the end of the function.  This function
-/// fills in a list of return instructions, and can optionally append the
-/// specified suffix to all values cloned.
+/// fills in a list of return instructions, and can optionally remap types
+/// and/or append the specified suffix to all values cloned.
 ///
 /// If ModuleLevelChanges is false, VMap contains no non-identity GlobalValue
 /// mappings.
@@ -151,7 +137,8 @@ void CloneFunctionInto(Function *NewFunc, const Function *OldFunc,
                        bool ModuleLevelChanges,
                        SmallVectorImpl<ReturnInst*> &Returns,
                        const char *NameSuffix = "", 
-                       ClonedCodeInfo *CodeInfo = 0);
+                       ClonedCodeInfo *CodeInfo = 0,
+                       ValueMapTypeRemapper *TypeMapper = 0);
 
 /// CloneAndPruneFunctionInto - This works exactly like CloneFunctionInto,
 /// except that it does some simple constant prop and DCE on the fly.  The
@@ -207,12 +194,12 @@ public:
 ///
 /// Note that this only does one level of inlining.  For example, if the
 /// instruction 'call B' is inlined, and 'B' calls 'C', then the call to 'C' now
-/// exists in the instruction stream.  Similiarly this will inline a recursive
+/// exists in the instruction stream.  Similarly this will inline a recursive
 /// function by one level.
 ///
-bool InlineFunction(CallInst *C, InlineFunctionInfo &IFI);
-bool InlineFunction(InvokeInst *II, InlineFunctionInfo &IFI);
-bool InlineFunction(CallSite CS, InlineFunctionInfo &IFI);
+bool InlineFunction(CallInst *C, InlineFunctionInfo &IFI, bool InsertLifetime = true);
+bool InlineFunction(InvokeInst *II, InlineFunctionInfo &IFI, bool InsertLifetime = true);
+bool InlineFunction(CallSite CS, InlineFunctionInfo &IFI, bool InsertLifetime = true);
 
 } // End llvm namespace
 

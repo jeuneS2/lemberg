@@ -147,7 +147,7 @@ define i32 @t11(i32 %x, i32 %y, i32 %z.0, i32 %z.1, i32 %z.2) nounwind ssp {
 
 ; 32: t11:
 ; 32-NOT: subl ${{[0-9]+}}, %esp
-; 32: jne
+; 32: je
 ; 32-NOT: movl
 ; 32-NOT: addl ${{[0-9]+}}, %esp
 ; 32: jmp {{_?}}foo5
@@ -198,7 +198,7 @@ declare i32 @foo6(i32, i32, %struct.t* byval align 4)
 
 ; rdar://r7717598
 %struct.ns = type { i32, i32 }
-%struct.cp = type { float, float }
+%struct.cp = type { float, float, float, float, float }
 
 define %struct.ns* @t13(%struct.cp* %yy) nounwind ssp {
 ; 32: t13:
@@ -229,7 +229,7 @@ entry:
 ; 64: t14:
 ; 64: movq 32(%rdi)
 ; 64-NOT: movq 16(%rdi)
-; 64: jmpq *16(%rdi)
+; 64: jmpq *16({{%rdi|%rax}})
   %0 = getelementptr inbounds %struct.__block_literal_2* %.block_descriptor, i64 0, i32 5 ; <void ()**> [#uses=1]
   %1 = load void ()** %0, align 8                 ; <void ()*> [#uses=2]
   %2 = bitcast void ()* %1 to %struct.__block_literal_1* ; <%struct.__block_literal_1*> [#uses=1]
@@ -311,8 +311,6 @@ entry:
   tail call void @foo() nounwind
   ret void
 }
-
-declare void @foo()
 
 ; If caller / callee calling convention mismatch then check if the return
 ; values are returned in the same registers.

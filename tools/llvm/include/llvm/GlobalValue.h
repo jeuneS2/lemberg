@@ -57,21 +57,20 @@ public:
   };
 
 protected:
-  GlobalValue(const Type *ty, ValueTy vty, Use *Ops, unsigned NumOps,
+  GlobalValue(Type *ty, ValueTy vty, Use *Ops, unsigned NumOps,
               LinkageTypes linkage, const Twine &Name)
-    : Constant(ty, vty, Ops, NumOps), Parent(0),
-      Linkage(linkage), Visibility(DefaultVisibility), Alignment(0),
-      UnnamedAddr(0) {
+    : Constant(ty, vty, Ops, NumOps), Linkage(linkage),
+      Visibility(DefaultVisibility), Alignment(0), UnnamedAddr(0), Parent(0) {
     setName(Name);
   }
 
-  Module *Parent;
   // Note: VC++ treats enums as signed, so an extra bit is required to prevent
   // Linkage and Visibility from turning into negative values.
   LinkageTypes Linkage : 5;   // The linkage of this global
   unsigned Visibility : 2;    // The visibility style of this global
   unsigned Alignment : 16;    // Alignment of this symbol, must be power of two
   unsigned UnnamedAddr : 1;   // This value's address is not significant
+  Module *Parent;             // The containing module.
   std::string Section;        // Section to emit this into, empty mean default
 public:
   ~GlobalValue() {
@@ -106,8 +105,8 @@ public:
   bool use_empty_except_constants();
 
   /// getType - Global values are always pointers.
-  inline const PointerType *getType() const {
-    return reinterpret_cast<const PointerType*>(User::getType());
+  inline PointerType *getType() const {
+    return reinterpret_cast<PointerType*>(User::getType());
   }
 
   static LinkageTypes getLinkOnceLinkage(bool ODR) {
@@ -258,16 +257,12 @@ public:
 
 /// @}
 
-  /// Override from Constant class. No GlobalValue's are null values so this
-  /// always returns false.
-  virtual bool isNullValue() const { return false; }
-
   /// Override from Constant class.
   virtual void destroyConstant();
 
   /// isDeclaration - Return true if the primary definition of this global 
-  /// value is outside of the current translation unit...
-  virtual bool isDeclaration() const = 0;
+  /// value is outside of the current translation unit.
+  bool isDeclaration() const;
 
   /// removeFromParent - This method unlinks 'this' from the containing module,
   /// but does not delete it.

@@ -8,7 +8,7 @@
 </head>
 <body>
       
-<div class="doc_title">LLVM Developer Policy</div>
+<h1>LLVM Developer Policy</h1>
 <ol>
   <li><a href="#introduction">Introduction</a></li>
   <li><a href="#policies">Developer Policies</a>
@@ -34,16 +34,16 @@
 <div class="doc_author">Written by the LLVM Oversight Team</div>
 
 <!--=========================================================================-->
-<div class="doc_section"><a name="introduction">Introduction</a></div>
+<h2><a name="introduction">Introduction</a></h2>
 <!--=========================================================================-->
-<div class="doc_text">
+<div>
 <p>This document contains the LLVM Developer Policy which defines the project's
    policy towards developers and their contributions. The intent of this policy
    is to eliminate miscommunication, rework, and confusion that might arise from
    the distributed nature of LLVM's development.  By stating the policy in clear
    terms, we hope each developer can know ahead of time what to expect when
    making LLVM contributions.  This policy covers all llvm.org subprojects,
-   including Clang, LLDB, etc.</p>
+   including Clang, LLDB, libc++, etc.</p>
 <p>This policy is also designed to accomplish the following objectives:</p>
 
 <ol>
@@ -52,6 +52,9 @@
   <li>Make life as simple and easy for contributors as possible.</li>
 
   <li>Keep the top of Subversion trees as stable as possible.</li>
+
+  <li>Establish awareness of the project's <a href="#clp">copyright,
+      license, and patent policies</a> with contributors to the project.</li>
 </ol>
   
 <p>This policy is aimed at frequent contributors to LLVM. People interested in
@@ -63,20 +66,19 @@
 </div>
 
 <!--=========================================================================-->
-<div class="doc_section"><a name="policies">Developer Policies</a></div>
+<h2><a name="policies">Developer Policies</a></h2>
 <!--=========================================================================-->
-<div class="doc_text">
+<div>
 <p>This section contains policies that pertain to frequent LLVM developers.  We
    always welcome <a href="#patches">one-off patches</a> from people who do not
    routinely contribute to LLVM, but we expect more from frequent contributors
    to keep the system as efficient as possible for everyone.  Frequent LLVM
    contributors are expected to meet the following requirements in order for
    LLVM to maintain a high standard of quality.<p>
-</div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"> <a name="informed">Stay Informed</a> </div>
-<div class="doc_text">
+<h3><a name="informed">Stay Informed</a></h3>
+<div>
 <p>Developers should stay informed by reading at least the "dev" mailing list
    for the projects you are interested in, such as 
    <a href="http://lists.cs.uiuc.edu/mailman/listinfo/llvmdev">llvmdev</a> for
@@ -102,9 +104,9 @@
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"> <a name="patches">Making a Patch</a></div>
+<h3><a name="patches">Making a Patch</a></h3>
 
-<div class="doc_text">
+<div>
 <p>When making a patch for review, the goal is to make it as easy for the
    reviewer to read it as possible.  As such, we recommend that you:</p>
 
@@ -142,8 +144,8 @@
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"> <a name="reviews">Code Reviews</a></div>
-<div class="doc_text">
+<h3><a name="reviews">Code Reviews</a></h3>
+<div>
 <p>LLVM has a code review policy. Code review is one way to increase the quality
    of software. We generally follow these policies:</p>
 
@@ -174,8 +176,8 @@
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"> <a name="owners">Code Owners</a></div>
-<div class="doc_text">
+<h3><a name="owners">Code Owners</a></h3>
+<div>
 
 <p>The LLVM Project relies on two features of its process to maintain rapid
    development in addition to the high quality of its source base: the
@@ -208,7 +210,15 @@
 
   <li><b>Chris Lattner</b>: Everything not covered by someone else.</li>
   
-  <li><b>Duncan Sands</b>: llvm-gcc 4.2.</li>
+  <li><b>John McCall</b>: Clang LLVM IR generation.</li>
+
+  <li><b>Jakob Olesen</b>: Register allocators and TableGen.</li>
+
+  <li><b>Duncan Sands</b>: dragonegg and llvm-gcc 4.2.</li>
+  
+  <li><b>Peter Collingbourne</b>: libclc.</li>
+  
+  <li><b>Tobias Grosser</b>: polly.</li>
 </ol>
   
 <p>Note that code ownership is completely different than reviewers: anyone can
@@ -225,8 +235,8 @@
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"> <a name="testcases">Test Cases</a></div>
-<div class="doc_text">
+<h3><a name="testcases">Test Cases</a></h3>
+<div>
 <p>Developers are required to create test cases for any bugs fixed and any new
    features added.  Some tips for getting your testcase approved:</p>
 
@@ -258,8 +268,8 @@
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"> <a name="quality">Quality</a></div>
-<div class="doc_text">
+<h3><a name="quality">Quality</a></h3>
+<div>
 <p>The minimum quality standards that any change must satisfy before being
    committed to the main development branch are:</p>
 
@@ -318,9 +328,8 @@
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection">
-  <a name="commitaccess">Obtaining Commit Access</a></div>
-<div class="doc_text">
+<h3><a name="commitaccess">Obtaining Commit Access</a></h3>
+<div>
 
 <p>We grant commit access to contributors with a track record of submitting high
    quality patches.  If you would like commit access, please send an email to
@@ -381,8 +390,8 @@
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"> <a name="newwork">Making a Major Change</a></div>
-<div class="doc_text">
+<h3><a name="newwork">Making a Major Change</a></h3>
+<div>
 <p>When a developer begins a major new project with the aim of contributing it
    back to LLVM, s/he should inform the community with an email to
    the <a href="http://lists.cs.uiuc.edu/mailman/listinfo/llvmdev">llvmdev</a>
@@ -410,9 +419,8 @@
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"> <a name="incremental">Incremental Development</a>
-</div>
-<div class="doc_text">
+<h3><a name="incremental">Incremental Development</a></h3>
+<div>
 <p>In the LLVM project, we do all significant changes as a series of incremental
    patches.  We have a strong dislike for huge changes or long-term development
    branches.  Long-term development branches have a number of drawbacks:</p>
@@ -472,9 +480,8 @@
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"><a name="attribution">Attribution of 
-Changes</a></div>
-<div class="doc_text">
+<h3><a name="attribution">Attribution of Changes</a></h3>
+<div>
 <p>We believe in correct attribution of contributions to their contributors.
    However, we do not want the source code to be littered with random
    attributions "this code written by J. Random Hacker" (this is noisy and
@@ -486,29 +493,37 @@ Changes</a></div>
 <p>Overall, please do not add contributor names to the source code.</p>
 </div>
 
-<!--=========================================================================-->
-<div class="doc_section">
-  <a name="clp">Copyright, License, and Patents</a>
 </div>
+
+<!--=========================================================================-->
+<h2>
+  <a name="clp">Copyright, License, and Patents</a>
+</h2>
 <!--=========================================================================-->
 
-<div class="doc_text">
-<p>This section addresses the issues of copyright, license and patents for the
-   LLVM project.  Currently, the University of Illinois is the LLVM copyright
-   holder and the terms of its license to LLVM users and developers is the
-   <a href="http://www.opensource.org/licenses/UoI-NCSA.php">University of 
-   Illinois/NCSA Open Source License</a>.</p>
+<div>
 
 <div class="doc_notes">
 <p style="text-align:center;font-weight:bold">NOTE: This section deals with
-   legal matters but does not provide legal advice.  We are not lawyers, please
-   seek legal counsel from an attorney.</p>
-</div>
+   legal matters but does not provide legal advice.  We are not lawyers &mdash; 
+   please seek legal counsel from an attorney.</p>
 </div>
 
+<div>
+<p>This section addresses the issues of copyright, license and patents for the
+   LLVM project.  The copyright for the code is held by the individual
+   contributors of the code and the terms of its license to LLVM users and 
+   developers is the
+   <a href="http://www.opensource.org/licenses/UoI-NCSA.php">University of 
+   Illinois/NCSA Open Source License</a> (with portions dual licensed under the
+   <a href="http://www.opensource.org/licenses/mit-license.php">MIT License</a>,
+   see below).  As contributor to the LLVM project, you agree to allow any 
+   contributions to the project to licensed under these terms.</p>
+
+
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"><a name="copyright">Copyright</a></div>
-<div class="doc_text">
+<h3><a name="copyright">Copyright</a></h3>
+<div>
 
 <p>The LLVM project does not require copyright assignments, which means that the
    copyright for the code in the project is held by its respective contributors
@@ -530,10 +545,13 @@ Changes</a></div>
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"><a name="license">License</a></div>
-<div class="doc_text">
+<h3><a name="license">License</a></h3>
+<div>
 <p>We intend to keep LLVM perpetually open source and to use a liberal open
-   source license. All of the code in LLVM is available under the
+   source license.  <b>As a contributor to the project, you agree that any 
+   contributions be licensed under the terms of the corresponding 
+   subproject.</b>
+   All of the code in LLVM is available under the
    <a href="http://www.opensource.org/licenses/UoI-NCSA.php">University of
    Illinois/NCSA Open Source License</a>, which boils down to this:</p>
 
@@ -554,7 +572,7 @@ Changes</a></div>
    if further clarification is needed.</p>
    
 <p>In addition to the UIUC license, the runtime library components of LLVM
-   (<b>compiler_rt and libc++</b>) are also licensed under the <a
+   (<b>compiler_rt, libc++, and libclc</b>) are also licensed under the <a
    href="http://www.opensource.org/licenses/mit-license.php">MIT license</a>,
    which does not contain the binary redistribution clause.  As a user of these
    runtime libraries, it means that you can choose to use the code under either
@@ -568,16 +586,17 @@ Changes</a></div>
    the LLVM core to libc++ without the copyright owner's permission.
 </p>
 
-<p>Note that the LLVM Project does distribute llvm-gcc, <b>which is GPL.</b>
+<p>Note that the LLVM Project does distribute llvm-gcc and dragonegg, <b>which  
+   are GPL.</b>
    This means that anything "linked" into llvm-gcc must itself be compatible
    with the GPL, and must be releasable under the terms of the GPL.  This
    implies that <b>any code linked into llvm-gcc and distributed to others may
    be subject to the viral aspects of the GPL</b> (for example, a proprietary
    code generator linked into llvm-gcc must be made available under the GPL).
    This is not a problem for code already distributed under a more liberal
-   license (like the UIUC license), and does not affect code generated by
-   llvm-gcc.  It may be a problem if you intend to base commercial development
-   on llvm-gcc without redistributing your source code.</p>
+   license (like the UIUC license), and GPL-containing subprojects are kept
+   in separate SVN repositories whose LICENSE.txt files specifically indicate
+   that they contain GPL code.</p>
   
 <p>We have no plans to change the license of LLVM.  If you have questions or
    comments about the license, please contact the
@@ -585,8 +604,8 @@ Changes</a></div>
 </div>
 
 <!-- _______________________________________________________________________ -->
-<div class="doc_subsection"><a name="patents">Patents</a></div>
-<div class="doc_text">
+<h3><a name="patents">Patents</a></h3>
+<div>
 <p>To the best of our knowledge, LLVM does not infringe on any patents (we have
    actually removed code from LLVM in the past that was found to infringe).
    Having code in LLVM that infringes on patents would violate an important goal
@@ -594,12 +613,17 @@ Changes</a></div>
    arbitrary purposes (including commercial use).</p>
    
 <p>When contributing code, we expect contributors to notify us of any potential
-   for patent-related trouble with their changes.  If you or your employer own
+   for patent-related trouble with their changes (including from third parties).  
+   If you or your employer own
    the rights to a patent and would like to contribute code to LLVM that relies
    on it, we require that the copyright owner sign an agreement that allows any
    other user of LLVM to freely use your patent.  Please contact
    the <a href="mailto:llvm-oversight@cs.uiuc.edu">oversight group</a> for more
    details.</p>
+</div>
+
+</div>
+
 </div>
 
 <!-- *********************************************************************** -->
@@ -611,8 +635,8 @@ Changes</a></div>
   src="http://www.w3.org/Icons/valid-html401-blue" alt="Valid HTML 4.01"></a>
   Written by the 
   <a href="mailto:llvm-oversight@cs.uiuc.edu">LLVM Oversight Group</a><br>
-  <a href="http://llvm.org">The LLVM Compiler Infrastructure</a><br>
-  Last modified: $Date: 2010-11-16 13:32:53 -0800 (Tue, 16 Nov 2010) $
+  <a href="http://llvm.org/">The LLVM Compiler Infrastructure</a><br>
+  Last modified: $Date: 2012-03-27 04:25:16 -0700 (Tue, 27 Mar 2012) $
 </address>
 </body>
 </html>

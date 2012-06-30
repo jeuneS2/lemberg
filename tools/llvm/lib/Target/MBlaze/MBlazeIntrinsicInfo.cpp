@@ -1,4 +1,4 @@
-//===- MBlazeIntrinsicInfo.cpp - Intrinsic Information -00-------*- C++ -*-===//
+//===-- MBlazeIntrinsicInfo.cpp - Intrinsic Information -------------------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -18,6 +18,7 @@
 #include "llvm/Module.h"
 #include "llvm/Type.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/ErrorHandling.h"
 #include <cstring>
 
 using namespace llvm;
@@ -37,7 +38,7 @@ namespace mblazeIntrinsic {
 #undef GET_LLVM_INTRINSIC_FOR_GCC_BUILTIN
 }
 
-std::string MBlazeIntrinsicInfo::getName(unsigned IntrID, const Type **Tys,
+std::string MBlazeIntrinsicInfo::getName(unsigned IntrID, Type **Tys,
                                          unsigned numTys) const {
   static const char *const names[] = {
 #define GET_INTRINSIC_NAME_TABLE
@@ -73,16 +74,13 @@ lookupGCCName(const char *Name) const {
 }
 
 bool MBlazeIntrinsicInfo::isOverloaded(unsigned IntrID) const {
-  // Overload Table
-  const bool OTable[] = {
+  if (IntrID == 0)
+    return false;
+
+  unsigned id = IntrID - Intrinsic::num_intrinsics + 1;
 #define GET_INTRINSIC_OVERLOAD_TABLE
 #include "MBlazeGenIntrinsics.inc"
 #undef GET_INTRINSIC_OVERLOAD_TABLE
-  };
-  if (IntrID == 0)
-    return false;
-  else
-    return OTable[IntrID - Intrinsic::num_intrinsics];
 }
 
 /// This defines the "getAttributes(ID id)" method.
@@ -90,9 +88,9 @@ bool MBlazeIntrinsicInfo::isOverloaded(unsigned IntrID) const {
 #include "MBlazeGenIntrinsics.inc"
 #undef GET_INTRINSIC_ATTRIBUTES
 
-static const FunctionType *getType(LLVMContext &Context, unsigned id) {
-  const Type *ResultTy = NULL;
-  std::vector<const Type*> ArgTys;
+static FunctionType *getType(LLVMContext &Context, unsigned id) {
+  Type *ResultTy = NULL;
+  SmallVector<Type*, 8> ArgTys;
   bool IsVarArg = false;
 
 #define GET_INTRINSIC_GENERATOR
@@ -103,7 +101,7 @@ static const FunctionType *getType(LLVMContext &Context, unsigned id) {
 }
 
 Function *MBlazeIntrinsicInfo::getDeclaration(Module *M, unsigned IntrID,
-                                                const Type **Tys,
+                                                Type **Tys,
                                                 unsigned numTy) const {
   assert(!isOverloaded(IntrID) && "MBlaze intrinsics are not overloaded");
   AttrListPtr AList = getAttributes((mblazeIntrinsic::ID) IntrID);

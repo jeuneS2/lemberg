@@ -724,3 +724,108 @@ define i32 @test53(i32 %x) nounwind {
 ; CHECK: select i1 %cmp
 ; CHECK: ret
 }
+
+define i32 @test54(i32 %X, i32 %Y) {
+  %A = ashr exact i32 %X, %Y
+  %B = icmp eq i32 %A, 0
+  %C = select i1 %B, i32 %A, i32 1
+  ret i32 %C
+; CHECK: @test54
+; CHECK-NOT: ashr
+; CHECK-NOT: select
+; CHECK: icmp ne i32 %X, 0
+; CHECK: zext 
+; CHECK: ret
+}
+
+define i1 @test55(i1 %X, i32 %Y, i32 %Z) {
+  %A = ashr exact i32 %Y, %Z
+  %B = select i1 %X, i32 %Y, i32 %A
+  %C = icmp eq i32 %B, 0
+  ret i1 %C
+; CHECK: @test55
+; CHECK-NOT: ashr
+; CHECK-NOT: select
+; CHECK: icmp eq
+; CHECK: ret i1
+}
+
+define i32 @test56(i16 %x) nounwind {
+  %tobool = icmp eq i16 %x, 0
+  %conv = zext i16 %x to i32
+  %cond = select i1 %tobool, i32 0, i32 %conv
+  ret i32 %cond
+; CHECK: @test56
+; CHECK-NEXT: zext
+; CHECK-NEXT: ret
+}
+
+define i32 @test57(i32 %x, i32 %y) nounwind {
+  %and = and i32 %x, %y
+  %tobool = icmp eq i32 %x, 0
+  %.and = select i1 %tobool, i32 0, i32 %and
+  ret i32 %.and
+; CHECK: @test57
+; CHECK-NEXT: and i32 %x, %y
+; CHECK-NEXT: ret
+}
+
+define i32 @test58(i16 %x) nounwind {
+  %tobool = icmp ne i16 %x, 1
+  %conv = zext i16 %x to i32
+  %cond = select i1 %tobool, i32 %conv, i32 1
+  ret i32 %cond
+; CHECK: @test58
+; CHECK-NEXT: zext
+; CHECK-NEXT: ret
+}
+
+define i32 @test59(i32 %x, i32 %y) nounwind {
+  %and = and i32 %x, %y
+  %tobool = icmp ne i32 %x, %y
+  %.and = select i1 %tobool, i32 %and, i32 %y
+  ret i32 %.and
+; CHECK: @test59
+; CHECK-NEXT: and i32 %x, %y
+; CHECK-NEXT: ret
+}
+
+define i1 @test60(i32 %x, i1* %y) nounwind {
+  %cmp = icmp eq i32 %x, 0
+  %load = load i1* %y, align 1
+  %cmp1 = icmp slt i32 %x, 1
+  %sel = select i1 %cmp, i1 %load, i1 %cmp1
+  ret i1 %sel
+; CHECK: @test60
+; CHECK: select
+}
+
+@glbl = constant i32 10
+define i32 @test61(i32* %ptr) {
+  %A = load i32* %ptr
+  %B = icmp eq i32* %ptr, @glbl
+  %C = select i1 %B, i32 %A, i32 10
+  ret i32 %C
+; CHECK: @test61
+; CHECK: ret i32 10
+}
+
+define i1 @test62(i1 %A, i1 %B) {
+        %not = xor i1 %A, true
+        %C = select i1 %A, i1 %not, i1 %B             
+        ret i1 %C
+; CHECK: @test62
+; CHECK: %not = xor i1 %A, true
+; CHECK: %C = and i1 %not, %B
+; CHECK: ret i1 %C
+}
+
+define i1 @test63(i1 %A, i1 %B) {
+        %not = xor i1 %A, true
+        %C = select i1 %A, i1 %B, i1 %not         
+        ret i1 %C
+; CHECK: @test63
+; CHECK: %not = xor i1 %A, true
+; CHECK: %C = or i1 %B, %not
+; CHECK: ret i1 %C
+}

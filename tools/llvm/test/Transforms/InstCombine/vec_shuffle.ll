@@ -1,28 +1,25 @@
 ; RUN: opt < %s -instcombine -S | FileCheck %s
 
-%T = type <4 x float>
-
-
-define %T @test1(%T %v1) {
+define <4 x float> @test1(<4 x float> %v1) {
 ; CHECK: @test1
-; CHECK: ret %T %v1
-  %v2 = shufflevector %T %v1, %T undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  ret %T %v2
+; CHECK: ret <4 x float> %v1
+  %v2 = shufflevector <4 x float> %v1, <4 x float> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  ret <4 x float> %v2
 }
 
-define %T @test2(%T %v1) {
+define <4 x float> @test2(<4 x float> %v1) {
 ; CHECK: @test2
-; CHECK: ret %T %v1
-  %v2 = shufflevector %T %v1, %T %v1, <4 x i32> <i32 0, i32 5, i32 2, i32 7>
-  ret %T %v2
+; CHECK: ret <4 x float> %v1
+  %v2 = shufflevector <4 x float> %v1, <4 x float> %v1, <4 x i32> <i32 0, i32 5, i32 2, i32 7>
+  ret <4 x float> %v2
 }
 
-define float @test3(%T %A, %T %B, float %f) {
+define float @test3(<4 x float> %A, <4 x float> %B, float %f) {
 ; CHECK: @test3
 ; CHECK: ret float %f
-        %C = insertelement %T %A, float %f, i32 0
-        %D = shufflevector %T %C, %T %B, <4 x i32> <i32 5, i32 0, i32 2, i32 7>
-        %E = extractelement %T %D, i32 1
+        %C = insertelement <4 x float> %A, float %f, i32 0
+        %D = shufflevector <4 x float> %C, <4 x float> %B, <4 x i32> <i32 5, i32 0, i32 2, i32 7>
+        %E = extractelement <4 x float> %D, i32 1
         ret float %E
 }
 
@@ -57,7 +54,7 @@ define float @test6(<4 x float> %X) {
 
 define <4 x float> @test7(<4 x float> %tmp45.i) {
 ; CHECK: @test7
-; CHECK-NEXT: ret %T %tmp45.i
+; CHECK-NEXT: ret <4 x float> %tmp45.i
         %tmp1642.i = shufflevector <4 x float> %tmp45.i, <4 x float> undef, <4 x i32> < i32 0, i32 1, i32 6, i32 7 >
         ret <4 x float> %tmp1642.i
 }
@@ -101,6 +98,17 @@ define <4 x i8> @test9a(<16 x i8> %tmp6) nounwind {
 	ret <4 x i8> %tmp9
 }
 
+; Test fold of two shuffles where the first shuffle vectors inputs are a
+; different length then the second.
+define <4 x i8> @test9b(<4 x i8> %tmp6, <4 x i8> %tmp7) nounwind {
+; CHECK: @test9
+; CHECK-NEXT: shufflevector
+; CHECK-NEXT: ret
+  %tmp1 = shufflevector <4 x i8> %tmp6, <4 x i8> %tmp7, <8 x i32> <i32 0, i32 1, i32 4, i32 5, i32 4, i32 5, i32 2, i32 3>		; <<4 x i8>> [#uses=1]
+  %tmp9 = shufflevector <8 x i8> %tmp1, <8 x i8> undef, <4 x i32> <i32 0, i32 1, i32 4, i32 5>		; <<4 x i8>> [#uses=1]
+  ret <4 x i8> %tmp9
+}
+
 ; Redundant vector splats should be removed.  Radar 8597790.
 define <4 x i32> @test10(<4 x i32> %tmp5) nounwind {
 ; CHECK: @test10
@@ -110,3 +118,38 @@ define <4 x i32> @test10(<4 x i32> %tmp5) nounwind {
   %tmp7 = shufflevector <4 x i32> %tmp6, <4 x i32> undef, <4 x i32> zeroinitializer
   ret <4 x i32> %tmp7
 }
+
+; Test fold of two shuffles where the two shufflevector inputs's op1 are
+; the same
+define <8 x i8> @test11(<16 x i8> %tmp6) nounwind {
+; CHECK: @test11
+; CHECK-NEXT: shufflevector <16 x i8> %tmp6, <16 x i8> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
+; CHECK-NEXT: ret
+  %tmp1 = shufflevector <16 x i8> %tmp6, <16 x i8> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>		; <<4 x i8>> [#uses=1]
+  %tmp2 = shufflevector <16 x i8> %tmp6, <16 x i8> undef, <4 x i32> <i32 4, i32 5, i32 6, i32 7>		; <<4 x i8>> [#uses=1]
+  %tmp3 = shufflevector <4 x i8> %tmp1, <4 x i8> %tmp2, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>		; <<8 x i8>> [#uses=1]
+  ret <8 x i8> %tmp3
+}
+
+; Test fold of two shuffles where the first shufflevector's inputs are
+; the same as the second
+define <8 x i8> @test12(<8 x i8> %tmp6, <8 x i8> %tmp2) nounwind {
+; CHECK: @test12
+; CHECK-NEXT: shufflevector <8 x i8> %tmp6, <8 x i8> %tmp2, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 9, i32 8, i32 11, i32 12>
+; CHECK-NEXT: ret
+  %tmp1 = shufflevector <8 x i8> %tmp6, <8 x i8> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 5, i32 4, i32 undef, i32 7>	; <<8 x i8>> [#uses=1]
+  %tmp3 = shufflevector <8 x i8> %tmp1, <8 x i8> %tmp2, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 9, i32 8, i32 11, i32 12>		; <<8 x i8>> [#uses=1]
+  ret <8 x i8> %tmp3
+}
+
+; Test fold of two shuffles where the first shufflevector's inputs are
+; the same as the second
+define <8 x i8> @test12a(<8 x i8> %tmp6, <8 x i8> %tmp2) nounwind {
+; CHECK: @test12a
+; CHECK-NEXT: shufflevector <8 x i8> %tmp2, <8 x i8> %tmp6, <8 x i32> <i32 0, i32 3, i32 1, i32 4, i32 8, i32 9, i32 10, i32 11>
+; CHECK-NEXT: ret
+  %tmp1 = shufflevector <8 x i8> %tmp6, <8 x i8> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 5, i32 4, i32 undef, i32 7>	; <<8 x i8>> [#uses=1]
+  %tmp3 = shufflevector <8 x i8> %tmp2, <8 x i8> %tmp1, <8 x i32> <i32 0, i32 3, i32 1, i32 4, i32 8, i32 9, i32 10, i32 11>		; <<8 x i8>> [#uses=1]
+  ret <8 x i8> %tmp3
+}
+

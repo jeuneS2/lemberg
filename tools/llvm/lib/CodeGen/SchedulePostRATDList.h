@@ -22,8 +22,8 @@
 #define SCHEDULEPOSTRATDLIST_H
 
 #include "AntiDepBreaker.h"
-#include "ScheduleDAGInstrs.h"
 #include "llvm/CodeGen/ScheduleDAG.h"
+#include "llvm/CodeGen/ScheduleDAGInstrs.h"
 #include "llvm/CodeGen/LatencyPriorityQueue.h"
 #include "llvm/CodeGen/ScheduleHazardRecognizer.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -50,39 +50,53 @@ namespace llvm {
     /// AA - AliasAnalysis for making memory reference queries.
     AliasAnalysis *AA;
 
-    /// KillIndices - The index of the most recent kill (proceding bottom-up),
-    /// or ~0u if the register is not live.
-    std::vector<unsigned> KillIndices;
+    /// LiveRegs - true if the register is live.
+    BitVector LiveRegs;
 
   public:
+
     /// HazardRec - The hazard recognizer to use.
     ScheduleHazardRecognizer *HazardRec;
 
-  public:
+    /// The schedule. Null SUnit*'s represent noop instructions.
+    std::vector<SUnit*> Sequence;
+
     SchedulePostRATDList(
       MachineFunction &MF, MachineLoopInfo &MLI, MachineDominatorTree &MDT,
-      AliasAnalysis *AA, TargetSubtarget::AntiDepBreakMode AntiDepMode,
-      SmallVectorImpl<TargetRegisterClass*> &CriticalPathRCs);
+      AliasAnalysis *AA, const RegisterClassInfo&,
+      TargetSubtargetInfo::AntiDepBreakMode AntiDepMode,
+      SmallVectorImpl<const TargetRegisterClass*> &CriticalPathRCs);
 
     ~SchedulePostRATDList();
 
-    /// StartBlock - Initialize register live-range state for scheduling in
+    /// startBlock - Initialize register live-range state for scheduling in
     /// this block.
     ///
-    void StartBlock(MachineBasicBlock *BB);
+    void startBlock(MachineBasicBlock *BB);
+
+    /// Initialize the scheduler state for the next scheduling region.
+    virtual void enterRegion(MachineBasicBlock *bb,
+                             MachineBasicBlock::iterator begin,
+                             MachineBasicBlock::iterator end,
+                             unsigned endcount);
+
+    /// Notify that the scheduler has finished scheduling the current region.
+    virtual void exitRegion();
 
     /// Schedule - Schedule the instruction range using list scheduling.
     ///
-    void Schedule();
+    void schedule();
+
+    void EmitSchedule();
 
     /// Observe - Update liveness information to account for the current
     /// instruction, which will not be scheduled.
     ///
     void Observe(MachineInstr *MI, unsigned Count);
 
-    /// FinishBlock - Clean up register live-range state.
+    /// finishBlock - Clean up register live-range state.
     ///
-    void FinishBlock();
+    void finishBlock();
 
     /// FixupKills - Fix register kill flags that have been made
     /// invalid due to scheduling
@@ -100,6 +114,8 @@ namespace llvm {
     // adjustments may be made to the instruction if necessary. Return
     // true if the operand has been deleted, false if not.
     bool ToggleKillFlag(MachineInstr *MI, MachineOperand &MO);
+
+    void dumpSchedule() const;
   };
 }
 

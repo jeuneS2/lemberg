@@ -1,4 +1,4 @@
-//===- X86Disassembler.h - Disassembler for x86 and x86_64 ------*- C++ -*-===//
+//===-- X86Disassembler.h - Disassembler for x86 and x86_64 -----*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -78,7 +78,7 @@
   const char*             name;
 
 #define INSTRUCTION_IDS               \
-  const InstrUID *instructionIDs;
+  unsigned instructionIDs;
 
 #include "X86DisassemblerDecoderCommon.h"
 
@@ -87,11 +87,11 @@
 
 #include "llvm/MC/MCDisassembler.h"
 
-struct InternalInstruction;
-
 namespace llvm {
   
 class MCInst;
+class MCInstrInfo;
+class MCSubtargetInfo;
 class MemoryObject;
 class raw_ostream;
 
@@ -103,53 +103,33 @@ namespace X86Disassembler {
 ///   All each platform class should have to do is subclass the constructor, and
 ///   provide a different disassemblerMode value.
 class X86GenericDisassembler : public MCDisassembler {
-protected:
+  const MCInstrInfo *MII;
+public:
   /// Constructor     - Initializes the disassembler.
   ///
   /// @param mode     - The X86 architecture mode to decode for.
-  X86GenericDisassembler(DisassemblerMode mode);
-public:
+  X86GenericDisassembler(const MCSubtargetInfo &STI, DisassemblerMode mode,
+                         const MCInstrInfo *MII);
+private:
   ~X86GenericDisassembler();
+public:
 
   /// getInstruction - See MCDisassembler.
-  bool getInstruction(MCInst &instr,
-                      uint64_t &size,
-                      const MemoryObject &region,
-                      uint64_t address,
-                      raw_ostream &vStream) const;
+  DecodeStatus getInstruction(MCInst &instr,
+                              uint64_t &size,
+                              const MemoryObject &region,
+                              uint64_t address,
+                              raw_ostream &vStream,
+                              raw_ostream &cStream) const;
 
   /// getEDInfo - See MCDisassembler.
-  EDInstInfo *getEDInfo() const;
+  const EDInstInfo *getEDInfo() const;
 private:
   DisassemblerMode              fMode;
 };
 
-/// X86_16Disassembler - 16-bit X86 disassembler.
-class X86_16Disassembler : public X86GenericDisassembler {
-public:
-  X86_16Disassembler() :
-    X86GenericDisassembler(MODE_16BIT) {
-  }
-};  
-
-/// X86_16Disassembler - 32-bit X86 disassembler.
-class X86_32Disassembler : public X86GenericDisassembler {
-public:
-  X86_32Disassembler() :
-    X86GenericDisassembler(MODE_32BIT) {
-  }
-};
-
-/// X86_16Disassembler - 64-bit X86 disassembler.
-class X86_64Disassembler : public X86GenericDisassembler {
-public:
-  X86_64Disassembler() :
-    X86GenericDisassembler(MODE_64BIT) {
-  }
-};
-
 } // namespace X86Disassembler
-  
+
 } // namespace llvm
-  
+
 #endif

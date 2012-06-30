@@ -29,7 +29,7 @@
 using namespace llvm;
 
 bool LLLexer::Error(LocTy ErrorLoc, const Twine &Msg) const {
-  ErrorInfo = SM.GetMessage(ErrorLoc, Msg, "error");
+  ErrorInfo = SM.GetMessage(ErrorLoc, SourceMgr::DK_Error, Msg);
   return true;
 }
 
@@ -55,18 +55,22 @@ uint64_t LLLexer::atoull(const char *Buffer, const char *End) {
   return Result;
 }
 
+static char parseHexChar(char C) {
+  if (C >= '0' && C <= '9')
+    return C-'0';
+  if (C >= 'A' && C <= 'F')
+    return C-'A'+10;
+  if (C >= 'a' && C <= 'f')
+    return C-'a'+10;
+  return 0;
+}
+
 uint64_t LLLexer::HexIntToVal(const char *Buffer, const char *End) {
   uint64_t Result = 0;
   for (; Buffer != End; ++Buffer) {
     uint64_t OldRes = Result;
     Result *= 16;
-    char C = *Buffer;
-    if (C >= '0' && C <= '9')
-      Result += C-'0';
-    else if (C >= 'A' && C <= 'F')
-      Result += C-'A'+10;
-    else if (C >= 'a' && C <= 'f')
-      Result += C-'a'+10;
+    Result += parseHexChar(*Buffer);
 
     if (Result < OldRes) {   // Uh, oh, overflow detected!!!
       Error("constant bigger than 64 bits detected!");
@@ -82,24 +86,12 @@ void LLLexer::HexToIntPair(const char *Buffer, const char *End,
   for (int i=0; i<16; i++, Buffer++) {
     assert(Buffer != End);
     Pair[0] *= 16;
-    char C = *Buffer;
-    if (C >= '0' && C <= '9')
-      Pair[0] += C-'0';
-    else if (C >= 'A' && C <= 'F')
-      Pair[0] += C-'A'+10;
-    else if (C >= 'a' && C <= 'f')
-      Pair[0] += C-'a'+10;
+    Pair[0] += parseHexChar(*Buffer);
   }
   Pair[1] = 0;
   for (int i=0; i<16 && Buffer != End; i++, Buffer++) {
     Pair[1] *= 16;
-    char C = *Buffer;
-    if (C >= '0' && C <= '9')
-      Pair[1] += C-'0';
-    else if (C >= 'A' && C <= 'F')
-      Pair[1] += C-'A'+10;
-    else if (C >= 'a' && C <= 'f')
-      Pair[1] += C-'a'+10;
+    Pair[1] += parseHexChar(*Buffer);
   }
   if (Buffer != End)
     Error("constant bigger than 128 bits detected!");
@@ -113,24 +105,12 @@ void LLLexer::FP80HexToIntPair(const char *Buffer, const char *End,
   for (int i=0; i<4 && Buffer != End; i++, Buffer++) {
     assert(Buffer != End);
     Pair[1] *= 16;
-    char C = *Buffer;
-    if (C >= '0' && C <= '9')
-      Pair[1] += C-'0';
-    else if (C >= 'A' && C <= 'F')
-      Pair[1] += C-'A'+10;
-    else if (C >= 'a' && C <= 'f')
-      Pair[1] += C-'a'+10;
+    Pair[1] += parseHexChar(*Buffer);
   }
   Pair[0] = 0;
   for (int i=0; i<16; i++, Buffer++) {
     Pair[0] *= 16;
-    char C = *Buffer;
-    if (C >= '0' && C <= '9')
-      Pair[0] += C-'0';
-    else if (C >= 'A' && C <= 'F')
-      Pair[0] += C-'A'+10;
-    else if (C >= 'a' && C <= 'f')
-      Pair[0] += C-'a'+10;
+    Pair[0] += parseHexChar(*Buffer);
   }
   if (Buffer != End)
     Error("constant bigger than 128 bits detected!");
@@ -149,9 +129,7 @@ static void UnEscapeLexed(std::string &Str) {
         *BOut++ = '\\'; // Two \ becomes one
         BIn += 2;
       } else if (BIn < EndBuffer-2 && isxdigit(BIn[1]) && isxdigit(BIn[2])) {
-        char Tmp = BIn[3]; BIn[3] = 0;      // Terminate string
-        *BOut = (char)strtol(BIn+1, 0, 16); // Convert to number
-        BIn[3] = Tmp;                       // Restore character
+        *BOut = parseHexChar(BIn[1]) * 16 + parseHexChar(BIn[2]);
         BIn += 3;                           // Skip over handled chars
         ++BOut;
       } else {
@@ -308,16 +286,8 @@ lltok::Kind LLLexer::LexAt() {
   }
 
   // Handle GlobalVarName: @[-a-zA-Z$._][-a-zA-Z$._0-9]*
-  if (isalpha(CurPtr[0]) || CurPtr[0] == '-' || CurPtr[0] == '$' ||
-      CurPtr[0] == '.' || CurPtr[0] == '_') {
-    ++CurPtr;
-    while (isalnum(CurPtr[0]) || CurPtr[0] == '-' || CurPtr[0] == '$' ||
-           CurPtr[0] == '.' || CurPtr[0] == '_')
-      ++CurPtr;
-
-    StrVal.assign(TokStart+1, CurPtr);   // Skip @
+  if (ReadVarName())
     return lltok::GlobalVar;
-  }
 
   // Handle GlobalVarID: @[0-9]+
   if (isdigit(CurPtr[0])) {
@@ -334,6 +304,39 @@ lltok::Kind LLLexer::LexAt() {
   return lltok::Error;
 }
 
+/// ReadString - Read a string until the closing quote.
+lltok::Kind LLLexer::ReadString(lltok::Kind kind) {
+  const char *Start = CurPtr;
+  while (1) {
+    int CurChar = getNextChar();
+
+    if (CurChar == EOF) {
+      Error("end of file in string constant");
+      return lltok::Error;
+    }
+    if (CurChar == '"') {
+      StrVal.assign(Start, CurPtr-1);
+      UnEscapeLexed(StrVal);
+      return kind;
+    }
+  }
+}
+
+/// ReadVarName - Read the rest of a token containing a variable name.
+bool LLLexer::ReadVarName() {
+  const char *NameStart = CurPtr;
+  if (isalpha(CurPtr[0]) || CurPtr[0] == '-' || CurPtr[0] == '$' ||
+      CurPtr[0] == '.' || CurPtr[0] == '_') {
+    ++CurPtr;
+    while (isalnum(CurPtr[0]) || CurPtr[0] == '-' || CurPtr[0] == '$' ||
+           CurPtr[0] == '.' || CurPtr[0] == '_')
+      ++CurPtr;
+
+    StrVal.assign(NameStart, CurPtr);
+    return true;
+  }
+  return false;
+}
 
 /// LexPercent - Lex all tokens that start with a % character:
 ///   LocalVar   ::= %\"[^\"]*\"
@@ -343,33 +346,12 @@ lltok::Kind LLLexer::LexPercent() {
   // Handle LocalVarName: %\"[^\"]*\"
   if (CurPtr[0] == '"') {
     ++CurPtr;
-
-    while (1) {
-      int CurChar = getNextChar();
-
-      if (CurChar == EOF) {
-        Error("end of file in string constant");
-        return lltok::Error;
-      }
-      if (CurChar == '"') {
-        StrVal.assign(TokStart+2, CurPtr-1);
-        UnEscapeLexed(StrVal);
-        return lltok::LocalVar;
-      }
-    }
+    return ReadString(lltok::LocalVar);
   }
 
   // Handle LocalVarName: %[-a-zA-Z$._][-a-zA-Z$._0-9]*
-  if (isalpha(CurPtr[0]) || CurPtr[0] == '-' || CurPtr[0] == '$' ||
-      CurPtr[0] == '.' || CurPtr[0] == '_') {
-    ++CurPtr;
-    while (isalnum(CurPtr[0]) || CurPtr[0] == '-' || CurPtr[0] == '$' ||
-           CurPtr[0] == '.' || CurPtr[0] == '_')
-      ++CurPtr;
-
-    StrVal.assign(TokStart+1, CurPtr);   // Skip %
+  if (ReadVarName())
     return lltok::LocalVar;
-  }
 
   // Handle LocalVarID: %[0-9]+
   if (isdigit(CurPtr[0])) {
@@ -390,38 +372,16 @@ lltok::Kind LLLexer::LexPercent() {
 ///   QuoteLabel        "[^"]+":
 ///   StringConstant    "[^"]*"
 lltok::Kind LLLexer::LexQuote() {
-  while (1) {
-    int CurChar = getNextChar();
+  lltok::Kind kind = ReadString(lltok::StringConstant);
+  if (kind == lltok::Error || kind == lltok::Eof)
+    return kind;
 
-    if (CurChar == EOF) {
-      Error("end of file in quoted string");
-      return lltok::Error;
-    }
-
-    if (CurChar != '"') continue;
-
-    if (CurPtr[0] != ':') {
-      StrVal.assign(TokStart+1, CurPtr-1);
-      UnEscapeLexed(StrVal);
-      return lltok::StringConstant;
-    }
-
+  if (CurPtr[0] == ':') {
     ++CurPtr;
-    StrVal.assign(TokStart+1, CurPtr-2);
-    UnEscapeLexed(StrVal);
-    return lltok::LabelStr;
+    kind = lltok::LabelStr;
   }
-}
 
-static bool JustWhitespaceNewLine(const char *&Ptr) {
-  const char *ThisPtr = Ptr;
-  while (*ThisPtr == ' ' || *ThisPtr == '\t')
-    ++ThisPtr;
-  if (*ThisPtr == '\n' || *ThisPtr == '\r') {
-    Ptr = ThisPtr;
-    return true;
-  }
-  return false;
+  return kind;
 }
 
 /// LexExclaim:
@@ -429,13 +389,15 @@ static bool JustWhitespaceNewLine(const char *&Ptr) {
 ///    !
 lltok::Kind LLLexer::LexExclaim() {
   // Lex a metadata name as a MetadataVar.
-  if (isalpha(CurPtr[0])) {
+  if (isalpha(CurPtr[0]) || CurPtr[0] == '-' || CurPtr[0] == '$' ||
+      CurPtr[0] == '.' || CurPtr[0] == '_' || CurPtr[0] == '\\') {
     ++CurPtr;
     while (isalnum(CurPtr[0]) || CurPtr[0] == '-' || CurPtr[0] == '$' ||
-           CurPtr[0] == '.' || CurPtr[0] == '_')
+           CurPtr[0] == '.' || CurPtr[0] == '_' || CurPtr[0] == '\\')
       ++CurPtr;
 
     StrVal.assign(TokStart+1, CurPtr);   // Skip !
+    UnEscapeLexed(StrVal);
     return lltok::MetadataVar;
   }
   return lltok::exclaim;
@@ -487,7 +449,6 @@ lltok::Kind LLLexer::LexIdentifier() {
   if (Len == strlen(#STR) && !memcmp(StartChar, #STR, strlen(#STR))) \
     return lltok::kw_##STR;
 
-  KEYWORD(begin);   KEYWORD(end);
   KEYWORD(true);    KEYWORD(false);
   KEYWORD(declare); KEYWORD(define);
   KEYWORD(global);  KEYWORD(constant);
@@ -520,9 +481,19 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(tail);
   KEYWORD(target);
   KEYWORD(triple);
+  KEYWORD(unwind);
   KEYWORD(deplibs);
   KEYWORD(datalayout);
   KEYWORD(volatile);
+  KEYWORD(atomic);
+  KEYWORD(unordered);
+  KEYWORD(monotonic);
+  KEYWORD(acquire);
+  KEYWORD(release);
+  KEYWORD(acq_rel);
+  KEYWORD(seq_cst);
+  KEYWORD(singlethread);
+
   KEYWORD(nuw);
   KEYWORD(nsw);
   KEYWORD(exact);
@@ -565,6 +536,8 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(nest);
   KEYWORD(readnone);
   KEYWORD(readonly);
+  KEYWORD(uwtable);
+  KEYWORD(returns_twice);
 
   KEYWORD(inlinehint);
   KEYWORD(noinline);
@@ -575,7 +548,8 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(noredzone);
   KEYWORD(noimplicitfloat);
   KEYWORD(naked);
-  KEYWORD(hotpatch);
+  KEYWORD(nonlazybind);
+  KEYWORD(address_safety);
 
   KEYWORD(type);
   KEYWORD(opaque);
@@ -585,8 +559,16 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(oeq); KEYWORD(one); KEYWORD(olt); KEYWORD(ogt); KEYWORD(ole);
   KEYWORD(oge); KEYWORD(ord); KEYWORD(uno); KEYWORD(ueq); KEYWORD(une);
 
+  KEYWORD(xchg); KEYWORD(nand); KEYWORD(max); KEYWORD(min); KEYWORD(umax);
+  KEYWORD(umin);
+
   KEYWORD(x);
   KEYWORD(blockaddress);
+
+  KEYWORD(personality);
+  KEYWORD(cleanup);
+  KEYWORD(catch);
+  KEYWORD(filter);
 #undef KEYWORD
 
   // Keywords for types.
@@ -594,6 +576,7 @@ lltok::Kind LLLexer::LexIdentifier() {
   if (Len == strlen(STR) && !memcmp(StartChar, STR, strlen(STR))) { \
     TyVal = LLVMTY; return lltok::Type; }
   TYPEKEYWORD("void",      Type::getVoidTy(Context));
+  TYPEKEYWORD("half",      Type::getHalfTy(Context));
   TYPEKEYWORD("float",     Type::getFloatTy(Context));
   TYPEKEYWORD("double",    Type::getDoubleTy(Context));
   TYPEKEYWORD("x86_fp80",  Type::getX86_FP80Ty(Context));
@@ -603,26 +586,6 @@ lltok::Kind LLLexer::LexIdentifier() {
   TYPEKEYWORD("metadata",  Type::getMetadataTy(Context));
   TYPEKEYWORD("x86_mmx",   Type::getX86_MMXTy(Context));
 #undef TYPEKEYWORD
-
-  // Handle special forms for autoupgrading.  Drop these in LLVM 3.0.  This is
-  // to avoid conflicting with the sext/zext instructions, below.
-  if (Len == 4 && !memcmp(StartChar, "sext", 4)) {
-    // Scan CurPtr ahead, seeing if there is just whitespace before the newline.
-    if (JustWhitespaceNewLine(CurPtr))
-      return lltok::kw_signext;
-  } else if (Len == 4 && !memcmp(StartChar, "zext", 4)) {
-    // Scan CurPtr ahead, seeing if there is just whitespace before the newline.
-    if (JustWhitespaceNewLine(CurPtr))
-      return lltok::kw_zeroext;
-  } else if (Len == 6 && !memcmp(StartChar, "malloc", 6)) {
-    // FIXME: Remove in LLVM 3.0.
-    // Autoupgrade malloc instruction.
-    return lltok::kw_malloc;
-  } else if (Len == 4 && !memcmp(StartChar, "free", 4)) {
-    // FIXME: Remove in LLVM 3.0.
-    // Autoupgrade malloc instruction.
-    return lltok::kw_free;
-  }
 
   // Keywords for instructions.
 #define INSTKEYWORD(STR, Enum) \
@@ -659,20 +622,23 @@ lltok::Kind LLLexer::LexIdentifier() {
   INSTKEYWORD(switch,      Switch);
   INSTKEYWORD(indirectbr,  IndirectBr);
   INSTKEYWORD(invoke,      Invoke);
-  INSTKEYWORD(unwind,      Unwind);
+  INSTKEYWORD(resume,      Resume);
   INSTKEYWORD(unreachable, Unreachable);
 
   INSTKEYWORD(alloca,      Alloca);
   INSTKEYWORD(load,        Load);
   INSTKEYWORD(store,       Store);
+  INSTKEYWORD(cmpxchg,     AtomicCmpXchg);
+  INSTKEYWORD(atomicrmw,   AtomicRMW);
+  INSTKEYWORD(fence,       Fence);
   INSTKEYWORD(getelementptr, GetElementPtr);
 
   INSTKEYWORD(extractelement, ExtractElement);
   INSTKEYWORD(insertelement,  InsertElement);
   INSTKEYWORD(shufflevector,  ShuffleVector);
-  INSTKEYWORD(getresult,      ExtractValue);
   INSTKEYWORD(extractvalue,   ExtractValue);
   INSTKEYWORD(insertvalue,    InsertValue);
+  INSTKEYWORD(landingpad,     LandingPad);
 #undef INSTKEYWORD
 
   // Check for [us]0x[0-9A-Fa-f]+ which are Hexadecimal constant generated by
@@ -693,14 +659,6 @@ lltok::Kind LLLexer::LexIdentifier() {
   if (TokStart[0] == 'c' && TokStart[1] == 'c') {
     CurPtr = TokStart+2;
     return lltok::kw_cc;
-  }
-
-  // If this starts with "call", return it as CALL.  This is to support old
-  // broken .ll files.  FIXME: remove this with LLVM 3.0.
-  if (CurPtr-TokStart > 4 && !memcmp(TokStart, "call", 4)) {
-    CurPtr = TokStart+4;
-    UIntVal = Instruction::Call;
-    return lltok::kw_call;
   }
 
   // Finally, if this isn't known, return an error.
@@ -737,7 +695,7 @@ lltok::Kind LLLexer::Lex0x() {
   if (Kind == 'J') {
     // HexFPConstant - Floating point constant represented in IEEE format as a
     // hexadecimal number for when exponential notation is not precise enough.
-    // Float and double only.
+    // Half, Float, and double only.
     APFloatVal = APFloat(BitsToDouble(HexIntToVal(TokStart+2, CurPtr)));
     return lltok::APFloat;
   }
@@ -748,17 +706,17 @@ lltok::Kind LLLexer::Lex0x() {
   case 'K':
     // F80HexFPConstant - x87 long double in hexadecimal format (10 bytes)
     FP80HexToIntPair(TokStart+3, CurPtr, Pair);
-    APFloatVal = APFloat(APInt(80, 2, Pair));
+    APFloatVal = APFloat(APInt(80, Pair));
     return lltok::APFloat;
   case 'L':
     // F128HexFPConstant - IEEE 128-bit in hexadecimal format (16 bytes)
     HexToIntPair(TokStart+3, CurPtr, Pair);
-    APFloatVal = APFloat(APInt(128, 2, Pair), true);
+    APFloatVal = APFloat(APInt(128, Pair), true);
     return lltok::APFloat;
   case 'M':
     // PPC128HexFPConstant - PowerPC 128-bit in hexadecimal format (16 bytes)
     HexToIntPair(TokStart+3, CurPtr, Pair);
-    APFloatVal = APFloat(APInt(128, 2, Pair));
+    APFloatVal = APFloat(APInt(128, Pair));
     return lltok::APFloat;
   }
 }

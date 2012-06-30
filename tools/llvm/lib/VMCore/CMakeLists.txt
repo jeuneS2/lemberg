@@ -11,6 +11,7 @@ add_llvm_library(LLVMCore
   DebugLoc.cpp
   Dominators.cpp
   Function.cpp
+  GCOV.cpp
   GVMaterializer.cpp
   Globals.cpp
   IRBuilder.cpp
@@ -28,7 +29,6 @@ add_llvm_library(LLVMCore
   PassRegistry.cpp
   PrintModulePass.cpp
   Type.cpp
-  TypeSymbolTable.cpp
   Use.cpp
   User.cpp
   Value.cpp

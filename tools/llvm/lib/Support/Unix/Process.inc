@@ -136,7 +136,7 @@ int Process::GetCurrentGroupId() {
   return getgid();
 }
 
-#ifdef HAVE_MACH_MACH_H
+#if defined(HAVE_MACH_MACH_H) && !defined(__GNU__)
 #include <mach/mach.h>
 #endif
 
@@ -150,7 +150,7 @@ void Process::PreventCoreFiles() {
   setrlimit(RLIMIT_CORE, &rlim);
 #endif
 
-#ifdef HAVE_MACH_MACH_H
+#if defined(HAVE_MACH_MACH_H) && !defined(__GNU__)
   // Disable crash reporting on Mac OS X 10.0-10.4
 
   // get information about the original set of exception ports for the task
@@ -288,6 +288,10 @@ const char *Process::OutputColor(char code, bool bold, bool bg) {
 
 const char *Process::OutputBold(bool bg) {
   return "\033[1m";
+}
+
+const char *Process::OutputReverse() {
+  return "\033[7m";
 }
 
 const char *Process::ResetColor() {

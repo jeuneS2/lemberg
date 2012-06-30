@@ -76,12 +76,12 @@ define double @f7(double %a, double %b) {
 ; block generated, odds are good that we have close to the ideal code for this:
 ;
 ; CHECK-NEON:      _f8:
-; CHECK-NEON:      movw   [[REGISTER_1:r[0-9]+]], #1123
-; CHECK-NEON-NEXT: movs   [[REGISTER_2:r[0-9]+]], #0
-; CHECK-NEON-NEXT: cmp    r0, [[REGISTER_1]]
-; CHECK-NEON-NEXT: it     eq
-; CHECK-NEON-NEXT: moveq  [[REGISTER_2]], #4
-; CHECK-NEON-NEXT: adr    [[REGISTER_3:r[0-9]+]], #LCPI
+; CHECK-NEON:      adr     [[R2:r[0-9]+]], LCPI7_0
+; CHECK-NEON-NEXT: movw    [[R3:r[0-9]+]], #1123
+; CHECK-NEON-NEXT: adds    {{r.*}}, [[R2]], #4
+; CHECK-NEON-NEXT: cmp     r0, [[R3]]
+; CHECK-NEON-NEXT: it      ne
+; CHECK-NEON-NEXT: movne   {{r.*}}, [[R2]]
 ; CHECK-NEON-NEXT: ldr
 ; CHECK-NEON:      bx
 

@@ -9,8 +9,12 @@
 
 #include "llvm/Object/MachOObject.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/DataExtractor.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/Host.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/SwapByteOrder.h"
 
 using namespace llvm;
@@ -242,6 +246,18 @@ void MachOObject::ReadDysymtabLoadCommand(const LoadCommandInfo &LCI,
 }
 
 template<>
+void SwapStruct(macho::LinkeditDataLoadCommand &Value) {
+  SwapValue(Value.Type);
+  SwapValue(Value.Size);
+  SwapValue(Value.DataOffset);
+  SwapValue(Value.DataSize);
+}
+void MachOObject::ReadLinkeditDataLoadCommand(const LoadCommandInfo &LCI,
+                    InMemoryStruct<macho::LinkeditDataLoadCommand> &Res) const {
+  ReadInMemoryStruct(*this, Buffer->getBuffer(), LCI.Offset, Res);
+}
+
+template<>
 void SwapStruct(macho::IndirectSymbolTableEntry &Value) {
   SwapValue(Value.Index);
 }
@@ -339,4 +355,43 @@ void MachOObject::ReadSymbol64TableEntry(uint64_t SymbolTableOffset,
   uint64_t Offset = (SymbolTableOffset +
                      Index * sizeof(macho::Symbol64TableEntry));
   ReadInMemoryStruct(*this, Buffer->getBuffer(), Offset, Res);
+}
+
+
+void MachOObject::ReadULEB128s(uint64_t Index,
+                               SmallVectorImpl<uint64_t> &Out) const {
+  DataExtractor extractor(Buffer->getBuffer(), true, 0);
+
+  uint32_t offset = Index;
+  uint64_t data = 0;
+  while (uint64_t delta = extractor.getULEB128(&offset)) {
+    data += delta;
+    Out.push_back(data);
+  }
+}
+
+/* ** */
+// Object Dumping Facilities
+void MachOObject::dump() const { print(dbgs()); dbgs() << '\n'; }
+void MachOObject::dumpHeader() const { printHeader(dbgs()); dbgs() << '\n'; }
+
+void MachOObject::printHeader(raw_ostream &O) const {
+  O << "('cputype', " << Header.CPUType << ")\n";
+  O << "('cpusubtype', " << Header.CPUSubtype << ")\n";
+  O << "('filetype', " << Header.FileType << ")\n";
+  O << "('num_load_commands', " << Header.NumLoadCommands << ")\n";
+  O << "('load_commands_size', " << Header.SizeOfLoadCommands << ")\n";
+  O << "('flag', " << Header.Flags << ")\n";
+
+  // Print extended header if 64-bit.
+  if (is64Bit())
+    O << "('reserved', " << Header64Ext.Reserved << ")\n";
+}
+
+void MachOObject::print(raw_ostream &O) const {
+  O << "Header:\n";
+  printHeader(O);
+  O << "Load Commands:\n";
+
+  O << "Buffer:\n";
 }

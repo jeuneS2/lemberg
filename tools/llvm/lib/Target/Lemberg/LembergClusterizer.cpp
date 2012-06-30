@@ -18,7 +18,7 @@
 #include "llvm/CodeGen/LiveIntervalAnalysis.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
-#include "llvm/CodeGen/RegisterCoalescer.h"
+// #include "llvm/CodeGen/RegisterCoalescer.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Support/Debug.h"
@@ -56,7 +56,7 @@ namespace {
 			: MachineFunctionPass(ID), TM(tm), TII(tm.getInstrInfo()),
 			  NeighborhoodQueue(neighborhood(RegClasses, Neighbors)) {
 			
-			initializeRegisterCoalescerAnalysisGroup(*PassRegistry::getPassRegistry());
+			// initializeRegisterCoalescerPass(*PassRegistry::getPassRegistry());
 		}
 
 		virtual const char *getPassName() const {
@@ -128,8 +128,8 @@ void Clusterizer::getAnalysisUsage(AnalysisUsage &AU) const {
     AU.setPreservesCFG();
 	AU.addPreserved<LiveIntervals>();
 	AU.addPreserved<SlotIndexes>();
-    AU.addRequired<RegisterCoalescer>();
-    AU.addPreserved<RegisterCoalescer>();
+	// AU.addRequired<RegisterCoalescer>();
+	// AU.addPreserved<RegisterCoalescer>();
 	MachineFunctionPass::getAnalysisUsage(AU);
 }
 

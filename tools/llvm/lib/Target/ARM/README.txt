@@ -501,11 +501,6 @@ those operations and the ARMv6 scalar versions.
 
 //===---------------------------------------------------------------------===//
 
-ARM::MOVCCr is commutable (by flipping the condition). But we need to implement
-ARMInstrInfo::commuteInstruction() to support it.
-
-//===---------------------------------------------------------------------===//
-
 Split out LDR (literal) from normal ARM LDR instruction. Also consider spliting
 LDR into imm12 and so_reg forms. This allows us to clean up some code. e.g.
 ARMLoadStoreOptimizer does not need to look at LDR (literal) and LDR (so_reg)
@@ -681,3 +676,37 @@ is compiled and optimized to:
     str    r1, [r0]
 
 //===---------------------------------------------------------------------===//
+
+Improve codegen for select's:
+if (x != 0) x = 1
+if (x == 1) x = 1
+
+ARM codegen used to look like this:
+       mov     r1, r0
+       cmp     r1, #1
+       mov     r0, #0
+       moveq   r0, #1
+
+The naive lowering select between two different values. It should recognize the
+test is equality test so it's more a conditional move rather than a select:
+       cmp     r0, #1
+       movne   r0, #0
+
+Currently this is a ARM specific dag combine. We probably should make it into a
+target-neutral one.
+
+//===---------------------------------------------------------------------===//
+
+Optimize unnecessary checks for zero with __builtin_clz/ctz.  Those builtins
+are specified to be undefined at zero, so portable code must check for zero
+and handle it as a special case.  That is unnecessary on ARM where those
+operations are implemented in a way that is well-defined for zero.  For
+example:
+
+int f(int x) { return x ? __builtin_clz(x) : sizeof(int)*8; }
+
+should just be implemented with a CLZ instruction.  Since there are other
+targets, e.g., PPC, that share this behavior, it would be best to implement
+this in a target-independent way: we should probably fold that (when using
+"undefined at zero" semantics) to set the "defined at zero" bit and have
+the code generator expand out the right code.

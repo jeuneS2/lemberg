@@ -1,18 +1,16 @@
 set(LLVM_TARGET_DEFINITIONS MBlaze.td)
 
-tablegen(MBlazeGenRegisterInfo.h.inc -gen-register-desc-header)
-tablegen(MBlazeGenRegisterNames.inc -gen-register-enums)
-tablegen(MBlazeGenRegisterInfo.inc -gen-register-desc)
-tablegen(MBlazeGenInstrNames.inc -gen-instr-enums)
-tablegen(MBlazeGenInstrInfo.inc -gen-instr-desc)
-tablegen(MBlazeGenCodeEmitter.inc -gen-emitter)
-tablegen(MBlazeGenAsmWriter.inc -gen-asm-writer)
-tablegen(MBlazeGenAsmMatcher.inc -gen-asm-matcher)
-tablegen(MBlazeGenDAGISel.inc -gen-dag-isel)
-tablegen(MBlazeGenCallingConv.inc -gen-callingconv)
-tablegen(MBlazeGenSubtarget.inc -gen-subtarget)
-tablegen(MBlazeGenIntrinsics.inc -gen-tgt-intrinsic)
-tablegen(MBlazeGenEDInfo.inc -gen-enhanced-disassembly-info)
+tablegen(LLVM MBlazeGenRegisterInfo.inc -gen-register-info)
+tablegen(LLVM MBlazeGenInstrInfo.inc -gen-instr-info)
+tablegen(LLVM MBlazeGenCodeEmitter.inc -gen-emitter)
+tablegen(LLVM MBlazeGenAsmWriter.inc -gen-asm-writer)
+tablegen(LLVM MBlazeGenAsmMatcher.inc -gen-asm-matcher)
+tablegen(LLVM MBlazeGenDAGISel.inc -gen-dag-isel)
+tablegen(LLVM MBlazeGenCallingConv.inc -gen-callingconv)
+tablegen(LLVM MBlazeGenSubtargetInfo.inc -gen-subtarget)
+tablegen(LLVM MBlazeGenIntrinsics.inc -gen-tgt-intrinsic)
+tablegen(LLVM MBlazeGenEDInfo.inc -gen-enhanced-disassembly-info)
+add_public_tablegen_target(MBlazeCommonTableGen)
 
 add_llvm_target(MBlazeCodeGen
   MBlazeDelaySlotFiller.cpp
@@ -20,7 +18,7 @@ add_llvm_target(MBlazeCodeGen
   MBlazeISelDAGToDAG.cpp
   MBlazeISelLowering.cpp
   MBlazeFrameLowering.cpp
-  MBlazeMCAsmInfo.cpp
+  MBlazeMachineFunction.cpp
   MBlazeRegisterInfo.cpp
   MBlazeSubtarget.cpp
   MBlazeTargetMachine.cpp
@@ -28,13 +26,12 @@ add_llvm_target(MBlazeCodeGen
   MBlazeIntrinsicInfo.cpp
   MBlazeSelectionDAGInfo.cpp
   MBlazeAsmPrinter.cpp
-  MBlazeAsmBackend.cpp
   MBlazeMCInstLower.cpp
   MBlazeELFWriterInfo.cpp
-  MBlazeMCCodeEmitter.cpp
   )
 
 add_subdirectory(AsmParser)
 add_subdirectory(Disassembler)
 add_subdirectory(InstPrinter)
 add_subdirectory(TargetInfo)
+add_subdirectory(MCTargetDesc)

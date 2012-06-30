@@ -15,6 +15,7 @@
 #ifndef LLVM_APINT_H
 #define LLVM_APINT_H
 
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/MathExtras.h"
 #include <cassert>
 #include <climits>
@@ -22,11 +23,12 @@
 #include <string>
 
 namespace llvm {
-  class Serializer;
   class Deserializer;
   class FoldingSetNodeID;
-  class raw_ostream;
+  class Serializer;
   class StringRef;
+  class hash_code;
+  class raw_ostream;
 
   template<typename T>
   class SmallVectorImpl;
@@ -160,7 +162,7 @@ class APInt {
   /// not assume that the string is well-formed and (2) grows the
   /// result to hold the input.
   ///
-  /// @param radix 2, 8, 10, or 16
+  /// @param radix 2, 8, 10, 16, or 36
   /// @brief Convert a char array into an APInt
   void fromString(unsigned numBits, StringRef str, uint8_t radix);
 
@@ -175,6 +177,9 @@ class APInt {
 
   /// out-of-line slow case for inline constructor
   void initSlowCase(unsigned numBits, uint64_t val, bool isSigned);
+
+  /// shared code between two array constructors
+  void initFromArray(ArrayRef<uint64_t> array);
 
   /// out-of-line slow case for inline copy constructor
   void initSlowCase(const APInt& that);
@@ -230,19 +235,26 @@ public:
     clearUnusedBits();
   }
 
-  /// Note that numWords can be smaller or larger than the corresponding bit
-  /// width but any extraneous bits will be dropped.
+  /// Note that bigVal.size() can be smaller or larger than the corresponding
+  /// bit width but any extraneous bits will be dropped.
   /// @param numBits the bit width of the constructed APInt
-  /// @param numWords the number of words in bigVal
   /// @param bigVal a sequence of words to form the initial value of the APInt
   /// @brief Construct an APInt of numBits width, initialized as bigVal[].
+  APInt(unsigned numBits, ArrayRef<uint64_t> bigVal);
+  /// Equivalent to APInt(numBits, ArrayRef<uint64_t>(bigVal, numWords)), but
+  /// deprecated because this constructor is prone to ambiguity with the
+  /// APInt(unsigned, uint64_t, bool) constructor.
+  ///
+  /// If this overload is ever deleted, care should be taken to prevent calls
+  /// from being incorrectly captured by the APInt(unsigned, uint64_t, bool)
+  /// constructor.
   APInt(unsigned numBits, unsigned numWords, const uint64_t bigVal[]);
 
   /// This constructor interprets the string \arg str in the given radix. The
   /// interpretation stops when the first character that is not suitable for the
   /// radix is encountered, or the end of the string. Acceptable radix values
-  /// are 2, 8, 10 and 16. It is an error for the value implied by the string to
-  /// require more bits than numBits.
+  /// are 2, 8, 10, 16, and 36. It is an error for the value implied by the 
+  /// string to require more bits than numBits.
   ///
   /// @param numBits the bit width of the constructed APInt
   /// @param str the string to be interpreted
@@ -342,7 +354,8 @@ public:
 
     if (isSingleWord())
       return isUIntN(N, VAL);
-    return APInt(N, getNumWords(), pVal).zext(getBitWidth()) == (*this);
+    return APInt(N, makeArrayRef(pVal, getNumWords())).zext(getBitWidth())
+      == (*this);
   }
 
   /// @brief Check if this APInt has an N-bits signed integer value.
@@ -485,15 +498,13 @@ public:
     if (loBitsSet == APINT_BITS_PER_WORD)
       return APInt(numBits, -1ULL);
     // For small values, return quickly.
-    if (numBits < APINT_BITS_PER_WORD)
-      return APInt(numBits, (1ULL << loBitsSet) - 1);
+    if (loBitsSet <= APINT_BITS_PER_WORD)
+      return APInt(numBits, -1ULL >> (APINT_BITS_PER_WORD - loBitsSet));
     return getAllOnesValue(numBits).lshr(numBits - loBitsSet);
   }
 
-  /// The hash value is computed as the sum of the words and the bit width.
-  /// @returns A hash value computed from the sum of the APInt words.
-  /// @brief Get a hash value based on this APInt
-  uint64_t getHashValue() const;
+  /// \brief Overload to compute a hash_code for an APInt value.
+  friend hash_code hash_value(const APInt &Arg);
 
   /// This function returns a pointer to the internal storage of the APInt.
   /// This is useful for writing out the APInt in binary form without any
@@ -550,7 +561,15 @@ public:
   /// Performs logical negation operation on this APInt.
   /// @returns true if *this is zero, false otherwise.
   /// @brief Logical negation operator.
-  bool operator!() const;
+  bool operator!() const {
+    if (isSingleWord())
+      return !VAL;
+
+    for (unsigned i = 0; i != getNumWords(); ++i)
+      if (pVal[i])
+        return false;
+    return true;
+  }
 
   /// @}
   /// @name Assignment Operators
@@ -818,11 +837,16 @@ public:
   APInt usub_ov(const APInt &RHS, bool &Overflow) const;
   APInt sdiv_ov(const APInt &RHS, bool &Overflow) const;
   APInt smul_ov(const APInt &RHS, bool &Overflow) const;
+  APInt umul_ov(const APInt &RHS, bool &Overflow) const;
   APInt sshl_ov(unsigned Amt, bool &Overflow) const;
 
   /// @returns the bit value at bitPosition
   /// @brief Array-indexing support.
-  bool operator[](unsigned bitPosition) const;
+  bool operator[](unsigned bitPosition) const {
+    assert(bitPosition < getBitWidth() && "Bit position out of bounds!");
+    return (maskBit(bitPosition) &
+            (isSingleWord() ? VAL : pVal[whichWord(bitPosition)])) != 0;
+  }
 
   /// @}
   /// @name Comparison Operators
@@ -1043,6 +1067,16 @@ public:
   /// @brief Zero extend or truncate to width
   APInt zextOrTrunc(unsigned width) const;
 
+  /// Make this APInt have the bit width given by \p width. The value is sign
+  /// extended, or left alone to make it that width.
+  /// @brief Sign extend or truncate to width
+  APInt sextOrSelf(unsigned width) const;
+
+  /// Make this APInt have the bit width given by \p width. The value is zero
+  /// extended, or left alone to make it that width.
+  /// @brief Zero extend or truncate to width
+  APInt zextOrSelf(unsigned width) const;
+
   /// @}
   /// @name Bit Manipulation Operators
   /// @{
@@ -1240,18 +1274,19 @@ public:
 
   /// toString - Converts an APInt to a string and append it to Str.  Str is
   /// commonly a SmallString.
-  void toString(SmallVectorImpl<char> &Str, unsigned Radix, bool Signed) const;
+  void toString(SmallVectorImpl<char> &Str, unsigned Radix, bool Signed,
+                bool formatAsCLiteral = false) const;
 
   /// Considers the APInt to be unsigned and converts it into a string in the
-  /// radix given. The radix can be 2, 8, 10 or 16.
+  /// radix given. The radix can be 2, 8, 10 16, or 36.
   void toStringUnsigned(SmallVectorImpl<char> &Str, unsigned Radix = 10) const {
-    toString(Str, Radix, false);
+    toString(Str, Radix, false, false);
   }
 
   /// Considers the APInt to be signed and converts it into a string in the
-  /// radix given. The radix can be 2, 8, 10 or 16.
+  /// radix given. The radix can be 2, 8, 10, 16, or 36.
   void toStringSigned(SmallVectorImpl<char> &Str, unsigned Radix = 10) const {
-    toString(Str, Radix, true);
+    toString(Str, Radix, true, false);
   }
 
   /// toString - This returns the APInt as a std::string.  Note that this is an
@@ -1372,7 +1407,7 @@ public:
 
   /// Calculate the magic number for unsigned division by a constant.
   struct mu;
-  mu magicu() const;
+  mu magicu(unsigned LeadingZeros = 0) const;
 
   /// @}
   /// @name Building-block Operations for APInt and APFloat

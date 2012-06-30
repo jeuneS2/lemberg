@@ -15,12 +15,15 @@
 
 #include "Profiling.h"
 #include "llvm/Analysis/ProfileInfoTypes.h"
+#include "llvm/Support/DataTypes.h"
 #include <sys/types.h>
+#if !defined(_MSC_VER) && !defined(__MINGW32__)
 #include <unistd.h>
+#else
+#include <io.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <stdint.h>
 #include <stdio.h>
 
 /* note that this is used for functions with large path counts,
@@ -104,8 +107,8 @@ void writeArrayTable(uint32_t fNumber, ftEntry_t* ft, uint32_t* funcCount) {
   }
 }
 
-inline uint32_t hash (uint32_t key) {
-  /* this may benifit from a proper hash function */
+static uint32_t hash (uint32_t key) {
+  /* this may benefit from a proper hash function */
   return key%ARBITRARY_HASH_BIN_COUNT;
 }
 
@@ -147,7 +150,8 @@ void writeHashTable(uint32_t functionNumber, pathHashTable_t* hashTable) {
 }
 
 /* Return a pointer to this path's specific path counter */
-inline uint32_t* getPathCounter(uint32_t functionNumber, uint32_t pathNumber) {
+static uint32_t* getPathCounter(uint32_t functionNumber,
+                                       uint32_t pathNumber) {
   pathHashTable_t* hashTable;
   pathHashEntry_t* hashEntry;
   uint32_t index = hash(pathNumber);
@@ -214,7 +218,7 @@ void llvm_decrement_path_count (uint32_t functionNumber, uint32_t pathNumber) {
  *      +-----------------+-----------------+
  *
  */
-static void pathProfAtExitHandler() {
+static void pathProfAtExitHandler(void) {
   int outFile = getOutFile();
   uint32_t i;
   uint32_t header[2] = { PathInfo, 0 };

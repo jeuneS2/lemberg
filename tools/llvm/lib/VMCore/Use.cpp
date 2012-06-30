@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Value.h"
+#include <new>
 
 namespace llvm {
 
@@ -135,11 +136,9 @@ void Use::zap(Use *Start, const Use *Stop, bool del) {
 
 User *Use::getUser() const {
   const Use *End = getImpliedUser();
-  const PointerIntPair<User*, 1, unsigned>&
-    ref(static_cast<const AugmentedUse*>(End - 1)->ref);
-  User *She = ref.getPointer();
-  return ref.getInt()
-    ? She
+  const UserRef *ref = reinterpret_cast<const UserRef*>(End);
+  return ref->getInt()
+    ? ref->getPointer()
     : (User*)End;
 }
 

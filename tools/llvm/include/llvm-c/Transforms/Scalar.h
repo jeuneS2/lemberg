@@ -25,6 +25,13 @@
 extern "C" {
 #endif
 
+/**
+ * @defgroup LLVMCTransformsScalar Scalar transformations
+ * @ingroup LLVMCTransforms
+ *
+ * @{
+ */
+
 /** See llvm::createAggressiveDCEPass function. */
 void LLVMAddAggressiveDCEPass(LLVMPassManagerRef PM);
 
@@ -52,6 +59,9 @@ void LLVMAddLICMPass(LLVMPassManagerRef PM);
 /** See llvm::createLoopDeletionPass function. */
 void LLVMAddLoopDeletionPass(LLVMPassManagerRef PM);
 
+/** See llvm::createLoopIdiomPass function */
+void LLVMAddLoopIdiomPass(LLVMPassManagerRef PM);
+
 /** See llvm::createLoopRotatePass function. */
 void LLVMAddLoopRotatePass(LLVMPassManagerRef PM);
 
@@ -77,6 +87,9 @@ void LLVMAddSCCPPass(LLVMPassManagerRef PM);
 void LLVMAddScalarReplAggregatesPass(LLVMPassManagerRef PM);
 
 /** See llvm::createScalarReplAggregatesPass function. */
+void LLVMAddScalarReplAggregatesPassSSA(LLVMPassManagerRef PM);
+
+/** See llvm::createScalarReplAggregatesPass function. */
 void LLVMAddScalarReplAggregatesPassWithThreshold(LLVMPassManagerRef PM,
                                                   int Threshold);
 
@@ -94,6 +107,25 @@ void LLVMAddDemoteMemoryToRegisterPass(LLVMPassManagerRef PM);
 
 /** See llvm::createVerifierPass function. */
 void LLVMAddVerifierPass(LLVMPassManagerRef PM);
+
+/** See llvm::createCorrelatedValuePropagationPass function */
+void LLVMAddCorrelatedValuePropagationPass(LLVMPassManagerRef PM);
+
+/** See llvm::createEarlyCSEPass function */
+void LLVMAddEarlyCSEPass(LLVMPassManagerRef PM);
+
+/** See llvm::createLowerExpectIntrinsicPass function */
+void LLVMAddLowerExpectIntrinsicPass(LLVMPassManagerRef PM);
+
+/** See llvm::createTypeBasedAliasAnalysisPass function */
+void LLVMAddTypeBasedAliasAnalysisPass(LLVMPassManagerRef PM);
+
+/** See llvm::createBasicAliasAnalysisPass function */
+void LLVMAddBasicAliasAnalysisPass(LLVMPassManagerRef PM);
+
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }

@@ -19,7 +19,7 @@ class MCSectionData;
 class MCExpr;
 class MCFragment;
 class MCDataFragment;
-class TargetAsmBackend;
+class MCAsmBackend;
 class raw_ostream;
 
 /// \brief Streaming object file generation interface.
@@ -34,10 +34,15 @@ class MCObjectStreamer : public MCStreamer {
   MCSectionData *CurSectionData;
 
   virtual void EmitInstToData(const MCInst &Inst) = 0;
+  virtual void EmitCFIStartProcImpl(MCDwarfFrameInfo &Frame);
+  virtual void EmitCFIEndProcImpl(MCDwarfFrameInfo &Frame);
 
 protected:
-  MCObjectStreamer(MCContext &Context, TargetAsmBackend &TAB,
+  MCObjectStreamer(MCContext &Context, MCAsmBackend &TAB,
                    raw_ostream &_OS, MCCodeEmitter *_Emitter);
+  MCObjectStreamer(MCContext &Context, MCAsmBackend &TAB,
+                   raw_ostream &_OS, MCCodeEmitter *_Emitter,
+                   MCAssembler *_Assembler);
   ~MCObjectStreamer();
 
   MCSectionData *getCurrentSectionData() const {
@@ -60,20 +65,22 @@ public:
 
   virtual void EmitLabel(MCSymbol *Symbol);
   virtual void EmitValueImpl(const MCExpr *Value, unsigned Size,
-                             bool isPCRel, unsigned AddrSpace);
-  virtual void EmitULEB128Value(const MCExpr *Value, unsigned AddrSpace = 0);
-  virtual void EmitSLEB128Value(const MCExpr *Value, unsigned AddrSpace = 0);
+                             unsigned AddrSpace);
+  virtual void EmitULEB128Value(const MCExpr *Value);
+  virtual void EmitSLEB128Value(const MCExpr *Value);
   virtual void EmitWeakReference(MCSymbol *Alias, const MCSymbol *Symbol);
   virtual void ChangeSection(const MCSection *Section);
   virtual void EmitInstruction(const MCInst &Inst);
   virtual void EmitInstToFragment(const MCInst &Inst);
-  virtual void EmitValueToOffset(const MCExpr *Offset, unsigned char Value);
+  virtual bool EmitValueToOffset(const MCExpr *Offset, unsigned char Value);
   virtual void EmitDwarfAdvanceLineAddr(int64_t LineDelta,
                                         const MCSymbol *LastLabel,
-                                        const MCSymbol *Label);
+                                        const MCSymbol *Label,
+                                        unsigned PointerSize);
   virtual void EmitDwarfAdvanceFrameAddr(const MCSymbol *LastLabel,
                                          const MCSymbol *Label);
-  virtual void Finish();
+  virtual void EmitGPRel32Value(const MCExpr *Value);
+  virtual void FinishImpl();
 
   /// @}
 };

@@ -1,4 +1,4 @@
-; RUN: llc < %s -mtriple=arm-apple-darwin -mcpu=cortex-a8 -asm-verbose=false | FileCheck %s
+; RUN: llc < %s -mtriple=arm-apple-darwin -relocation-model=dynamic-no-pic -mcpu=cortex-a8 -asm-verbose=false | FileCheck %s
 
 declare void @bar(i32)
 declare void @car(i32)
@@ -16,11 +16,11 @@ declare i8* @choose(i8*, i8*)
 
 ; CHECK: tail_duplicate_me:
 ; CHECK:      qux
-; CHECK:      qux
 ; CHECK:      movw r{{[0-9]+}}, :lower16:_GHJK
 ; CHECK:      movt r{{[0-9]+}}, :upper16:_GHJK
 ; CHECK:      str r
 ; CHECK-NEXT: bx r
+; CHECK:      qux
 ; CHECK:      movw r{{[0-9]+}}, :lower16:_GHJK
 ; CHECK:      movt r{{[0-9]+}}, :upper16:_GHJK
 ; CHECK:      str r

@@ -7,20 +7,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/StringExtras.h"
-#include "llvm/Target/TargetAsmLexer.h"
-#include "llvm/Target/TargetRegistry.h"
+#include "MCTargetDesc/X86BaseInfo.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCParser/MCAsmLexer.h"
 #include "llvm/MC/MCParser/MCParsedAsmOperand.h"
-#include "X86.h"
+#include "llvm/MC/MCTargetAsmLexer.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/ADT/SmallVector.h"
 
 using namespace llvm;
 
 namespace {
   
-class X86AsmLexer : public TargetAsmLexer {
+class X86AsmLexer : public MCTargetAsmLexer {
   const MCAsmInfo &AsmInfo;
   
   bool tentativeIsValid;
@@ -60,8 +59,8 @@ protected:
     }
   }
 public:
-  X86AsmLexer(const Target &T, const MCAsmInfo &MAI)
-    : TargetAsmLexer(T), AsmInfo(MAI), tentativeIsValid(false) {
+  X86AsmLexer(const Target &T, const MCRegisterInfo &MRI, const MCAsmInfo &MAI)
+    : MCTargetAsmLexer(T), AsmInfo(MAI), tentativeIsValid(false) {
   }
 };
 
@@ -144,11 +143,7 @@ AsmToken X86AsmLexer::LexTokenIntel() {
     SetError(Lexer->getErrLoc(), Lexer->getErr());
     return lexedToken;
   case AsmToken::Identifier: {
-    std::string upperCase = lexedToken.getString().str();
-    std::string lowerCase = LowercaseString(upperCase);
-    StringRef lowerRef(lowerCase);
-    
-    unsigned regID = MatchRegisterName(lowerRef);
+    unsigned regID = MatchRegisterName(lexedToken.getString().lower());
     
     if (regID)
       return AsmToken(AsmToken::Register,
@@ -160,6 +155,6 @@ AsmToken X86AsmLexer::LexTokenIntel() {
 }
 
 extern "C" void LLVMInitializeX86AsmLexer() {
-  RegisterAsmLexer<X86AsmLexer> X(TheX86_32Target);
-  RegisterAsmLexer<X86AsmLexer> Y(TheX86_64Target);
+  RegisterMCAsmLexer<X86AsmLexer> X(TheX86_32Target);
+  RegisterMCAsmLexer<X86AsmLexer> Y(TheX86_64Target);
 }

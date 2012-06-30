@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm-c/Analysis.h"
+#include "llvm-c/Initialization.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Analysis/Verifier.h"
 #include <cstring>
@@ -23,6 +24,8 @@ void llvm::initializeAnalysis(PassRegistry &Registry) {
   initializeAliasSetPrinterPass(Registry);
   initializeNoAAPass(Registry);
   initializeBasicAliasAnalysisPass(Registry);
+  initializeBlockFrequencyInfoPass(Registry);
+  initializeBranchProbabilityInfoPass(Registry);
   initializeCFGViewerPass(Registry);
   initializeCFGPrinterPass(Registry);
   initializeCFGOnlyViewerPass(Registry);
@@ -49,7 +52,6 @@ void llvm::initializeAnalysis(PassRegistry &Registry) {
   initializeMemoryDependenceAnalysisPass(Registry);
   initializeModuleDebugInfoPrinterPass(Registry);
   initializePostDominatorTreePass(Registry);
-  initializePostDominanceFrontierPass(Registry);
   initializeProfileEstimatorPassPass(Registry);
   initializeNoProfileInfoPass(Registry);
   initializeNoPathProfileInfoPass(Registry);

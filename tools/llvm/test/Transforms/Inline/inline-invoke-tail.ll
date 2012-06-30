@@ -4,7 +4,7 @@
 define internal void @foo(i32* %p, i32* %q) {
 	%pp = bitcast i32* %p to i8*
 	%qq = bitcast i32* %q to i8*
-	tail call void @llvm.memcpy.i32(i8* %pp, i8* %qq, i32 4, i32 1)
+	tail call void @llvm.memcpy.p0i8.p0i8.i32(i8* %pp, i8* %qq, i32 4, i32 1, i1 false)
 	ret void
 }
 
@@ -23,13 +23,11 @@ invcont:
 	ret i32 %retval
 
 lpad:
-	%eh_ptr = call i8* @llvm.eh.exception()
-	%eh_select = call i32 (i8*, i8*, ...)* @llvm.eh.selector.i32(i8* %eh_ptr, i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*), i8* null)
+        %exn = landingpad {i8*, i32} personality i32 (...)* @__gxx_personality_v0
+            catch i8* null
 	unreachable
 }
 
-declare i8* @llvm.eh.exception() nounwind
-
-declare i32 @llvm.eh.selector.i32(i8*, i8*, ...) nounwind
-
 declare i32 @__gxx_personality_v0(...)
+
+declare void @llvm.memcpy.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, i1) nounwind

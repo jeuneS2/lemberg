@@ -1,6 +1,6 @@
-; These are tests for SSE3 codegen.  Yonah has SSE3 and earlier but not SSSE3+.
+; These are tests for SSE3 codegen.
 
-; RUN: llc < %s -march=x86-64 -mcpu=yonah -mtriple=i686-apple-darwin9 -O3 \
+; RUN: llc < %s -march=x86-64 -mcpu=nocona -mtriple=i686-apple-darwin9 -O3 \
 ; RUN:              | FileCheck %s --check-prefix=X64
 
 ; Test for v8xi16 lowering where we extract the first element of the vector and
@@ -16,10 +16,8 @@ entry:
 	ret void
         
 ; X64: t0:
-; X64: 	movddup	(%rsi), %xmm0
-; X64:  pshuflw	$0, %xmm0, %xmm0
-; X64:	xorl	%eax, %eax
-; X64:	pinsrw	$0, %eax, %xmm0
+; X64:	movdqa	(%rsi), %xmm0
+; X64:	pslldq	$2, %xmm0
 ; X64:	movdqa	%xmm0, (%rdi)
 ; X64:	ret
 }
@@ -31,9 +29,8 @@ define <8 x i16> @t1(<8 x i16>* %A, <8 x i16>* %B) nounwind {
 	ret <8 x i16> %tmp3
         
 ; X64: t1:
-; X64: 	movl	(%rsi), %eax
 ; X64: 	movdqa	(%rdi), %xmm0
-; X64: 	pinsrw	$0, %eax, %xmm0
+; X64: 	pinsrw	$0, (%rsi), %xmm0
 ; X64: 	ret
 }
 
@@ -62,11 +59,10 @@ define <8 x i16> @t4(<8 x i16> %A, <8 x i16> %B) nounwind {
 	%tmp = shufflevector <8 x i16> %A, <8 x i16> %B, <8 x i32> < i32 0, i32 7, i32 2, i32 3, i32 1, i32 5, i32 6, i32 5 >
 	ret <8 x i16> %tmp
 ; X64: t4:
-; X64: 	pextrw	$7, %xmm0, %eax
-; X64: 	pshufhw	$100, %xmm0, %xmm1
-; X64: 	pinsrw	$1, %eax, %xmm1
-; X64: 	pextrw	$1, %xmm0, %eax
-; X64: 	movdqa	%xmm1, %xmm0
+; X64: 	pextrw	$7, [[XMM0:%xmm[0-9]+]], %eax
+; X64: 	pshufhw	$100, [[XMM0]], [[XMM1:%xmm[0-9]+]]
+; X64: 	pinsrw	$1, %eax, [[XMM1]]
+; X64: 	pextrw	$1, [[XMM0]], %eax
 ; X64: 	pinsrw	$4, %eax, %xmm0
 ; X64: 	ret
 }
@@ -168,12 +164,12 @@ define internal void @t10() nounwind {
         store <4 x i16> %6, <4 x i16>* @g2, align 8
         ret void
 ; X64: 	t10:
-; X64: 		pextrw	$4, %xmm0, %eax
-; X64: 		unpcklpd %xmm1, %xmm1
-; X64: 		pshuflw	$8, %xmm1, %xmm1
-; X64: 		pinsrw	$2, %eax, %xmm1
-; X64: 		pextrw	$6, %xmm0, %eax
-; X64: 		pinsrw	$3, %eax, %xmm1
+; X64: 		pextrw	$4, [[X0:%xmm[0-9]+]], %ecx
+; X64: 		pextrw	$6, [[X0]], %eax
+; X64: 		movlhps [[X0]], [[X0]]
+; X64: 		pshuflw	$8, [[X0]], [[X0]]
+; X64: 		pinsrw	$2, %ecx, [[X0]]
+; X64: 		pinsrw	$3, %eax, [[X0]]
 }
 
 
@@ -230,7 +226,7 @@ entry:
 }
 
 
-
+; FIXME: t15 is worse off from disabling of scheduler 2-address hack.
 define <8 x i16> @t15(<8 x i16> %T0, <8 x i16> %T1) nounwind readnone {
 entry:
         %tmp8 = shufflevector <8 x i16> %T0, <8 x i16> %T1, <8 x i32> < i32 undef, i32 undef, i32 7, i32 2, i32 8, i32 undef, i32 undef , i32 undef >
@@ -251,13 +247,11 @@ entry:
         %tmp9 = shufflevector <16 x i8> %tmp8, <16 x i8> %T0,  <16 x i32> < i32 0, i32 1, i32 2, i32 17,  i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef , i32 undef >
         ret <16 x i8> %tmp9
 ; X64: 	t16:
-; X64: 		pinsrw	$0, %eax, %xmm1
 ; X64: 		pextrw	$8, %xmm0, %eax
-; X64: 		pinsrw	$1, %eax, %xmm1
-; X64: 		pextrw	$1, %xmm1, %ecx
-; X64: 		movd	%xmm1, %edx
-; X64: 		pinsrw	$0, %edx, %xmm1
-; X64: 		pinsrw	$1, %eax, %xmm0
+; X64: 		pslldq	$2, %xmm0
+; X64: 		movd	%xmm0, %ecx
+; X64: 		pextrw	$1, %xmm0, %edx
+; X64: 		pinsrw	$0, %ecx, %xmm0
 ; X64: 		ret
 }
 

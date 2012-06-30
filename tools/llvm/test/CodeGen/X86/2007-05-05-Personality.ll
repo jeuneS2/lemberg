@@ -1,34 +1,33 @@
-; RUN: llc < %s -mtriple=i686-pc-linux-gnu -o - | grep zPL
+; RUN: llc < %s -mtriple=i686-pc-linux-gnu -o - | FileCheck %s
 
-@error = external global i8		; <i8*> [#uses=2]
+; CHECK: .cfi_personality 0, __gnat_eh_personality
+; CHECK: .cfi_lsda 0, .Lexception0
+
+@error = external global i8
 
 define void @_ada_x() {
 entry:
-	invoke void @raise( )
-			to label %eh_then unwind label %unwind
+  invoke void @raise()
+          to label %eh_then unwind label %unwind
 
-unwind:		; preds = %entry
-	%eh_ptr = tail call i8* @llvm.eh.exception( )		; <i8*> [#uses=2]
-	%eh_select = tail call i32 (i8*, i8*, ...)* @llvm.eh.selector.i32( i8* %eh_ptr, i8* bitcast (i32 (...)* @__gnat_eh_personality to i8*), i8* @error )		; <i32> [#uses=1]
-	%eh_typeid = tail call i32 @llvm.eh.typeid.for.i32( i8* @error )		; <i32> [#uses=1]
-	%tmp2 = icmp eq i32 %eh_select, %eh_typeid		; <i1> [#uses=1]
-	br i1 %tmp2, label %eh_then, label %Unwind
+unwind:                                           ; preds = %entry 
+  %eh_ptr = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gnat_eh_personality to i8*)
+              catch i8* @error
+  %eh_select = extractvalue { i8*, i32 } %eh_ptr, 1
+  %eh_typeid = tail call i32 @llvm.eh.typeid.for(i8* @error)
+  %tmp2 = icmp eq i32 %eh_select, %eh_typeid
+  br i1 %tmp2, label %eh_then, label %Unwind
 
-eh_then:		; preds = %unwind, %entry
-	ret void
+eh_then:                                          ; preds = %unwind, %entry
+  ret void
 
-Unwind:		; preds = %unwind
-	tail call i32 (...)* @_Unwind_Resume( i8* %eh_ptr )		; <i32>:0 [#uses=0]
-	unreachable
+Unwind:                                           ; preds = %unwind
+  resume { i8*, i32 } %eh_ptr
 }
 
 declare void @raise()
 
-declare i8* @llvm.eh.exception()
-
-declare i32 @llvm.eh.selector.i32(i8*, i8*, ...)
-
-declare i32 @llvm.eh.typeid.for.i32(i8*)
+declare i32 @llvm.eh.typeid.for(i8*) nounwind
 
 declare i32 @__gnat_eh_personality(...)
 

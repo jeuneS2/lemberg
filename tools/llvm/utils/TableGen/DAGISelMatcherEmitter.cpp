@@ -13,7 +13,7 @@
 
 #include "DAGISelMatcher.h"
 #include "CodeGenDAGPatterns.h"
-#include "Record.h"
+#include "llvm/TableGen/Record.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringMap.h"
@@ -33,8 +33,12 @@ OmitComments("omit-comments", cl::desc("Do not generate comments"),
 namespace {
 class MatcherTableEmitter {
   const CodeGenDAGPatterns &CGP;
-  StringMap<unsigned> NodePredicateMap, PatternPredicateMap;
-  std::vector<std::string> NodePredicates, PatternPredicates;
+  
+  DenseMap<TreePattern *, unsigned> NodePredicateMap;
+  std::vector<TreePredicateFn> NodePredicates;
+  
+  StringMap<unsigned> PatternPredicateMap;
+  std::vector<std::string> PatternPredicates;
 
   DenseMap<const ComplexPattern*, unsigned> ComplexPatternMap;
   std::vector<const ComplexPattern*> ComplexPatterns;
@@ -43,11 +47,9 @@ class MatcherTableEmitter {
   DenseMap<Record*, unsigned> NodeXFormMap;
   std::vector<Record*> NodeXForms;
 
-  bool useEmitRegister2;
-
 public:
-  MatcherTableEmitter(const CodeGenDAGPatterns &cgp, bool _useEmitRegister2)
-    : CGP(cgp), useEmitRegister2(_useEmitRegister2) {}
+  MatcherTableEmitter(const CodeGenDAGPatterns &cgp)
+    : CGP(cgp) {}
 
   unsigned EmitMatcherList(const Matcher *N, unsigned Indent,
                            unsigned StartIdx, formatted_raw_ostream &OS);
@@ -59,14 +61,15 @@ private:
   unsigned EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
                        formatted_raw_ostream &OS);
 
-  unsigned getNodePredicate(StringRef PredName) {
-    unsigned &Entry = NodePredicateMap[PredName];
+  unsigned getNodePredicate(TreePredicateFn Pred) {
+    unsigned &Entry = NodePredicateMap[Pred.getOrigPatFragRecord()];
     if (Entry == 0) {
-      NodePredicates.push_back(PredName.str());
+      NodePredicates.push_back(Pred);
       Entry = NodePredicates.size();
     }
     return Entry-1;
   }
+  
   unsigned getPatternPredicate(StringRef PredName) {
     unsigned &Entry = PatternPredicateMap[PredName];
     if (Entry == 0) {
@@ -75,7 +78,6 @@ private:
     }
     return Entry-1;
   }
-
   unsigned getComplexPat(const ComplexPattern &P) {
     unsigned &Entry = ComplexPatternMap[&P];
     if (Entry == 0) {
@@ -241,7 +243,7 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
     return 2;
 
   case Matcher::CheckPatternPredicate: {
-    StringRef Pred = cast<CheckPatternPredicateMatcher>(N)->getPredicate();
+    StringRef Pred =cast<CheckPatternPredicateMatcher>(N)->getPredicate();
     OS << "OPC_CheckPatternPredicate, " << getPatternPredicate(Pred) << ',';
     if (!OmitComments)
       OS.PadToColumn(CommentIndent) << "// " << Pred;
@@ -249,10 +251,10 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
     return 2;
   }
   case Matcher::CheckPredicate: {
-    StringRef Pred = cast<CheckPredicateMatcher>(N)->getPredicateName();
+    TreePredicateFn Pred = cast<CheckPredicateMatcher>(N)->getPredicate();
     OS << "OPC_CheckPredicate, " << getNodePredicate(Pred) << ',';
     if (!OmitComments)
-      OS.PadToColumn(CommentIndent) << "// " << Pred;
+      OS.PadToColumn(CommentIndent) << "// " << Pred.getFnName();
     OS << '\n';
     return 2;
   }
@@ -431,25 +433,20 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
     return 3;
   }
 
-  case Matcher::EmitRegister:
-    if (useEmitRegister2) {
-      OS << "OPC_EmitRegister2, "
-        << getEnumName(cast<EmitRegisterMatcher>(N)->getVT()) << ", ";
-      if (Record *R = cast<EmitRegisterMatcher>(N)->getReg())
-        OS << "TARGET_VAL(" << getQualifiedName(R) << "),\n";
-      else {
-        OS << "TARGET_VAL(0) ";
-        if (!OmitComments)
-          OS << "/*zero_reg*/";
-        OS << ",\n";
-      }
+  case Matcher::EmitRegister: {
+    const EmitRegisterMatcher *Matcher = cast<EmitRegisterMatcher>(N);
+    const CodeGenRegister *Reg = Matcher->getReg();
+    // If the enum value of the register is larger than one byte can handle,
+    // use EmitRegister2.
+    if (Reg && Reg->EnumValue > 255) {
+      OS << "OPC_EmitRegister2, " << getEnumName(Matcher->getVT()) << ", ";
+      OS << "TARGET_VAL(" << getQualifiedName(Reg->TheDef) << "),\n";
       return 4;
     } else {
-      OS << "OPC_EmitRegister, "
-        << getEnumName(cast<EmitRegisterMatcher>(N)->getVT()) << ", ";
-      if (Record *R = cast<EmitRegisterMatcher>(N)->getReg())
-        OS << getQualifiedName(R) << ",\n";
-      else {
+      OS << "OPC_EmitRegister, " << getEnumName(Matcher->getVT()) << ", ";
+      if (Reg) {
+        OS << getQualifiedName(Reg->TheDef) << ",\n";
+      } else {
         OS << "0 ";
         if (!OmitComments)
           OS << "/*zero_reg*/";
@@ -457,6 +454,7 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
       }
       return 3;
     }
+  }
 
   case Matcher::EmitConvertToTarget:
     OS << "OPC_EmitConvertToTarget, "
@@ -575,8 +573,7 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
     return 2 + NumResultBytes;
   }
   }
-  assert(0 && "Unreachable");
-  return 0;
+  llvm_unreachable("Unreachable");
 }
 
 /// EmitMatcherList - Emit the bytes for the specified matcher subtree.
@@ -603,7 +600,7 @@ void MatcherTableEmitter::EmitPredicateFunctions(formatted_raw_ostream &OS) {
   if (!PatternPredicates.empty()) {
     OS << "bool CheckPatternPredicate(unsigned PredNo) const {\n";
     OS << "  switch (PredNo) {\n";
-    OS << "  default: assert(0 && \"Invalid predicate in table?\");\n";
+    OS << "  default: llvm_unreachable(\"Invalid predicate in table?\");\n";
     for (unsigned i = 0, e = PatternPredicates.size(); i != e; ++i)
       OS << "  case " << i << ": return "  << PatternPredicates[i] << ";\n";
     OS << "  }\n";
@@ -621,27 +618,15 @@ void MatcherTableEmitter::EmitPredicateFunctions(formatted_raw_ostream &OS) {
   if (!NodePredicates.empty()) {
     OS << "bool CheckNodePredicate(SDNode *Node, unsigned PredNo) const {\n";
     OS << "  switch (PredNo) {\n";
-    OS << "  default: assert(0 && \"Invalid predicate in table?\");\n";
+    OS << "  default: llvm_unreachable(\"Invalid predicate in table?\");\n";
     for (unsigned i = 0, e = NodePredicates.size(); i != e; ++i) {
-      // FIXME: Storing this by name is horrible.
-      TreePattern *P =PFsByName[NodePredicates[i].substr(strlen("Predicate_"))];
-      assert(P && "Unknown name?");
-
       // Emit the predicate code corresponding to this pattern.
-      std::string Code = P->getRecord()->getValueAsCode("Predicate");
-      assert(!Code.empty() && "No code in this predicate");
-      OS << "  case " << i << ": { // " << NodePredicates[i] << '\n';
-      std::string ClassName;
-      if (P->getOnlyTree()->isLeaf())
-        ClassName = "SDNode";
-      else
-        ClassName =
-          CGP.getSDNodeInfo(P->getOnlyTree()->getOperator()).getSDClassName();
-      if (ClassName == "SDNode")
-        OS << "    SDNode *N = Node;\n";
-      else
-        OS << "    " << ClassName << "*N = cast<" << ClassName << ">(Node);\n";
-      OS << Code << "\n  }\n";
+      TreePredicateFn PredFn = NodePredicates[i];
+      
+      assert(!PredFn.isAlwaysTrue() && "No code in this predicate");
+      OS << "  case " << i << ": { // " << NodePredicates[i].getFnName() <<'\n';
+      
+      OS << PredFn.getCodeToRunOnSDNode() << "\n  }\n";
     }
     OS << "  }\n";
     OS << "}\n\n";
@@ -655,7 +640,7 @@ void MatcherTableEmitter::EmitPredicateFunctions(formatted_raw_ostream &OS) {
     OS << "         SmallVectorImpl<std::pair<SDValue, SDNode*> > &Result) {\n";
     OS << "  unsigned NextRes = Result.size();\n";
     OS << "  switch (PatternNo) {\n";
-    OS << "  default: assert(0 && \"Invalid pattern # in table?\");\n";
+    OS << "  default: llvm_unreachable(\"Invalid pattern # in table?\");\n";
     for (unsigned i = 0, e = ComplexPatterns.size(); i != e; ++i) {
       const ComplexPattern &P = *ComplexPatterns[i];
       unsigned NumOps = P.getNumOperands();
@@ -693,7 +678,7 @@ void MatcherTableEmitter::EmitPredicateFunctions(formatted_raw_ostream &OS) {
   if (!NodeXForms.empty()) {
     OS << "SDValue RunSDNodeXForm(SDValue V, unsigned XFormNo) {\n";
     OS << "  switch (XFormNo) {\n";
-    OS << "  default: assert(0 && \"Invalid xform # in table?\");\n";
+    OS << "  default: llvm_unreachable(\"Invalid xform # in table?\");\n";
 
     // FIXME: The node xform could take SDValue's instead of SDNode*'s.
     for (unsigned i = 0, e = NodeXForms.size(); i != e; ++i) {
@@ -800,14 +785,13 @@ void MatcherTableEmitter::EmitHistogram(const Matcher *M,
 
 void llvm::EmitMatcherTable(const Matcher *TheMatcher,
                             const CodeGenDAGPatterns &CGP,
-                            bool useEmitRegister2,
                             raw_ostream &O) {
   formatted_raw_ostream OS(O);
 
   OS << "// The main instruction selector code.\n";
   OS << "SDNode *SelectCode(SDNode *N) {\n";
 
-  MatcherTableEmitter MatcherEmitter(CGP, useEmitRegister2);
+  MatcherTableEmitter MatcherEmitter(CGP);
 
   OS << "  // Some target values are emitted as 2 bytes, TARGET_VAL handles\n";
   OS << "  // this.\n";

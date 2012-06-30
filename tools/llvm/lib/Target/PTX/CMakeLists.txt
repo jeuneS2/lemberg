@@ -1,26 +1,32 @@
 set(LLVM_TARGET_DEFINITIONS PTX.td)
 
-tablegen(PTXGenAsmWriter.inc -gen-asm-writer)
-tablegen(PTXGenDAGISel.inc -gen-dag-isel)
-tablegen(PTXGenInstrInfo.inc -gen-instr-desc)
-tablegen(PTXGenInstrNames.inc -gen-instr-enums)
-tablegen(PTXGenRegisterInfo.inc -gen-register-desc)
-tablegen(PTXGenRegisterInfo.h.inc -gen-register-desc-header)
-tablegen(PTXGenRegisterNames.inc -gen-register-enums)
-tablegen(PTXGenSubtarget.inc -gen-subtarget)
+tablegen(LLVM PTXGenAsmWriter.inc -gen-asm-writer)
+tablegen(LLVM PTXGenDAGISel.inc -gen-dag-isel)
+tablegen(LLVM PTXGenInstrInfo.inc -gen-instr-info)
+tablegen(LLVM PTXGenRegisterInfo.inc -gen-register-info)
+tablegen(LLVM PTXGenSubtargetInfo.inc -gen-subtarget)
+add_public_tablegen_target(PTXCommonTableGen)
 
 add_llvm_target(PTXCodeGen
   PTXAsmPrinter.cpp
   PTXISelDAGToDAG.cpp
   PTXISelLowering.cpp
   PTXInstrInfo.cpp
+  PTXFPRoundingModePass.cpp
   PTXFrameLowering.cpp
-  PTXMCAsmInfo.cpp
   PTXMCAsmStreamer.cpp
+  PTXMCInstLower.cpp
   PTXMFInfoExtract.cpp
+  PTXMachineFunctionInfo.cpp
+  PTXParamManager.cpp
+  PTXRegAlloc.cpp
   PTXRegisterInfo.cpp
+  PTXSelectionDAGInfo.cpp
   PTXSubtarget.cpp
   PTXTargetMachine.cpp
   )
 
 add_subdirectory(TargetInfo)
+add_subdirectory(InstPrinter)
+add_subdirectory(MCTargetDesc)
+

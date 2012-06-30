@@ -32,7 +32,7 @@
 #include "llvm/Support/raw_ostream.h"
 using namespace llvm;
 
-static cl::opt<bool> 
+static cl::opt<bool>
 SplitEdges("machine-sink-split",
            cl::desc("Split critical edges during machine sinking"),
            cl::init(true), cl::Hidden);
@@ -90,12 +90,19 @@ namespace {
     bool AllUsesDominatedByBlock(unsigned Reg, MachineBasicBlock *MBB,
                                  MachineBasicBlock *DefMBB,
                                  bool &BreakPHIEdge, bool &LocalUse) const;
+    MachineBasicBlock *FindSuccToSinkTo(MachineInstr *MI, MachineBasicBlock *MBB,
+               bool &BreakPHIEdge);
+    bool isProfitableToSinkTo(unsigned Reg, MachineInstr *MI,
+                              MachineBasicBlock *MBB,
+                              MachineBasicBlock *SuccToSinkTo);
+
     bool PerformTrivialForwardCoalescing(MachineInstr *MI,
                                          MachineBasicBlock *MBB);
   };
 } // end anonymous namespace
 
 char MachineSinking::ID = 0;
+char &llvm::MachineSinkingID = MachineSinking::ID;
 INITIALIZE_PASS_BEGIN(MachineSinking, "machine-sink",
                 "Machine code sinking", false, false)
 INITIALIZE_PASS_DEPENDENCY(MachineDominatorTree)
@@ -103,8 +110,6 @@ INITIALIZE_PASS_DEPENDENCY(MachineLoopInfo)
 INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
 INITIALIZE_PASS_END(MachineSinking, "machine-sink",
                 "Machine code sinking", false, false)
-
-FunctionPass *llvm::createMachineSinkingPass() { return new MachineSinking(); }
 
 bool MachineSinking::PerformTrivialForwardCoalescing(MachineInstr *MI,
                                                      MachineBasicBlock *MBB) {
@@ -147,13 +152,9 @@ MachineSinking::AllUsesDominatedByBlock(unsigned Reg,
   assert(TargetRegisterInfo::isVirtualRegister(Reg) &&
          "Only makes sense for vregs");
 
+  // Ignore debug uses because debug info doesn't affect the code.
   if (MRI->use_nodbg_empty(Reg))
     return true;
-
-  // Ignoring debug uses is necessary so debug info doesn't affect the code.
-  // This may leave a referencing dbg_value in the original block, before
-  // the definition of the vreg.  Dwarf generator handles this although the
-  // user might not get the right info at runtime.
 
   // BreakPHIEdge is true if all the uses are in the successor MBB being sunken
   // into and they are all PHI nodes. In this case, machine-sink must break
@@ -265,8 +266,11 @@ bool MachineSinking::ProcessBlock(MachineBasicBlock &MBB) {
     if (MI->isDebugValue())
       continue;
 
-    if (PerformTrivialForwardCoalescing(MI, &MBB))
+    bool Joined = PerformTrivialForwardCoalescing(MI, &MBB);
+    if (Joined) {
+      MadeChange = true;
       continue;
+    }
 
     if (SinkInstruction(MI, SawStore))
       ++NumSunk, MadeChange = true;
@@ -288,7 +292,7 @@ bool MachineSinking::isWorthBreakingCriticalEdge(MachineInstr *MI,
   if (!CEBCandidates.insert(std::make_pair(From, To)))
     return true;
 
-  if (!MI->isCopy() && !MI->getDesc().isAsCheapAsAMove())
+  if (!MI->isCopy() && !MI->isAsCheapAsAMove())
     return true;
 
   // MI is cheap, we probably don't want to break the critical edge for it.
@@ -379,35 +383,95 @@ static bool AvoidsSinking(MachineInstr *MI, MachineRegisterInfo *MRI) {
   return MI->isInsertSubreg() || MI->isSubregToReg() || MI->isRegSequence();
 }
 
-/// SinkInstruction - Determine whether it is safe to sink the specified machine
-/// instruction out of its current block into a successor.
-bool MachineSinking::SinkInstruction(MachineInstr *MI, bool &SawStore) {
-  // Don't sink insert_subreg, subreg_to_reg, reg_sequence. These are meant to
-  // be close to the source to make it easier to coalesce.
-  if (AvoidsSinking(MI, MRI))
+/// collectDebgValues - Scan instructions following MI and collect any
+/// matching DBG_VALUEs.
+static void collectDebugValues(MachineInstr *MI,
+                               SmallVector<MachineInstr *, 2> & DbgValues) {
+  DbgValues.clear();
+  if (!MI->getOperand(0).isReg())
+    return;
+
+  MachineBasicBlock::iterator DI = MI; ++DI;
+  for (MachineBasicBlock::iterator DE = MI->getParent()->end();
+       DI != DE; ++DI) {
+    if (!DI->isDebugValue())
+      return;
+    if (DI->getOperand(0).isReg() &&
+        DI->getOperand(0).getReg() == MI->getOperand(0).getReg())
+      DbgValues.push_back(DI);
+  }
+}
+
+/// isPostDominatedBy - Return true if A is post dominated by B.
+static bool isPostDominatedBy(MachineBasicBlock *A, MachineBasicBlock *B) {
+
+  // FIXME - Use real post dominator.
+  if (A->succ_size() != 2)
+    return false;
+  MachineBasicBlock::succ_iterator I = A->succ_begin();
+  if (B == *I)
+    ++I;
+  MachineBasicBlock *OtherSuccBlock = *I;
+  if (OtherSuccBlock->succ_size() != 1 ||
+      *(OtherSuccBlock->succ_begin()) != B)
     return false;
 
-  // Check if it's safe to move the instruction.
-  if (!MI->isSafeToMove(TII, AA, SawStore))
+  return true;
+}
+
+/// isProfitableToSinkTo - Return true if it is profitable to sink MI.
+bool MachineSinking::isProfitableToSinkTo(unsigned Reg, MachineInstr *MI,
+                                          MachineBasicBlock *MBB,
+                                          MachineBasicBlock *SuccToSinkTo) {
+  assert (MI && "Invalid MachineInstr!");
+  assert (SuccToSinkTo && "Invalid SinkTo Candidate BB");
+
+  if (MBB == SuccToSinkTo)
     return false;
 
-  // FIXME: This should include support for sinking instructions within the
-  // block they are currently in to shorten the live ranges.  We often get
-  // instructions sunk into the top of a large block, but it would be better to
-  // also sink them down before their first use in the block.  This xform has to
-  // be careful not to *increase* register pressure though, e.g. sinking
-  // "x = y + z" down if it kills y and z would increase the live ranges of y
-  // and z and only shrink the live range of x.
+  // It is profitable if SuccToSinkTo does not post dominate current block.
+  if (!isPostDominatedBy(MBB, SuccToSinkTo))
+      return true;
+
+  // Check if only use in post dominated block is PHI instruction.
+  bool NonPHIUse = false;
+  for (MachineRegisterInfo::use_nodbg_iterator
+         I = MRI->use_nodbg_begin(Reg), E = MRI->use_nodbg_end();
+       I != E; ++I) {
+    MachineInstr *UseInst = &*I;
+    MachineBasicBlock *UseBlock = UseInst->getParent();
+    if (UseBlock == SuccToSinkTo && !UseInst->isPHI())
+      NonPHIUse = true;
+  }
+  if (!NonPHIUse)
+    return true;
+
+  // If SuccToSinkTo post dominates then also it may be profitable if MI
+  // can further profitably sinked into another block in next round.
+  bool BreakPHIEdge = false;
+  // FIXME - If finding successor is compile time expensive then catch results.
+  if (MachineBasicBlock *MBB2 = FindSuccToSinkTo(MI, SuccToSinkTo, BreakPHIEdge))
+    return isProfitableToSinkTo(Reg, MI, SuccToSinkTo, MBB2);
+
+  // If SuccToSinkTo is final destination and it is a post dominator of current
+  // block then it is not profitable to sink MI into SuccToSinkTo block.
+  return false;
+}
+
+/// FindSuccToSinkTo - Find a successor to sink this instruction to.
+MachineBasicBlock *MachineSinking::FindSuccToSinkTo(MachineInstr *MI,
+                                   MachineBasicBlock *MBB,
+                                   bool &BreakPHIEdge) {
+
+  assert (MI && "Invalid MachineInstr!");
+  assert (MBB && "Invalid MachineBasicBlock!");
 
   // Loop over all the operands of the specified instruction.  If there is
   // anything we can't handle, bail out.
-  MachineBasicBlock *ParentBlock = MI->getParent();
 
   // SuccToSinkTo - This is the successor to sink this instruction to, once we
   // decide.
   MachineBasicBlock *SuccToSinkTo = 0;
-
-  bool BreakPHIEdge = false;
   for (unsigned i = 0, e = MI->getNumOperands(); i != e; ++i) {
     const MachineOperand &MO = MI->getOperand(i);
     if (!MO.isReg()) continue;  // Ignore non-register operands.
@@ -420,24 +484,11 @@ bool MachineSinking::SinkInstruction(MachineInstr *MI, bool &SawStore) {
         // If the physreg has no defs anywhere, it's just an ambient register
         // and we can freely move its uses. Alternatively, if it's allocatable,
         // it could get allocated to something with a def during allocation.
-        if (!MRI->def_empty(Reg))
-          return false;
-
-        if (AllocatableSet.test(Reg))
-          return false;
-
-        // Check for a def among the register's aliases too.
-        for (const unsigned *Alias = TRI->getAliasSet(Reg); *Alias; ++Alias) {
-          unsigned AliasReg = *Alias;
-          if (!MRI->def_empty(AliasReg))
-            return false;
-
-          if (AllocatableSet.test(AliasReg))
-            return false;
-        }
+        if (!MRI->isConstantPhysReg(Reg, *MBB->getParent()))
+          return NULL;
       } else if (!MO.isDead()) {
         // A def that isn't dead. We can't move it.
-        return false;
+        return NULL;
       }
     } else {
       // Virtual register uses are always safe to sink.
@@ -445,7 +496,7 @@ bool MachineSinking::SinkInstruction(MachineInstr *MI, bool &SawStore) {
 
       // If it's not safe to move defs of the register class, then abort.
       if (!TII->isSafeToMoveRegClassDefs(MRI->getRegClass(Reg)))
-        return false;
+        return NULL;
 
       // FIXME: This picks a successor to sink into based on having one
       // successor that dominates all the uses.  However, there are cases where
@@ -466,47 +517,78 @@ bool MachineSinking::SinkInstruction(MachineInstr *MI, bool &SawStore) {
         // If a previous operand picked a block to sink to, then this operand
         // must be sinkable to the same block.
         bool LocalUse = false;
-        if (!AllUsesDominatedByBlock(Reg, SuccToSinkTo, ParentBlock,
+        if (!AllUsesDominatedByBlock(Reg, SuccToSinkTo, MBB,
                                      BreakPHIEdge, LocalUse))
-          return false;
+          return NULL;
 
         continue;
       }
 
       // Otherwise, we should look at all the successors and decide which one
       // we should sink to.
-      for (MachineBasicBlock::succ_iterator SI = ParentBlock->succ_begin(),
-           E = ParentBlock->succ_end(); SI != E; ++SI) {
+      for (MachineBasicBlock::succ_iterator SI = MBB->succ_begin(),
+           E = MBB->succ_end(); SI != E; ++SI) {
+        MachineBasicBlock *SuccBlock = *SI;
         bool LocalUse = false;
-        if (AllUsesDominatedByBlock(Reg, *SI, ParentBlock,
+        if (AllUsesDominatedByBlock(Reg, SuccBlock, MBB,
                                     BreakPHIEdge, LocalUse)) {
-          SuccToSinkTo = *SI;
+          SuccToSinkTo = SuccBlock;
           break;
         }
         if (LocalUse)
           // Def is used locally, it's never safe to move this def.
-          return false;
+          return NULL;
       }
 
       // If we couldn't find a block to sink to, ignore this instruction.
       if (SuccToSinkTo == 0)
-        return false;
+        return NULL;
+      else if (!isProfitableToSinkTo(Reg, MI, MBB, SuccToSinkTo))
+        return NULL;
     }
   }
+
+  // It is not possible to sink an instruction into its own block.  This can
+  // happen with loops.
+  if (MBB == SuccToSinkTo)
+    return NULL;
+
+  // It's not safe to sink instructions to EH landing pad. Control flow into
+  // landing pad is implicitly defined.
+  if (SuccToSinkTo && SuccToSinkTo->isLandingPad())
+    return NULL;
+
+  return SuccToSinkTo;
+}
+
+/// SinkInstruction - Determine whether it is safe to sink the specified machine
+/// instruction out of its current block into a successor.
+bool MachineSinking::SinkInstruction(MachineInstr *MI, bool &SawStore) {
+  // Don't sink insert_subreg, subreg_to_reg, reg_sequence. These are meant to
+  // be close to the source to make it easier to coalesce.
+  if (AvoidsSinking(MI, MRI))
+    return false;
+
+  // Check if it's safe to move the instruction.
+  if (!MI->isSafeToMove(TII, AA, SawStore))
+    return false;
+
+  // FIXME: This should include support for sinking instructions within the
+  // block they are currently in to shorten the live ranges.  We often get
+  // instructions sunk into the top of a large block, but it would be better to
+  // also sink them down before their first use in the block.  This xform has to
+  // be careful not to *increase* register pressure though, e.g. sinking
+  // "x = y + z" down if it kills y and z would increase the live ranges of y
+  // and z and only shrink the live range of x.
+
+  bool BreakPHIEdge = false;
+  MachineBasicBlock *ParentBlock = MI->getParent();
+  MachineBasicBlock *SuccToSinkTo = FindSuccToSinkTo(MI, ParentBlock, BreakPHIEdge);
 
   // If there are no outputs, it must have side-effects.
   if (SuccToSinkTo == 0)
     return false;
 
-  // It's not safe to sink instructions to EH landing pad. Control flow into
-  // landing pad is implicitly defined.
-  if (SuccToSinkTo->isLandingPad())
-    return false;
-
-  // It is not possible to sink an instruction into its own block.  This can
-  // happen with loops.
-  if (MI->getParent() == SuccToSinkTo)
-    return false;
 
   // If the instruction to move defines a dead physical register which is live
   // when leaving the basic block, don't move it because it could turn into a
@@ -595,9 +677,21 @@ bool MachineSinking::SinkInstruction(MachineInstr *MI, bool &SawStore) {
   while (InsertPos != SuccToSinkTo->end() && InsertPos->isPHI())
     ++InsertPos;
 
+  // collect matching debug values.
+  SmallVector<MachineInstr *, 2> DbgValuesToSink;
+  collectDebugValues(MI, DbgValuesToSink);
+
   // Move the instruction.
   SuccToSinkTo->splice(InsertPos, ParentBlock, MI,
                        ++MachineBasicBlock::iterator(MI));
+
+  // Move debug values.
+  for (SmallVector<MachineInstr *, 2>::iterator DBI = DbgValuesToSink.begin(),
+         DBE = DbgValuesToSink.end(); DBI != DBE; ++DBI) {
+    MachineInstr *DbgMI = *DBI;
+    SuccToSinkTo->splice(InsertPos, ParentBlock,  DbgMI,
+                         ++MachineBasicBlock::iterator(DbgMI));
+  }
 
   // Conservatively, clear any kill flags, since it's possible that they are no
   // longer correct.

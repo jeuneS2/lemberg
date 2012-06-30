@@ -61,6 +61,8 @@ static bool GetX86CpuIDAndInfo(unsigned value, unsigned *rEAX,
     *rECX = registers[2];
     *rEDX = registers[3];
     return false;
+  #else
+    return true;
   #endif
 #elif defined(i386) || defined(__i386__) || defined(__x86__) || defined(_M_IX86)
   #if defined(__GNUC__)
@@ -87,9 +89,14 @@ static bool GetX86CpuIDAndInfo(unsigned value, unsigned *rEAX,
       mov   dword ptr [esi],edx
     }
     return false;
+// pedantic #else returns to appease -Wunreachable-code (so we don't generate
+// postprocessed code that looks like "return true; return false;")
+  #else
+    return true;
   #endif
-#endif
+#else
   return true;
+#endif
 }
 
 static void DetectX86FamilyModel(unsigned EAX, unsigned &Family,
@@ -213,7 +220,15 @@ std::string sys::getHostCPUName() {
       case 30: // Intel(R) Core(TM) i7 CPU         870  @ 2.93GHz.
                // As found in a Summer 2010 model iMac.
       case 37: // Intel Core i7, laptop version.
+      case 44: // Intel Core i7 processor and Intel Xeon processor. All
+               // processors are manufactured using the 32 nm process.
         return "corei7";
+
+      // SandyBridge:
+      case 42: // Intel Core i7 processor. All processors are manufactured
+               // using the 32 nm process.
+      case 45:
+        return "corei7-avx";
 
       case 28: // Intel Atom processor. All processors are manufactured using
                // the 45 nm process
@@ -290,6 +305,10 @@ std::string sys::getHostCPUName() {
         }
       case 16:
         return "amdfam10";
+      case 20:
+        return "btver1";
+      case 21:
+        return "bdver1";
     default:
       return "generic";
     }

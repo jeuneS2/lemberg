@@ -45,7 +45,7 @@ define void @vst1lanei32(i32* %A, <2 x i32>* %B) nounwind {
 
 define void @vst1lanef(float* %A, <2 x float>* %B) nounwind {
 ;CHECK: vst1lanef:
-;CHECK: vst1.32 {d16[1]}, [r0]
+;CHECK: vst1.32 {d16[1]}, [r0, :32]
 	%tmp1 = load <2 x float>* %B
         %tmp2 = extractelement <2 x float> %tmp1, i32 1
         store float %tmp2, float* %A
@@ -54,7 +54,8 @@ define void @vst1lanef(float* %A, <2 x float>* %B) nounwind {
 
 define void @vst1laneQi8(i8* %A, <16 x i8>* %B) nounwind {
 ;CHECK: vst1laneQi8:
-;CHECK: vst1.8 {d17[1]}, [r0]
+; // Can use scalar load. No need to use vectors.
+; // CHE-CK: vst1.8 {d17[1]}, [r0]
 	%tmp1 = load <16 x i8>* %B
         %tmp2 = extractelement <16 x i8> %tmp1, i32 9
         store i8 %tmp2, i8* %A, align 8
@@ -72,7 +73,8 @@ define void @vst1laneQi16(i16* %A, <8 x i16>* %B) nounwind {
 
 define void @vst1laneQi32(i32* %A, <4 x i32>* %B) nounwind {
 ;CHECK: vst1laneQi32:
-;CHECK: vst1.32 {d17[1]}, [r0, :32]
+; // Can use scalar load. No need to use vectors.
+; // CHE-CK: vst1.32 {d17[1]}, [r0, :32]
 	%tmp1 = load <4 x i32>* %B
         %tmp2 = extractelement <4 x i32> %tmp1, i32 3
         store i32 %tmp2, i32* %A, align 8
@@ -82,7 +84,8 @@ define void @vst1laneQi32(i32* %A, <4 x i32>* %B) nounwind {
 ;Check for a post-increment updating store.
 define void @vst1laneQi32_update(i32** %ptr, <4 x i32>* %B) nounwind {
 ;CHECK: vst1laneQi32_update:
-;CHECK: vst1.32 {d17[1]}, [r1, :32]!
+; // Can use scalar load. No need to use vectors.
+; // CHE-CK: vst1.32 {d17[1]}, [r1, :32]!
 	%A = load i32** %ptr
 	%tmp1 = load <4 x i32>* %B
 	%tmp2 = extractelement <4 x i32> %tmp1, i32 3
@@ -94,7 +97,8 @@ define void @vst1laneQi32_update(i32** %ptr, <4 x i32>* %B) nounwind {
 
 define void @vst1laneQf(float* %A, <4 x float>* %B) nounwind {
 ;CHECK: vst1laneQf:
-;CHECK: vst1.32 {d17[1]}, [r0]
+; // Can use scalar load. No need to use vectors.
+; // CHE-CK: vst1.32 {d17[1]}, [r0]
 	%tmp1 = load <4 x float>* %B
         %tmp2 = extractelement <4 x float> %tmp1, i32 3
         store float %tmp2, float* %A
@@ -352,6 +356,13 @@ define void @vst4laneQf(float* %A, <4 x float>* %B) nounwind {
 	%tmp1 = load <4 x float>* %B
 	call void @llvm.arm.neon.vst4lane.v4f32(i8* %tmp0, <4 x float> %tmp1, <4 x float> %tmp1, <4 x float> %tmp1, <4 x float> %tmp1, i32 1, i32 1)
 	ret void
+}
+
+; Make sure this doesn't crash; PR10258
+define <8 x i16> @variable_insertelement(<8 x i16> %a, i16 %b, i32 %c) nounwind readnone {
+;CHECK: variable_insertelement:
+    %r = insertelement <8 x i16> %a, i16 %b, i32 %c
+    ret <8 x i16> %r
 }
 
 declare void @llvm.arm.neon.vst4lane.v8i8(i8*, <8 x i8>, <8 x i8>, <8 x i8>, <8 x i8>, i32, i32) nounwind

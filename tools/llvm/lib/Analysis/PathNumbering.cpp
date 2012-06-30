@@ -38,13 +38,10 @@
 #include "llvm/Support/TypeBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include <map>
 #include <queue>
-#include <set>
 #include <stack>
 #include <string>
 #include <utility>
-#include <vector>
 #include <sstream>
 
 using namespace llvm;
@@ -286,7 +283,7 @@ void BallLarusDag::calculatePathNumbers() {
       BallLarusEdge* exitEdge = addEdge(node, getExit(), 0);
       exitEdge->setType(BallLarusEdge::SPLITEDGE_PHONY);
 
-      // Counters to handle the possibilty of a multi-graph
+      // Counters to handle the possibility of a multi-graph
       BasicBlock* oldTarget = 0;
       unsigned duplicateNumber = 0;
 
@@ -389,8 +386,8 @@ void BallLarusDag::buildNode(BLBlockNodeMap& inDag, BLNodeStack& dfsStack) {
     }
 
     TerminatorInst* terminator = currentNode->getBlock()->getTerminator();
-    if(isa<ReturnInst>(terminator) || isa<UnreachableInst>(terminator)
-       || isa<UnwindInst>(terminator))
+    if(isa<ReturnInst>(terminator) || isa<UnreachableInst>(terminator) ||
+       isa<ResumeInst>(terminator))
       addEdge(currentNode, getExit(),0);
 
     currentNode->setColor(BallLarusNode::GRAY);

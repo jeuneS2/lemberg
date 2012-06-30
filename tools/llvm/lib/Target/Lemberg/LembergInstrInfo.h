@@ -18,9 +18,12 @@
 #include "LembergRegisterInfo.h"
 #include "llvm/Target/TargetInstrInfo.h"
 
+#define GET_INSTRINFO_HEADER
+#include "LembergGenInstrInfo.inc"
+
 namespace llvm {
 
-  class LembergInstrInfo : public TargetInstrInfoImpl {
+  class LembergInstrInfo : public LembergGenInstrInfo {
     const LembergRegisterInfo RI;
     const LembergSubtarget& Subtarget;
   public:
@@ -83,33 +86,33 @@ namespace llvm {
 
 	virtual bool DefinesPredicate(MachineInstr *MI, std::vector<MachineOperand> &Pred) const;
 
-    virtual bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs,
+    virtual bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumCycles,
 									 unsigned ExtraPredCycles,
-									 float Probability, float Confidence) const {
-	  const TargetInstrDesc &TID = prior(MBB.end())->getDesc();
-	  if (TID.isCall() || TID.isReturn())
+									 const BranchProbability &Probability) const {
+	  const MCInstrDesc &MID = prior(MBB.end())->getDesc();
+	  if (MID.isCall() || MID.isReturn())
 		  return false;
-      return NumInstrs <= 8;
+      return NumCycles <= 8;
     }
 
     virtual bool isProfitableToIfCvt(MachineBasicBlock &TMBB,
 									 unsigned NumT, unsigned ExtraTCycles,
 									 MachineBasicBlock &FMBB,
 									 unsigned NumF, unsigned ExtraFCycles,
-									 float Probability, float Confidence) const {
-	  const TargetInstrDesc &TTID = prior(TMBB.end())->getDesc();
-	  if (TTID.isCall() || TTID.isReturn())
+									 const BranchProbability &Probability) const {
+	  const MCInstrDesc &TMID = prior(TMBB.end())->getDesc();
+	  if (TMID.isCall() || TMID.isReturn())
 		  return false;
-	  const TargetInstrDesc &FTID = prior(FMBB.end())->getDesc();
-	  if (FTID.isCall() || FTID.isReturn())
+	  const MCInstrDesc &FMID = prior(FMBB.end())->getDesc();
+	  if (FMID.isCall() || FMID.isReturn())
 		  return false;
       return (NumT + NumF) <= 16;
 	}
 
 	  virtual bool isProfitableToDupForIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs,
-											 float Probability, float Confidence) const {
-	  const TargetInstrDesc &TID = prior(MBB.end())->getDesc();
-	  if (TID.isCall() || TID.isReturn())
+											 const BranchProbability &Probability) const {
+	  const MCInstrDesc &MID = prior(MBB.end())->getDesc();
+	  if (MID.isCall() || MID.isReturn())
 		  return false;
       return NumInstrs <= 4;
 	}

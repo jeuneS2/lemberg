@@ -124,7 +124,7 @@ bool PathProfileVerifier::runOnModule (Module &M) {
       ProfilePathEdgeVector* pev = currentPath->getPathEdges();
       DEBUG(dbgs () << "path #" << currentPath->getNumber() << ": "
             << currentPath->getCount() << "\n");
-      // setup the entry edge (normally path profiling doens't care about this)
+      // setup the entry edge (normally path profiling doesn't care about this)
       if (currentPath->getFirstBlockInPath() == &F->getEntryBlock())
         edgeArray[arrayMap[0][currentPath->getFirstBlockInPath()][0]]
           += currentPath->getCount();
@@ -137,22 +137,22 @@ bool PathProfileVerifier::runOnModule (Module &M) {
         BasicBlock* source = nextEdge->getSource();
         BasicBlock* target = nextEdge->getTarget();
         unsigned duplicateNumber = nextEdge->getDuplicateNumber();
-        DEBUG(dbgs () << source->getNameStr() << " --{" << duplicateNumber
-              << "}--> " << target->getNameStr());
+        DEBUG(dbgs() << source->getName() << " --{" << duplicateNumber
+                     << "}--> " << target->getName());
 
         // Ensure all the referenced edges exist
         // TODO: make this a separate function
         if( !arrayMap.count(source) ) {
-          errs() << "  error [" << F->getNameStr() << "()]: source '"
-                 << source->getNameStr()
+          errs() << "  error [" << F->getName() << "()]: source '"
+                 << source->getName()
                  << "' does not exist in the array map.\n";
         } else if( !arrayMap[source].count(target) ) {
-          errs() << "  error [" << F->getNameStr() << "()]: target '"
-                 << target->getNameStr()
+          errs() << "  error [" << F->getName() << "()]: target '"
+                 << target->getName()
                  << "' does not exist in the array map.\n";
         } else if( !arrayMap[source][target].count(duplicateNumber) ) {
-          errs() << "  error [" << F->getNameStr() << "()]: edge "
-                 << source->getNameStr() << " -> " << target->getNameStr()
+          errs() << "  error [" << F->getName() << "()]: edge "
+                 << source->getName() << " -> " << target->getName()
                  << " duplicate number " << duplicateNumber
                  << " does not exist in the array map.\n";
         } else {

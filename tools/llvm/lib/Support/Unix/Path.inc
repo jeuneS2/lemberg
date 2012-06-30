@@ -60,6 +60,11 @@
 #include <mach-o/dyld.h>
 #endif
 
+// For GNU Hurd
+#if defined(__GNU__) && !defined(MAXPATHLEN)
+# define MAXPATHLEN 4096
+#endif
+
 // Put in a hack for Cygwin which falsely reports that the mkdtemp function
 // is available when it is not.
 #ifdef __CYGWIN__
@@ -235,11 +240,6 @@ Path::GetBitcodeLibraryPaths(std::vector<sys::Path>& Paths) {
 }
 
 Path
-Path::GetLLVMDefaultConfigDir() {
-  return Path("/etc/llvm/");
-}
-
-Path
 Path::GetUserHomeDirectory() {
   const char* home = getenv("HOME");
   Path result;
@@ -252,8 +252,8 @@ Path::GetUserHomeDirectory() {
 Path
 Path::GetCurrentDirectory() {
   char pathname[MAXPATHLEN];
-  if (!getcwd(pathname,MAXPATHLEN)) {
-    assert (false && "Could not query current working directory.");
+  if (!getcwd(pathname, MAXPATHLEN)) {
+    assert(false && "Could not query current working directory.");
     return Path();
   }
 
@@ -261,7 +261,7 @@ Path::GetCurrentDirectory() {
 }
 
 #if defined(__FreeBSD__) || defined (__NetBSD__) || \
-    defined(__OpenBSD__) || defined(__minix)
+    defined(__OpenBSD__) || defined(__minix) || defined(__FreeBSD_kernel__)
 static int
 test_dir(char buf[PATH_MAX], char ret[PATH_MAX],
     const char *dir, const char *bin)
@@ -313,7 +313,7 @@ getprogpath(char ret[PATH_MAX], const char *bin)
   free(pv);
   return (NULL);
 }
-#endif // __FreeBSD__ || __NetBSD__
+#endif // __FreeBSD__ || __NetBSD__ || __FreeBSD_kernel__
 
 /// GetMainExecutable - Return the path to the main executable, given the
 /// value of argv[0] from program startup.
@@ -330,7 +330,7 @@ Path Path::GetMainExecutable(const char *argv0, void *MainAddr) {
       return Path(link_path);
   }
 #elif defined(__FreeBSD__) || defined (__NetBSD__) || \
-      defined(__OpenBSD__) || defined(__minix)
+      defined(__OpenBSD__) || defined(__minix) || defined(__FreeBSD_kernel__)
   char exe_path[PATH_MAX];
 
   if (getprogpath(exe_path, argv0) != NULL)
@@ -842,6 +842,9 @@ Path::makeUnique(bool reuse_current, std::string* ErrMsg) {
 
   // Save the name
   path = FNBuffer;
+
+  // By default mkstemp sets the mode to 0600, so update mode bits now.
+  AddPermissionBits (*this, 0666);
 #elif defined(HAVE_MKTEMP)
   // If we don't have mkstemp, use the old and obsolete mktemp function.
   if (mktemp(FNBuffer) == 0)
@@ -869,18 +872,18 @@ Path::makeUnique(bool reuse_current, std::string* ErrMsg) {
   return false;
 }
 
-const char *Path::MapInFilePages(int FD, uint64_t FileSize) {
+const char *Path::MapInFilePages(int FD, size_t FileSize, off_t Offset) {
   int Flags = MAP_PRIVATE;
 #ifdef MAP_FILE
   Flags |= MAP_FILE;
 #endif
-  void *BasePtr = ::mmap(0, FileSize, PROT_READ, Flags, FD, 0);
+  void *BasePtr = ::mmap(0, FileSize, PROT_READ, Flags, FD, Offset);
   if (BasePtr == MAP_FAILED)
     return 0;
   return (const char*)BasePtr;
 }
 
-void Path::UnMapFilePages(const char *BasePtr, uint64_t FileSize) {
+void Path::UnMapFilePages(const char *BasePtr, size_t FileSize) {
   ::munmap((void*)BasePtr, FileSize);
 }
 

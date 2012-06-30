@@ -63,7 +63,7 @@ TEST_F(MDStringTest, PrintingSimple) {
 
 // Test printing of MDString with non-printable characters.
 TEST_F(MDStringTest, PrintingComplex) {
-  char str[5] = {0, '\n', '"', '\\', -1};
+  char str[5] = {0, '\n', '"', '\\', (char)-1};
   MDString *s = MDString::get(Context, StringRef(str+0, 5));
   std::string Str;
   raw_string_ostream oss(Str);
@@ -87,16 +87,23 @@ TEST_F(MDNodeTest, Simple) {
   V.push_back(CI);
   V.push_back(s2);
 
-  MDNode *n1 = MDNode::get(Context, &V[0], 3);
+  MDNode *n1 = MDNode::get(Context, V);
   Value *const c1 = n1;
-  MDNode *n2 = MDNode::get(Context, &c1, 1);
-  MDNode *n3 = MDNode::get(Context, &V[0], 3);
+  MDNode *n2 = MDNode::get(Context, c1);
+  Value *const c2 = n2;
+  MDNode *n3 = MDNode::get(Context, V);
+  MDNode *n4 = MDNode::getIfExists(Context, V);
+  MDNode *n5 = MDNode::getIfExists(Context, c1);
+  MDNode *n6 = MDNode::getIfExists(Context, c2);
   EXPECT_NE(n1, n2);
 #ifdef ENABLE_MDNODE_UNIQUING
   EXPECT_EQ(n1, n3);
 #else
   (void) n3;
 #endif
+  EXPECT_EQ(n4, n1);
+  EXPECT_EQ(n5, n2);
+  EXPECT_EQ(n6, (Value*)0);
 
   EXPECT_EQ(3u, n1->getNumOperands());
   EXPECT_EQ(s1, n1->getOperand(0));
@@ -112,7 +119,7 @@ TEST_F(MDNodeTest, Delete) {
   Instruction *I = new BitCastInst(C, Type::getInt32Ty(getGlobalContext()));
 
   Value *const V = I;
-  MDNode *n = MDNode::get(Context, &V, 1);
+  MDNode *n = MDNode::get(Context, V);
   WeakVH wvh = n;
 
   EXPECT_EQ(n, wvh);
@@ -127,8 +134,8 @@ TEST(NamedMDNodeTest, Search) {
 
   Value *const V = C;
   Value *const V2 = C2;
-  MDNode *n = MDNode::get(Context, &V, 1);
-  MDNode *n2 = MDNode::get(Context, &V2, 1);
+  MDNode *n = MDNode::get(Context, V);
+  MDNode *n2 = MDNode::get(Context, V2);
 
   Module M("MyModule", Context);
   const char *Name = "llvm.NMD1";

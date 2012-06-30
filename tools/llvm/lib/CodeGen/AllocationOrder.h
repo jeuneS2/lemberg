@@ -19,30 +19,46 @@
 
 namespace llvm {
 
-class BitVector;
+class RegisterClassInfo;
 class VirtRegMap;
 
 class AllocationOrder {
   const unsigned *Begin;
   const unsigned *End;
   const unsigned *Pos;
-  const BitVector &Reserved;
+  const RegisterClassInfo &RCI;
   unsigned Hint;
+  bool OwnedBegin;
 public:
 
   /// AllocationOrder - Create a new AllocationOrder for VirtReg.
   /// @param VirtReg      Virtual register to allocate for.
   /// @param VRM          Virtual register map for function.
-  /// @param ReservedRegs Set of reserved registers as returned by
-  ///        TargetRegisterInfo::getReservedRegs().
+  /// @param RegClassInfo Information about reserved and allocatable registers.
   AllocationOrder(unsigned VirtReg,
                   const VirtRegMap &VRM,
-                  const BitVector &ReservedRegs);
+                  const RegisterClassInfo &RegClassInfo);
+
+  ~AllocationOrder();
 
   /// next - Return the next physical register in the allocation order, or 0.
   /// It is safe to call next again after it returned 0.
   /// It will keep returning 0 until rewind() is called.
-  unsigned next();
+  unsigned next() {
+    // First take the hint.
+    if (!Pos) {
+      Pos = Begin;
+      if (Hint)
+        return Hint;
+    }
+    // Then look at the order from TRI.
+    while (Pos != End) {
+      unsigned Reg = *Pos++;
+      if (Reg != Hint)
+        return Reg;
+    }
+    return 0;
+  }
 
   /// rewind - Start over from the beginning.
   void rewind() { Pos = 0; }

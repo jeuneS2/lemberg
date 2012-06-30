@@ -332,8 +332,8 @@ define i64 @test31(i64 %A) nounwind readnone ssp noredzone {
   %F = or i64 %D, %E
   ret i64 %F
 ; CHECK: @test31
-; CHECK-NEXT: %E1 = and i64 %A, 4294908984
-; CHECK-NEXT: %F = or i64 %E1, 32962
+; CHECK-NEXT: %E = and i64 %A, 4294908984
+; CHECK-NEXT: %F = or i64 %E, 32962
 ; CHECK-NEXT: ret i64 %F
 }
 
@@ -390,3 +390,22 @@ define i1 @test36(i32 %x) {
 ; CHECK-NEXT: ret i1
 }
 
+define i32 @test37(i32* %xp, i32 %y) {
+; CHECK: @test37
+; CHECK: select i1 %tobool, i32 -1, i32 %x
+  %tobool = icmp ne i32 %y, 0
+  %sext = sext i1 %tobool to i32
+  %x = load i32* %xp
+  %or = or i32 %sext, %x
+  ret i32 %or
+}
+
+define i32 @test38(i32* %xp, i32 %y) {
+; CHECK: @test38
+; CHECK: select i1 %tobool, i32 -1, i32 %x
+  %tobool = icmp ne i32 %y, 0
+  %sext = sext i1 %tobool to i32
+  %x = load i32* %xp
+  %or = or i32 %x, %sext
+  ret i32 %or
+}

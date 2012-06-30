@@ -8,10 +8,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/ADT/ValueMap.h"
+#include "llvm/Constants.h"
 #include "llvm/Instructions.h"
 #include "llvm/LLVMContext.h"
 #include "llvm/ADT/OwningPtr.h"
-#include "llvm/Config/config.h"
+#include "llvm/Config/llvm-config.h"
 
 #include "gtest/gtest.h"
 
@@ -194,7 +195,7 @@ struct LockMutex : ValueMapConfig<KeyT> {
   }
   static sys::Mutex *getMutex(const ExtraData &Data) { return Data.M; }
 };
-#if ENABLE_THREADS
+#if LLVM_ENABLE_THREADS
 TYPED_TEST(ValueMapTest, LocksMutex) {
   sys::Mutex M(false);  // Not recursive.
   bool CalledRAUW = false, CalledDeleted = false;

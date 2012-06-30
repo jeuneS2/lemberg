@@ -26,7 +26,7 @@
 #include "llvm/ExecutionEngine/JIT.h"
 #include "llvm/ExecutionEngine/Interpreter.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
-#include "llvm/Target/TargetSelect.h"
+#include "llvm/Support/TargetSelect.h"
 #include <iostream>
 using namespace llvm;
 
@@ -209,7 +209,8 @@ private:
     waitFor = 0;
 
     int result = pthread_cond_broadcast( &condition );
-    assert(result == 0); result=result;
+    (void)result;
+    assert(result == 0);
   }
 
   size_t n;

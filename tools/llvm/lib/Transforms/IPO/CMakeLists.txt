@@ -2,7 +2,6 @@ add_llvm_library(LLVMipo
   ArgumentPromotion.cpp
   ConstantMerge.cpp
   DeadArgumentElimination.cpp
-  DeadTypeElimination.cpp
   ExtractGV.cpp
   FunctionAttrs.cpp
   GlobalDCE.cpp
@@ -14,11 +13,10 @@ add_llvm_library(LLVMipo
   Inliner.cpp
   Internalize.cpp
   LoopExtractor.cpp
-  LowerSetJmp.cpp
   MergeFunctions.cpp
   PartialInlining.cpp
+  PassManagerBuilder.cpp
   PruneEH.cpp
   StripDeadPrototypes.cpp
   StripSymbols.cpp
-  StructRetPromotion.cpp
   )

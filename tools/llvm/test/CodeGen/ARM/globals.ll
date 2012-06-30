@@ -1,7 +1,7 @@
-; RUN: llc < %s -mtriple=arm-apple-darwin -relocation-model=static | FileCheck %s -check-prefix=DarwinStatic
-; RUN: llc < %s -mtriple=arm-apple-darwin -relocation-model=dynamic-no-pic | FileCheck %s -check-prefix=DarwinDynamic
-; RUN: llc < %s -mtriple=arm-apple-darwin -relocation-model=pic | FileCheck %s -check-prefix=DarwinPIC
-; RUN: llc < %s -mtriple=arm-linux-gnueabi -relocation-model=pic | FileCheck %s -check-prefix=LinuxPIC
+; RUN: llc < %s -mtriple=armv6-apple-darwin -relocation-model=static | FileCheck %s -check-prefix=DarwinStatic
+; RUN: llc < %s -mtriple=armv6-apple-darwin -relocation-model=dynamic-no-pic | FileCheck %s -check-prefix=DarwinDynamic
+; RUN: llc < %s -mtriple=armv6-apple-darwin -relocation-model=pic | FileCheck %s -check-prefix=DarwinPIC
+; RUN: llc < %s -mtriple=armv6-linux-gnueabi -relocation-model=pic | FileCheck %s -check-prefix=LinuxPIC
 
 @G = external global i32
 
@@ -70,6 +70,5 @@ define i32 @test1() {
 ; LinuxPIC: .align 2
 ; LinuxPIC: .LCPI0_0:
 ; LinuxPIC:     .long _GLOBAL_OFFSET_TABLE_-(.LPC0_0+8)
-; LinuxPIC: .align 2
 ; LinuxPIC: .LCPI0_1:
 ; LinuxPIC:     .long	G(GOT)

@@ -20,7 +20,7 @@
 
 namespace llvm {
 
-void DecodeINSERTPSMask(unsigned Imm, SmallVectorImpl<unsigned> &ShuffleMask) {
+void DecodeINSERTPSMask(unsigned Imm, SmallVectorImpl<int> &ShuffleMask) {
   // Defaults the copying the dest value.
   ShuffleMask.push_back(0);
   ShuffleMask.push_back(1);
@@ -44,8 +44,7 @@ void DecodeINSERTPSMask(unsigned Imm, SmallVectorImpl<unsigned> &ShuffleMask) {
 }
 
 // <3,1> or <6,7,2,3>
-void DecodeMOVHLPSMask(unsigned NElts,
-                       SmallVectorImpl<unsigned> &ShuffleMask) {
+void DecodeMOVHLPSMask(unsigned NElts, SmallVectorImpl<int> &ShuffleMask) {
   for (unsigned i = NElts/2; i != NElts; ++i)
     ShuffleMask.push_back(NElts+i);
 
@@ -54,8 +53,7 @@ void DecodeMOVHLPSMask(unsigned NElts,
 }
 
 // <0,2> or <0,1,4,5>
-void DecodeMOVLHPSMask(unsigned NElts,
-                       SmallVectorImpl<unsigned> &ShuffleMask) {
+void DecodeMOVLHPSMask(unsigned NElts, SmallVectorImpl<int> &ShuffleMask) {
   for (unsigned i = 0; i != NElts/2; ++i)
     ShuffleMask.push_back(i);
 
@@ -63,16 +61,26 @@ void DecodeMOVLHPSMask(unsigned NElts,
     ShuffleMask.push_back(NElts+i);
 }
 
-void DecodePSHUFMask(unsigned NElts, unsigned Imm,
-                     SmallVectorImpl<unsigned> &ShuffleMask) {
-  for (unsigned i = 0; i != NElts; ++i) {
-    ShuffleMask.push_back(Imm % NElts);
-    Imm /= NElts;
+/// DecodePSHUFMask - This decodes the shuffle masks for pshufd, and vpermilp*.
+/// VT indicates the type of the vector allowing it to handle different
+/// datatypes and vector widths.
+void DecodePSHUFMask(EVT VT, unsigned Imm, SmallVectorImpl<int> &ShuffleMask) {
+  unsigned NumElts = VT.getVectorNumElements();
+
+  unsigned NumLanes = VT.getSizeInBits() / 128;
+  unsigned NumLaneElts = NumElts / NumLanes;
+
+  int NewImm = Imm;
+  for (unsigned l = 0; l != NumElts; l += NumLaneElts) {
+    for (unsigned i = 0; i != NumLaneElts; ++i) {
+      ShuffleMask.push_back(NewImm % NumLaneElts + l);
+      NewImm /= NumLaneElts;
+    }
+    if (NumLaneElts == 4) NewImm = Imm; // reload imm
   }
 }
 
-void DecodePSHUFHWMask(unsigned Imm,
-                       SmallVectorImpl<unsigned> &ShuffleMask) {
+void DecodePSHUFHWMask(unsigned Imm, SmallVectorImpl<int> &ShuffleMask) {
   ShuffleMask.push_back(0);
   ShuffleMask.push_back(1);
   ShuffleMask.push_back(2);
@@ -83,8 +91,7 @@ void DecodePSHUFHWMask(unsigned Imm,
   }
 }
 
-void DecodePSHUFLWMask(unsigned Imm,
-                       SmallVectorImpl<unsigned> &ShuffleMask) {
+void DecodePSHUFLWMask(unsigned Imm, SmallVectorImpl<int> &ShuffleMask) {
   for (unsigned i = 0; i != 4; ++i) {
     ShuffleMask.push_back((Imm & 3));
     Imm >>= 2;
@@ -95,96 +102,84 @@ void DecodePSHUFLWMask(unsigned Imm,
   ShuffleMask.push_back(7);
 }
 
-void DecodePUNPCKLBWMask(unsigned NElts,
-                         SmallVectorImpl<unsigned> &ShuffleMask) {
-  DecodeUNPCKLPMask(MVT::getVectorVT(MVT::i8, NElts), ShuffleMask);
-}
-
-void DecodePUNPCKLWDMask(unsigned NElts,
-                         SmallVectorImpl<unsigned> &ShuffleMask) {
-  DecodeUNPCKLPMask(MVT::getVectorVT(MVT::i16, NElts), ShuffleMask);
-}
-
-void DecodePUNPCKLDQMask(unsigned NElts,
-                         SmallVectorImpl<unsigned> &ShuffleMask) {
-  DecodeUNPCKLPMask(MVT::getVectorVT(MVT::i32, NElts), ShuffleMask);
-}
-
-void DecodePUNPCKLQDQMask(unsigned NElts,
-                          SmallVectorImpl<unsigned> &ShuffleMask) {
-  DecodeUNPCKLPMask(MVT::getVectorVT(MVT::i64, NElts), ShuffleMask);
-}
-
-void DecodePUNPCKLMask(EVT VT,
-                       SmallVectorImpl<unsigned> &ShuffleMask) {
-  DecodeUNPCKLPMask(VT, ShuffleMask);
-}
-
-void DecodePUNPCKHMask(unsigned NElts,
-                       SmallVectorImpl<unsigned> &ShuffleMask) {
-  for (unsigned i = 0; i != NElts/2; ++i) {
-    ShuffleMask.push_back(i+NElts/2);
-    ShuffleMask.push_back(i+NElts+NElts/2);
-  }
-}
-
-void DecodeSHUFPSMask(unsigned NElts, unsigned Imm,
-                      SmallVectorImpl<unsigned> &ShuffleMask) {
-  // Part that reads from dest.
-  for (unsigned i = 0; i != NElts/2; ++i) {
-    ShuffleMask.push_back(Imm % NElts);
-    Imm /= NElts;
-  }
-  // Part that reads from src.
-  for (unsigned i = 0; i != NElts/2; ++i) {
-    ShuffleMask.push_back(Imm % NElts + NElts);
-    Imm /= NElts;
-  }
-}
-
-void DecodeUNPCKHPMask(unsigned NElts,
-                       SmallVectorImpl<unsigned> &ShuffleMask) {
-  for (unsigned i = 0; i != NElts/2; ++i) {
-    ShuffleMask.push_back(i+NElts/2);        // Reads from dest
-    ShuffleMask.push_back(i+NElts+NElts/2);  // Reads from src
-  }
-}
-
-void DecodeUNPCKLPSMask(unsigned NElts,
-                        SmallVectorImpl<unsigned> &ShuffleMask) {
-  DecodeUNPCKLPMask(MVT::getVectorVT(MVT::i32, NElts), ShuffleMask);
-}
-
-void DecodeUNPCKLPDMask(unsigned NElts,
-                        SmallVectorImpl<unsigned> &ShuffleMask) {
-  DecodeUNPCKLPMask(MVT::getVectorVT(MVT::i64, NElts), ShuffleMask);
-}
-
-/// DecodeUNPCKLPMask - This decodes the shuffle masks for unpcklps/unpcklpd
-/// etc.  VT indicates the type of the vector allowing it to handle different
-/// datatypes and vector widths.
-void DecodeUNPCKLPMask(EVT VT,
-                       SmallVectorImpl<unsigned> &ShuffleMask) {
+/// DecodeSHUFPMask - This decodes the shuffle masks for shufp*. VT indicates
+/// the type of the vector allowing it to handle different datatypes and vector
+/// widths.
+void DecodeSHUFPMask(EVT VT, unsigned Imm, SmallVectorImpl<int> &ShuffleMask) {
   unsigned NumElts = VT.getVectorNumElements();
 
-  // Handle vector lengths > 128 bits.  Define a "section" as a set of
-  // 128 bits.  AVX defines UNPCK* to operate independently on 128-bit
-  // sections.
-  unsigned NumSections = VT.getSizeInBits() / 128;
-  if (NumSections == 0 ) NumSections = 1;  // Handle MMX
-  unsigned NumSectionElts = NumElts / NumSections;
+  unsigned NumLanes = VT.getSizeInBits() / 128;
+  unsigned NumLaneElts = NumElts / NumLanes;
 
-  unsigned Start = 0;
-  unsigned End = NumSectionElts / 2;
-  for (unsigned s = 0; s < NumSections; ++s) {
-    for (unsigned i = Start; i != End; ++i) {
-      ShuffleMask.push_back(i);                 // Reads from dest/src1
-      ShuffleMask.push_back(i+NumSectionElts);  // Reads from src/src2
+  int NewImm = Imm;
+  for (unsigned l = 0; l != NumElts; l += NumLaneElts) {
+    // Part that reads from dest.
+    for (unsigned i = 0; i != NumLaneElts/2; ++i) {
+      ShuffleMask.push_back(NewImm % NumLaneElts + l);
+      NewImm /= NumLaneElts;
     }
-    // Process the next 128 bits.
-    Start += NumSectionElts;
-    End += NumSectionElts;
+    // Part that reads from src.
+    for (unsigned i = 0; i != NumLaneElts/2; ++i) {
+      ShuffleMask.push_back(NewImm % NumLaneElts + NumElts + l);
+      NewImm /= NumLaneElts;
+    }
+    if (NumLaneElts == 4) NewImm = Imm; // reload imm
   }
+}
+
+/// DecodeUNPCKHMask - This decodes the shuffle masks for unpckhps/unpckhpd
+/// and punpckh*. VT indicates the type of the vector allowing it to handle
+/// different datatypes and vector widths.
+void DecodeUNPCKHMask(EVT VT, SmallVectorImpl<int> &ShuffleMask) {
+  unsigned NumElts = VT.getVectorNumElements();
+
+  // Handle 128 and 256-bit vector lengths. AVX defines UNPCK* to operate
+  // independently on 128-bit lanes.
+  unsigned NumLanes = VT.getSizeInBits() / 128;
+  if (NumLanes == 0 ) NumLanes = 1;  // Handle MMX
+  unsigned NumLaneElts = NumElts / NumLanes;
+
+  for (unsigned l = 0; l != NumElts; l += NumLaneElts) {
+    for (unsigned i = l + NumLaneElts/2, e = l + NumLaneElts; i != e; ++i) {
+      ShuffleMask.push_back(i);          // Reads from dest/src1
+      ShuffleMask.push_back(i+NumElts);  // Reads from src/src2
+    }
+  }
+}
+
+/// DecodeUNPCKLMask - This decodes the shuffle masks for unpcklps/unpcklpd
+/// and punpckl*. VT indicates the type of the vector allowing it to handle
+/// different datatypes and vector widths.
+void DecodeUNPCKLMask(EVT VT, SmallVectorImpl<int> &ShuffleMask) {
+  unsigned NumElts = VT.getVectorNumElements();
+
+  // Handle 128 and 256-bit vector lengths. AVX defines UNPCK* to operate
+  // independently on 128-bit lanes.
+  unsigned NumLanes = VT.getSizeInBits() / 128;
+  if (NumLanes == 0 ) NumLanes = 1;  // Handle MMX
+  unsigned NumLaneElts = NumElts / NumLanes;
+
+  for (unsigned l = 0; l != NumElts; l += NumLaneElts) {
+    for (unsigned i = l, e = l + NumLaneElts/2; i != e; ++i) {
+      ShuffleMask.push_back(i);          // Reads from dest/src1
+      ShuffleMask.push_back(i+NumElts);  // Reads from src/src2
+    }
+  }
+}
+
+void DecodeVPERM2X128Mask(EVT VT, unsigned Imm,
+                          SmallVectorImpl<int> &ShuffleMask) {
+  if (Imm & 0x88)
+    return; // Not a shuffle
+
+  unsigned HalfSize = VT.getVectorNumElements()/2;
+  unsigned FstHalfBegin = (Imm & 0x3) * HalfSize;
+  unsigned SndHalfBegin = ((Imm >> 4) & 0x3) * HalfSize;
+
+  for (int i = FstHalfBegin, e = FstHalfBegin+HalfSize; i != e; ++i)
+    ShuffleMask.push_back(i);
+  for (int i = SndHalfBegin, e = SndHalfBegin+HalfSize; i != e; ++i)
+    ShuffleMask.push_back(i);
 }
 
 } // llvm namespace

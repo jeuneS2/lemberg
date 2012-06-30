@@ -12,11 +12,9 @@
 
 namespace llvm {
 
-  class LiveInterval;
+  class LiveRangeEdit;
   class MachineFunction;
   class MachineFunctionPass;
-  class SlotIndex;
-  template <typename T> class SmallVectorImpl;
   class VirtRegMap;
 
   /// Spiller interface.
@@ -24,19 +22,12 @@ namespace llvm {
   /// Implementations are utility classes which insert spill or remat code on
   /// demand.
   class Spiller {
+    virtual void anchor();
   public:
     virtual ~Spiller() = 0;
 
-    /// spill - Spill the given live interval. The method used will depend on
-    /// the Spiller implementation selected.
-    ///
-    /// @param li            The live interval to be spilled.
-    /// @param spillIs       A list of intervals that are about to be spilled,
-    ///                      and so cannot be used for remat etc.
-    /// @param newIntervals  The newly created intervals will be appended here.
-    virtual void spill(LiveInterval *li,
-                       SmallVectorImpl<LiveInterval*> &newIntervals,
-                       const SmallVectorImpl<LiveInterval*> &spillIs) = 0;
+    /// spill - Spill the LRE.getParent() live interval.
+    virtual void spill(LiveRangeEdit &LRE) = 0;
 
   };
 

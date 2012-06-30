@@ -167,10 +167,10 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							} else {
 								ConvOpcode = Lemberg::JUMPeqz;
 							}
-							TargetInstrDesc *NTID = new TargetInstrDesc();
-							*NTID = TII->get(ConvOpcode);
-							NTID->SchedClass = J->getDesc().getSchedClass();
-							II->setDesc(*NTID);
+							MCInstrDesc *NMID = new MCInstrDesc();
+							*NMID = TII->get(ConvOpcode);
+							NMID->SchedClass = J->getDesc().getSchedClass();
+							II->setDesc(*NMID);
 							
 							II->addOperand(J->getOperand(0));
 							II->addOperand(Dest);
@@ -316,7 +316,7 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 					&& prior(II)->getOpcode() == Lemberg::SEP) {
 					prior(II)->eraseFromParent();
 				}
-				MBB.insert(next(J), II->removeFromParent());
+				MBB.insertAfter(J, II->removeFromParent());
 				newII = next(J);
 				movedSlots = i;
 			}
@@ -347,10 +347,10 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 			}
 			// found a replacement
 			if (OpcodeNow != 0) {
-				TargetInstrDesc *NTID = new TargetInstrDesc();
-				*NTID = TII->get(OpcodeNow);
-				NTID->SchedClass = II->getDesc().getSchedClass();
-				II->setDesc(*NTID);
+				MCInstrDesc *NMID = new MCInstrDesc();
+				*NMID = TII->get(OpcodeNow);
+				NMID->SchedClass = II->getDesc().getSchedClass();
+				II->setDesc(*NMID);
 				movedSlots = maxSlots;
 				NowSlots++;
 			}
@@ -378,10 +378,10 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 			}
 			// found a replacement
 			if (OpcodeNow != 0) {
-				TargetInstrDesc *NTID = new TargetInstrDesc();
-				*NTID = TII->get(OpcodeNow);
-				NTID->SchedClass = II->getDesc().getSchedClass();
-				II->setDesc(*NTID);
+				MCInstrDesc *NMID = new MCInstrDesc();
+				*NMID = TII->get(OpcodeNow);
+				NMID->SchedClass = II->getDesc().getSchedClass();
+				II->setDesc(*NMID);
 				minSlots = maxSlots;
 				NowSlots++;
 			}

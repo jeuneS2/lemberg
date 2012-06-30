@@ -21,6 +21,7 @@
 #include "llvm/Instructions.h"
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
+#include "llvm/IntrinsicInst.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/MemoryBuiltins.h"
@@ -467,6 +468,11 @@ void GlobalsModRef::AnalyzeCallGraph(CallGraph &CG, Module &M) {
         } else if (isMalloc(&cast<Instruction>(*II)) ||
                    isFreeCall(&cast<Instruction>(*II))) {
           FunctionEffect |= ModRef;
+        } else if (IntrinsicInst *Intrinsic = dyn_cast<IntrinsicInst>(&*II)) {
+          // The callgraph doesn't include intrinsic calls.
+          Function *Callee = Intrinsic->getCalledFunction();
+          ModRefBehavior Behaviour = AliasAnalysis::getModRefBehavior(Callee);
+          FunctionEffect |= (Behaviour & ModRef);
         }
 
     if ((FunctionEffect & Mod) == 0)
@@ -602,7 +608,7 @@ void GlobalsModRef::addEscapingUse(Use &U) {
   // For the purposes of this analysis, it is conservatively correct to treat
   // a newly escaping value equivalently to a deleted one.  We could perhaps
   // be more precise by processing the new use and attempting to update our
-  // saved analysis results to accomodate it.
+  // saved analysis results to accommodate it.
   deleteValue(U);
   
   AliasAnalysis::addEscapingUse(U);

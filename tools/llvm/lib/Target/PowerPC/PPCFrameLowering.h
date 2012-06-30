@@ -1,4 +1,4 @@
-//==-- PPCFrameLowering.h - Define frame lowering for PowerPC ----*- C++ -*-==//
+//===-- PPCFrameLowering.h - Define frame lowering for PowerPC --*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -40,7 +40,6 @@ public:
 
   bool hasFP(const MachineFunction &MF) const;
   bool needsFP(const MachineFunction &MF) const;
-  void getInitialFrameState(std::vector<MachineMove> &Moves) const;
 
   void processFunctionBeforeCalleeSavedScan(MachineFunction &MF,
                                             RegScavenger *RS = NULL) const;

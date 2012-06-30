@@ -19,11 +19,11 @@ using namespace llvm;
 static bool hasRAWHazard(MachineInstr *DefMI, MachineInstr *MI,
                          const TargetRegisterInfo &TRI) {
   // FIXME: Detect integer instructions properly.
-  const TargetInstrDesc &TID = MI->getDesc();
-  unsigned Domain = TID.TSFlags & ARMII::DomainMask;
-  if (TID.mayStore())
+  const MCInstrDesc &MCID = MI->getDesc();
+  unsigned Domain = MCID.TSFlags & ARMII::DomainMask;
+  if (MI->mayStore())
     return false;
-  unsigned Opcode = TID.getOpcode();
+  unsigned Opcode = MCID.getOpcode();
   if (Opcode == ARM::VMOVRS || Opcode == ARM::VMOVRRD)
     return false;
   if ((Domain & ARMII::DomainVFP) || (Domain & ARMII::DomainNEON))
@@ -38,18 +38,17 @@ ARMHazardRecognizer::getHazardType(SUnit *SU, int Stalls) {
   MachineInstr *MI = SU->getInstr();
 
   if (!MI->isDebugValue()) {
-    if (ITBlockSize && MI != ITBlockMIs[ITBlockSize-1])
-      return Hazard;
-
     // Look for special VMLA / VMLS hazards. A VMUL / VADD / VSUB following
     // a VMLA / VMLS will cause 4 cycle stall.
-    const TargetInstrDesc &TID = MI->getDesc();
-    if (LastMI && (TID.TSFlags & ARMII::DomainMask) != ARMII::DomainGeneral) {
+    const MCInstrDesc &MCID = MI->getDesc();
+    if (LastMI && (MCID.TSFlags & ARMII::DomainMask) != ARMII::DomainGeneral) {
       MachineInstr *DefMI = LastMI;
-      const TargetInstrDesc &LastTID = LastMI->getDesc();
+      const MCInstrDesc &LastMCID = LastMI->getDesc();
       // Skip over one non-VFP / NEON instruction.
-      if (!LastTID.isBarrier() &&
-          (LastTID.TSFlags & ARMII::DomainMask) == ARMII::DomainGeneral) {
+      if (!LastMI->isBarrier() &&
+          // On A9, AGU and NEON/FPU are muxed.
+          !(STI.isCortexA9() && (LastMI->mayLoad() || LastMI->mayStore())) &&
+          (LastMCID.TSFlags & ARMII::DomainMask) == ARMII::DomainGeneral) {
         MachineBasicBlock::iterator I = LastMI;
         if (I != LastMI->getParent()->begin()) {
           I = llvm::prior(I);
@@ -74,30 +73,11 @@ ARMHazardRecognizer::getHazardType(SUnit *SU, int Stalls) {
 void ARMHazardRecognizer::Reset() {
   LastMI = 0;
   FpMLxStalls = 0;
-  ITBlockSize = 0;
   ScoreboardHazardRecognizer::Reset();
 }
 
 void ARMHazardRecognizer::EmitInstruction(SUnit *SU) {
   MachineInstr *MI = SU->getInstr();
-  unsigned Opcode = MI->getOpcode();
-  if (ITBlockSize) {
-    --ITBlockSize;
-  } else if (Opcode == ARM::t2IT) {
-    unsigned Mask = MI->getOperand(1).getImm();
-    unsigned NumTZ = CountTrailingZeros_32(Mask);
-    assert(NumTZ <= 3 && "Invalid IT mask!");
-    ITBlockSize = 4 - NumTZ;
-    MachineBasicBlock::iterator I = MI;
-    for (unsigned i = 0; i < ITBlockSize; ++i) {
-      // Advance to the next instruction, skipping any dbg_value instructions.
-      do {
-        ++I;
-      } while (I->isDebugValue());
-      ITBlockMIs[ITBlockSize-1-i] = &*I;
-    }
-  }
-
   if (!MI->isDebugValue()) {
     LastMI = MI;
     FpMLxStalls = 0;

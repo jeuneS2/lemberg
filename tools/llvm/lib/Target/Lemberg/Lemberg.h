@@ -15,6 +15,7 @@
 #ifndef TARGET_LEMBERG_H
 #define TARGET_LEMBERG_H
 
+#include "MCTargetDesc/LembergMCTargetDesc.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace llvm {
@@ -42,12 +43,5 @@ namespace llvm {
   extern Target TheLembergTarget;
 
 } // end namespace llvm
-
-// Defines symbolic names for Lemberg registers.  This defines a mapping from
-// register name to register number.
-#include "LembergGenRegisterNames.inc"
-
-// Defines symbolic names for the Lemberg instructions.
-#include "LembergGenInstrNames.inc"
 
 #endif

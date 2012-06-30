@@ -739,7 +739,7 @@ public:
 // A Path is used by iterators to represent a position in a B+-tree, and the
 // path to get there from the root.
 //
-// The Path class also constains the tree navigation code that doesn't have to
+// The Path class also contains the tree navigation code that doesn't have to
 // be templatized.
 //
 //===----------------------------------------------------------------------===//
@@ -1328,8 +1328,15 @@ public:
   /// const_iterator - Create an iterator that isn't pointing anywhere.
   const_iterator() : map(0) {}
 
+  /// setMap - Change the map iterated over. This call must be followed by a
+  /// call to goToBegin(), goToEnd(), or find()
+  void setMap(const IntervalMap &m) { map = const_cast<IntervalMap*>(&m); }
+
   /// valid - Return true if the current position is valid, false for end().
   bool valid() const { return path.valid(); }
+
+  /// atBegin - Return true if the current position is the first map entry.
+  bool atBegin() const { return path.atBegin(); }
 
   /// start - Return the beginning of the current interval.
   const KeyT &start() const { return unsafeStart(); }
@@ -1970,7 +1977,7 @@ iterator::overflow(unsigned Level) {
     CurSize[Nodes] = CurSize[NewNode];
     Node[Nodes] = Node[NewNode];
     CurSize[NewNode] = 0;
-    Node[NewNode] = this->map->newNode<NodeT>();
+    Node[NewNode] = this->map->template newNode<NodeT>();
     ++Nodes;
   }
 

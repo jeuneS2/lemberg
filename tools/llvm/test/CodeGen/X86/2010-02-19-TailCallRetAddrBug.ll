@@ -1,4 +1,4 @@
-; RUN: llc -mtriple=i386-apple-darwin -tailcallopt < %s | FileCheck %s
+; RUN: llc -mcpu=generic -mtriple=i386-apple-darwin -tailcallopt < %s | FileCheck %s
 ; Check that lowered argumens do not overwrite the return address before it is moved.
 ; Bug 6225
 ;
@@ -11,7 +11,7 @@
 ; Move return address (76(%esp)) to a temporary register (%ebp)
 ; CHECK: movl 76(%esp), [[REGISTER:%[a-z]+]]
 ; Overwrite return addresss
-; CHECK: movl %ebx, 76(%esp)
+; CHECK: movl [[EBX:%[a-z]+]], 76(%esp)
 ; Move return address from temporary register (%ebp) to new stack location (60(%esp))
 ; CHECK: movl [[REGISTER]], 60(%esp)
 

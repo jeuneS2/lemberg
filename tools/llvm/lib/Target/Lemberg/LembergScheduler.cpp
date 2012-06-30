@@ -72,22 +72,22 @@ namespace {
 		ScheduleTDList(MachineFunction &MF,
 					   MachineLoopInfo &MLI,
 					   MachineDominatorTree &MDT,
-					   AliasAnalysis *AA,
-					   TargetSubtarget::AntiDepBreakMode AntiDepMode,
-					   SmallVectorImpl<TargetRegisterClass*> &CriticalPathRCs)
-			: SchedulePostRATDList(MF, MLI, MDT, AA, AntiDepMode, CriticalPathRCs) {}
+					   AliasAnalysis *AA, const RegisterClassInfo &RCI,
+					   TargetSubtargetInfo::AntiDepBreakMode AntiDepMode,
+					   SmallVectorImpl<const TargetRegisterClass*> &CriticalPathRCs)
+		  : SchedulePostRATDList(MF, MLI, MDT, AA, RCI, AntiDepMode, CriticalPathRCs) {}
 
 		~ScheduleTDList() {
 		}
 
-		virtual void BuildSchedGraph(AliasAnalysis *AA);
+		virtual void buildSchedGraph(AliasAnalysis *AA);
 	};
 
 	class HazardRecognizer : public ScoreboardHazardRecognizer {
 
+        ScheduleTDList *Sched;
 		MachineFunction &MF;
 		const TargetInstrInfo *TII;
-		ScheduleDAG *Sched;
 
 		unsigned fpuPipe;
 
@@ -96,19 +96,19 @@ namespace {
 						 const ScheduleDAG *DAG,
 						 MachineFunction &mf,
 						 const TargetInstrInfo *tii) :
-			ScoreboardHazardRecognizer(ItinData, DAG), MF(mf), TII(tii) {
+		    ScoreboardHazardRecognizer(ItinData, DAG), Sched(NULL), MF(mf), TII(tii) {
 			fpuPipe = 0;
 		}
 
 		~HazardRecognizer() {
 		}
 
-		void setSched(ScheduleDAG *DAG) {
-			Sched = DAG;
+		void setSched(ScheduleTDList *sched) {
+			Sched = sched;
 		}
 
-		void insertSep();
-		void insertNop();
+		void insertSep(MachineBasicBlock *BB);
+		void insertNop(MachineBasicBlock *BB);
 
 		virtual void EmitInstruction(SUnit *SU);
 		virtual void AdvanceCycle();
@@ -127,7 +127,7 @@ FunctionPass *llvm::createLembergSchedulerPass(LembergTargetMachine &TM,
 ScheduleHazardRecognizer *
 LembergInstrInfo::CreateTargetPostRAHazardRecognizer(const InstrItineraryData *InstrItins,
 													 const ScheduleDAG *DAG) const {
-	return new HazardRecognizer(InstrItins, DAG, DAG->MF, this);
+  return new HazardRecognizer(InstrItins, DAG, DAG->MF, this);
 }
 
 static bool isStackAccess(const MachineInstr *MI) {
@@ -141,10 +141,10 @@ static bool isStackAccess(const MachineInstr *MI) {
 		|| Opcode == Lemberg::STORE8spi || Opcode == Lemberg::STORE8spi_imm;
 }
 
-void ScheduleTDList::BuildSchedGraph(AliasAnalysis *AA) {
+void ScheduleTDList::buildSchedGraph(AliasAnalysis *AA) {
 
 	// Create normal scheduling graph
-	SchedulePostRATDList::BuildSchedGraph(AA);
+	SchedulePostRATDList::buildSchedGraph(AA);
 	
 	// Refine scheduling graph
 	for (unsigned i = 0, e = SUnits.size(); i != e; ++i) {
@@ -213,16 +213,12 @@ void ScheduleTDList::BuildSchedGraph(AliasAnalysis *AA) {
 	}
 }
 
-void HazardRecognizer::insertSep() {
+void HazardRecognizer::insertSep(MachineBasicBlock *BB) {
 
-	MachineInstr *MI = BuildMI(MF, DebugLoc(), TII->get(Lemberg::SEP));
-	SUnit *Sep = new SUnit();
-	Sep->setInstr(MI);
+	MachineInstr *MI = BuildMI(BB, DebugLoc(), TII->get(Lemberg::SEP));
+	SUnit *Sep = Sched->newSUnit(MI);
 	// Force the separator to pass verification
-	Sep->NumPreds = 1;
-	Sep->NumSuccs = 1;
 	Sep->isScheduled = true;
-	Sched->SUnits.push_back(*Sep);
 	
 	// Add the separator to the current sequence
 	Sched->Sequence.push_back(Sep);
@@ -230,16 +226,12 @@ void HazardRecognizer::insertSep() {
 	NumBundles++;
 }
 
-void HazardRecognizer::insertNop() {
+void HazardRecognizer::insertNop(MachineBasicBlock *BB) {
 
-	MachineInstr *MI = BuildMI(MF, DebugLoc(), TII->get(Lemberg::NOP)).addImm(0);
-	SUnit *Nop = new SUnit();
-	Nop->setInstr(MI);
+	MachineInstr *MI = BuildMI(BB, DebugLoc(), TII->get(Lemberg::NOP)).addImm(0);
+	SUnit *Nop = Sched->newSUnit(MI);
 	// Force the noop to pass verification
-	Nop->NumPreds = 1;
-	Nop->NumSuccs = 1;
 	Nop->isScheduled = true;
-	Sched->SUnits.push_back(*Nop);
 	
 	// Add the noop to the current sequence
 	Sched->Sequence.push_back(Nop);
@@ -305,10 +297,10 @@ void HazardRecognizer::AdvanceCycle() {
 	if (Sched->Sequence.size() > 0 && Sched->Sequence.back() != 0) {
 		MachineInstr *LastMI = Sched->Sequence.back()->getInstr();
 		if (LastMI->getOpcode() != Lemberg::SEP) {
-			insertSep();
+		  insertSep(LastMI->getParent());
 		} else if (fpuPipe != 0) {
-			insertNop();
-			insertSep();
+		  insertNop(LastMI->getParent());
+		  insertSep(LastMI->getParent());
 		}
 	}
 
@@ -348,10 +340,13 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
   MachineLoopInfo &MLI = getAnalysis<MachineLoopInfo>();
   MachineDominatorTree &MDT = getAnalysis<MachineDominatorTree>();
   AliasAnalysis *AA = &getAnalysis<AliasAnalysis>();
-  TargetSubtarget::AntiDepBreakMode AntiDepMode = TargetSubtarget::ANTIDEP_NONE;
-  SmallVector<TargetRegisterClass*, 4> CriticalPathRCs;
+  const RegisterClassInfo &RegClassInfo = RegisterClassInfo();
+  TargetSubtargetInfo::AntiDepBreakMode AntiDepMode = TargetSubtargetInfo::ANTIDEP_NONE;
+  SmallVector<const TargetRegisterClass*, 4> CriticalPathRCs;
 
-  ScheduleTDList Scheduler(Fn, MLI, MDT, AA, AntiDepMode, CriticalPathRCs);
+
+  ScheduleTDList Scheduler(Fn, MLI, MDT, AA, RegClassInfo,
+						   AntiDepMode, CriticalPathRCs);
   HazardRecognizer *HR = (HazardRecognizer *)Scheduler.HazardRec;
   HR->setSched(&Scheduler);
 
@@ -368,7 +363,7 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
 	Scheduler.SUnits.reserve(5*MBB->size());
 
     // Initialize register live-range state for scheduling in this block.
-    Scheduler.StartBlock(MBB);
+    Scheduler.startBlock(MBB);
 
     // Schedule each sequence of instructions not interrupted by a label
     // or anything else that effectively needs to shut down scheduling.
@@ -384,7 +379,9 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
 	  }
       if (isSchedulingBoundary(MI, Fn)) {
 		// Schedule portion of BB
-        Scheduler.Run(MBB, I, Current, CurrentCount);
+        Scheduler.enterRegion(MBB, I, Current, CurrentCount);
+		Scheduler.schedule();
+		Scheduler.exitRegion();
 		HR->AdvanceCycle();
 		HR->FlushPipe();
         Scheduler.EmitSchedule();
@@ -404,14 +401,16 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
     assert(Count == 0 && "Instruction count mismatch!");
     assert((MBB->begin() == Current || CurrentCount != 0) &&
            "Instruction count mismatch!");
-	Scheduler.Run(MBB, MBB->begin(), Current, CurrentCount);
+	Scheduler.enterRegion(MBB, MBB->begin(), Current, CurrentCount);
+	Scheduler.schedule();
+	Scheduler.exitRegion();
 	if (Current != MBB->begin())
 		HR->AdvanceCycle();
 	HR->FlushPipe();
     Scheduler.EmitSchedule();
 
     // Clean up register live-range state.
-    Scheduler.FinishBlock();
+    Scheduler.finishBlock();
 
     // Update register kills
     Scheduler.FixupKills(MBB);

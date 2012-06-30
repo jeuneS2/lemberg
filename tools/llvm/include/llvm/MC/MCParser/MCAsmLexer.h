@@ -15,9 +15,6 @@
 #include "llvm/Support/SMLoc.h"
 
 namespace llvm {
-class MCAsmLexer;
-class MCInst;
-class Target;
 
 /// AsmToken - Target independent representation for an assembler token.
 class AsmToken {
@@ -36,7 +33,7 @@ public:
     // Real values.
     Real,
 
-    // Register values (stored in IntVal).  Only used by TargetAsmLexer.
+    // Register values (stored in IntVal).  Only used by MCTargetAsmLexer.
     Register,
 
     // No-value.
@@ -44,6 +41,7 @@ public:
     Colon,
     Plus, Minus, Tilde,
     Slash,    // '/'
+    BackSlash, // '\'
     LParen, RParen, LBrac, RBrac, LCurly, RCurly,
     Star, Dot, Comma, Dollar, Equal, EqualEqual,
 
@@ -53,6 +51,7 @@ public:
     Greater, GreaterEqual, GreaterGreater, At
   };
 
+private:
   TokenKind Kind;
 
   /// A reference to the entire token contents; this is always a pointer into
@@ -71,6 +70,7 @@ public:
   bool isNot(TokenKind K) const { return Kind != K; }
 
   SMLoc getLoc() const;
+  SMLoc getEndLoc() const;
 
   /// getStringContents - Get the contents of a string token (without quotes).
   StringRef getStringContents() const {

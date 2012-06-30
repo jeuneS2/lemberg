@@ -6,8 +6,11 @@ add_llvm_library(LLVMAnalysis
   AliasSetTracker.cpp
   Analysis.cpp
   BasicAliasAnalysis.cpp
+  BlockFrequencyInfo.cpp
+  BranchProbabilityInfo.cpp
   CFGPrinter.cpp
   CaptureTracking.cpp
+  CodeMetrics.cpp
   ConstantFolding.cpp
   DIBuilder.cpp
   DbgInfoPrinter.cpp

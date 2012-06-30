@@ -27,7 +27,6 @@
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineMemOperand.h"
-#include "llvm/CodeGen/PseudoSourceValue.h"
 
 namespace llvm {
 
@@ -150,11 +149,11 @@ addFrameReference(const MachineInstrBuilder &MIB, int FI, int Offset = 0) {
   MachineInstr *MI = MIB;
   MachineFunction &MF = *MI->getParent()->getParent();
   MachineFrameInfo &MFI = *MF.getFrameInfo();
-  const TargetInstrDesc &TID = MI->getDesc();
+  const MCInstrDesc &MCID = MI->getDesc();
   unsigned Flags = 0;
-  if (TID.mayLoad())
+  if (MCID.mayLoad())
     Flags |= MachineMemOperand::MOLoad;
-  if (TID.mayStore())
+  if (MCID.mayStore())
     Flags |= MachineMemOperand::MOStore;
   MachineMemOperand *MMO =
     MF.getMachineMemOperand(MachinePointerInfo::getFixedStack(FI, Offset),

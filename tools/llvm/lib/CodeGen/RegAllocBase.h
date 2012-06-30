@@ -39,6 +39,7 @@
 
 #include "llvm/ADT/OwningPtr.h"
 #include "LiveIntervalUnion.h"
+#include "RegisterClassInfo.h"
 
 namespace llvm {
 
@@ -48,11 +49,6 @@ class VirtRegMap;
 class LiveIntervals;
 class Spiller;
 
-// Forward declare a priority queue of live virtual registers. If an
-// implementation needs to prioritize by anything other than spill weight, then
-// this will become an abstract base class with virtual calls to push/get.
-class LiveVirtRegQueue;
-
 /// RegAllocBase provides the register allocation driver and interface that can
 /// be extended to add interesting heuristics.
 ///
@@ -61,7 +57,11 @@ class LiveVirtRegQueue;
 /// assignment order.
 class RegAllocBase {
   LiveIntervalUnion::Allocator UnionAllocator;
-protected:
+
+  // Cache tag for PhysReg2LiveUnion entries. Increment whenever virtual
+  // registers may have changed.
+  unsigned UserTag;
+
   // Array of LiveIntervalUnions indexed by physical register.
   class LiveUnionArray {
     unsigned NumRegs;
@@ -82,17 +82,20 @@ protected:
     }
   };
 
-  const TargetRegisterInfo *TRI;
-  MachineRegisterInfo *MRI;
-  VirtRegMap *VRM;
-  LiveIntervals *LIS;
   LiveUnionArray PhysReg2LiveUnion;
 
   // Current queries, one per physreg. They must be reinitialized each time we
   // query on a new live virtual register.
   OwningArrayPtr<LiveIntervalUnion::Query> Queries;
 
-  RegAllocBase(): TRI(0), MRI(0), VRM(0), LIS(0) {}
+protected:
+  const TargetRegisterInfo *TRI;
+  MachineRegisterInfo *MRI;
+  VirtRegMap *VRM;
+  LiveIntervals *LIS;
+  RegisterClassInfo RegClassInfo;
+
+  RegAllocBase(): UserTag(0), TRI(0), MRI(0), VRM(0), LIS(0) {}
 
   virtual ~RegAllocBase() {}
 
@@ -104,16 +107,21 @@ protected:
   // before querying a new live virtual register. This ties Queries and
   // PhysReg2LiveUnion together.
   LiveIntervalUnion::Query &query(LiveInterval &VirtReg, unsigned PhysReg) {
-    Queries[PhysReg].init(&VirtReg, &PhysReg2LiveUnion[PhysReg]);
+    Queries[PhysReg].init(UserTag, &VirtReg, &PhysReg2LiveUnion[PhysReg]);
     return Queries[PhysReg];
   }
 
+  // Get direct access to the underlying LiveIntervalUnion for PhysReg.
+  LiveIntervalUnion &getLiveUnion(unsigned PhysReg) {
+    return PhysReg2LiveUnion[PhysReg];
+  }
+
+  // Invalidate all cached information about virtual registers - live ranges may
+  // have changed.
+  void invalidateVirtRegs() { ++UserTag; }
+
   // The top-level driver. The output is a VirtRegMap that us updated with
   // physical register assignments.
-  //
-  // If an implementation wants to override the LiveInterval comparator, we
-  // should modify this interface to allow passing in an instance derived from
-  // LiveVirtRegQueue.
   void allocatePhysRegs();
 
   // Get a temporary reference to a Spiller instance.
@@ -149,12 +157,6 @@ protected:
   /// allocation is making progress.
   void unassign(LiveInterval &VirtReg, unsigned PhysReg);
 
-  // Helper for spilling all live virtual registers currently unified under preg
-  // that interfere with the most recently queried lvr.  Return true if spilling
-  // was successful, and append any new spilled/split intervals to splitLVRs.
-  bool spillInterferences(LiveInterval &VirtReg, unsigned PhysReg,
-                          SmallVectorImpl<LiveInterval*> &SplitVRegs);
-
   /// addMBBLiveIns - Add physreg liveins to basic blocks.
   void addMBBLiveIns(MachineFunction *);
 
@@ -172,9 +174,6 @@ public:
 
 private:
   void seedLiveRegs();
-
-  void spillReg(LiveInterval &VirtReg, unsigned PhysReg,
-                SmallVectorImpl<LiveInterval*> &SplitVRegs);
 };
 
 } // end namespace llvm

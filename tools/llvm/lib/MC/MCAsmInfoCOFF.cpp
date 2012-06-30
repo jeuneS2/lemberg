@@ -13,13 +13,14 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/MC/MCAsmInfoCOFF.h"
-#include "llvm/ADT/SmallVector.h"
 using namespace llvm;
+
+void MCAsmInfoCOFF::anchor() { }
 
 MCAsmInfoCOFF::MCAsmInfoCOFF() {
   GlobalPrefix = "_";
   COMMDirectiveAlignmentIsInBytes = false;
-  HasLCOMMDirective = true;
+  LCOMMDirectiveType = LCOMM::ByteAlignment;
   HasDotTypeDotSizeDirective = false;
   HasSingleParameterDotFile = false;
   PrivateGlobalPrefix = "L";  // Prefix for private global symbols
@@ -27,11 +28,26 @@ MCAsmInfoCOFF::MCAsmInfoCOFF() {
   LinkOnceDirective = "\t.linkonce discard\n";
   
   // Doesn't support visibility:
-  HiddenVisibilityAttr = ProtectedVisibilityAttr = MCSA_Invalid;
+  HiddenVisibilityAttr = HiddenDeclarationVisibilityAttr = MCSA_Invalid;
+  ProtectedVisibilityAttr = MCSA_Invalid;
 
   // Set up DWARF directives
   HasLEB128 = true;  // Target asm supports leb128 directives (little-endian)
   SupportsDebugInformation = true;
   DwarfSectionOffsetDirective = "\t.secrel32\t";
   HasMicrosoftFastStdCallMangling = true;
+
+  SupportsDataRegions = false;
+}
+
+void MCAsmInfoMicrosoft::anchor() { }
+
+MCAsmInfoMicrosoft::MCAsmInfoMicrosoft() {
+  AllowQuotesInName = true;
+}
+
+void MCAsmInfoGNUCOFF::anchor() { }
+
+MCAsmInfoGNUCOFF::MCAsmInfoGNUCOFF() {
+
 }

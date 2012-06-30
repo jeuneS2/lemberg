@@ -17,9 +17,7 @@
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/Passes.h"
-#include "llvm/Target/TargetInstrInfo.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetOptions.h"
+#include "llvm/MC/MCObjectFileInfo.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/ADT/PointerUnion.h"
 #include "llvm/Support/Dwarf.h"
@@ -254,11 +252,12 @@ void MMIAddrLabelMapCallbackPtr::allUsesReplacedWith(Value *V2) {
 //===----------------------------------------------------------------------===//
 
 MachineModuleInfo::MachineModuleInfo(const MCAsmInfo &MAI,
-                                     const TargetAsmInfo *TAI)
-: ImmutablePass(ID), Context(MAI, TAI),
-  ObjFileMMI(0),
-  CurCallSite(0), CallsEHReturn(0), CallsUnwindInit(0), DbgInfoAvailable(false),
-  CallsExternalVAFunctionWithFloatingPointArguments(false) {
+                                     const MCRegisterInfo &MRI,
+                                     const MCObjectFileInfo *MOFI)
+  : ImmutablePass(ID), Context(MAI, MRI, MOFI),
+    ObjFileMMI(0), CompactUnwindEncoding(0), CurCallSite(0), CallsEHReturn(0),
+    CallsUnwindInit(0), DbgInfoAvailable(false),
+    UsesVAFloatArgument(false) {
   initializeMachineModuleInfoPass(*PassRegistry::getPassRegistry());
   // Always emit some info, by default "no personality" info.
   Personalities.push_back(NULL);
@@ -267,10 +266,11 @@ MachineModuleInfo::MachineModuleInfo(const MCAsmInfo &MAI,
 }
 
 MachineModuleInfo::MachineModuleInfo()
-: ImmutablePass(ID), Context(*(MCAsmInfo*)0, NULL) {
-  assert(0 && "This MachineModuleInfo constructor should never be called, MMI "
-         "should always be explicitly constructed by LLVMTargetMachine");
-  abort();
+  : ImmutablePass(ID),
+    Context(*(MCAsmInfo*)0, *(MCRegisterInfo*)0, (MCObjectFileInfo*)0) {
+  llvm_unreachable("This MachineModuleInfo constructor should never be called, "
+                   "MMI should always be explicitly constructed by "
+                   "LLVMTargetMachine");
 }
 
 MachineModuleInfo::~MachineModuleInfo() {
@@ -311,6 +311,7 @@ void MachineModuleInfo::EndFunction() {
   FilterEnds.clear();
   CallsEHReturn = 0;
   CallsUnwindInit = 0;
+  CompactUnwindEncoding = 0;
   VariableDbgInfo.clear();
 }
 
@@ -426,8 +427,9 @@ void MachineModuleInfo::addPersonality(MachineBasicBlock *LandingPad,
 
 /// addCatchTypeInfo - Provide the catch typeinfo for a landing pad.
 ///
-void MachineModuleInfo::addCatchTypeInfo(MachineBasicBlock *LandingPad,
-                                  std::vector<const GlobalVariable *> &TyInfo) {
+void MachineModuleInfo::
+addCatchTypeInfo(MachineBasicBlock *LandingPad,
+                 ArrayRef<const GlobalVariable *> TyInfo) {
   LandingPadInfo &LP = getOrCreateLandingPadInfo(LandingPad);
   for (unsigned N = TyInfo.size(); N; --N)
     LP.TypeIds.push_back(getTypeIDFor(TyInfo[N - 1]));
@@ -435,8 +437,9 @@ void MachineModuleInfo::addCatchTypeInfo(MachineBasicBlock *LandingPad,
 
 /// addFilterTypeInfo - Provide the filter typeinfo for a landing pad.
 ///
-void MachineModuleInfo::addFilterTypeInfo(MachineBasicBlock *LandingPad,
-                                  std::vector<const GlobalVariable *> &TyInfo) {
+void MachineModuleInfo::
+addFilterTypeInfo(MachineBasicBlock *LandingPad,
+                  ArrayRef<const GlobalVariable *> TyInfo) {
   LandingPadInfo &LP = getOrCreateLandingPadInfo(LandingPad);
   std::vector<unsigned> IdsInFilter(TyInfo.size());
   for (unsigned I = 0, E = TyInfo.size(); I != E; ++I)
@@ -496,6 +499,13 @@ void MachineModuleInfo::TidyLandingPads(DenseMap<MCSymbol*, uintptr_t> *LPMap) {
   }
 }
 
+/// setCallSiteLandingPad - Map the landing pad's EH symbol to the call site
+/// indexes.
+void MachineModuleInfo::setCallSiteLandingPad(MCSymbol *Sym,
+                                              ArrayRef<unsigned> Sites) {
+  LPadToCallSiteMap[Sym].append(Sites.begin(), Sites.end());
+}
+
 /// getTypeIDFor - Return the type id for the specified typeinfo.  This is
 /// function wide.
 unsigned MachineModuleInfo::getTypeIDFor(const GlobalVariable *TI) {
@@ -530,8 +540,7 @@ try_next:;
   // Add the new filter.
   int FilterID = -(1 + FilterIds.size());
   FilterIds.reserve(FilterIds.size() + TyIds.size() + 1);
-  for (unsigned I = 0, N = TyIds.size(); I != N; ++I)
-    FilterIds.push_back(TyIds[I]);
+  FilterIds.insert(FilterIds.end(), TyIds.begin(), TyIds.end());
   FilterEnds.push_back(FilterIds.size());
   FilterIds.push_back(0); // terminator
   return FilterID;
@@ -550,13 +559,13 @@ unsigned MachineModuleInfo::getPersonalityIndex() const {
   const Function* Personality = NULL;
 
   // Scan landing pads. If there is at least one non-NULL personality - use it.
-  for (unsigned i = 0; i != LandingPads.size(); ++i)
+  for (unsigned i = 0, e = LandingPads.size(); i != e; ++i)
     if (LandingPads[i].Personality) {
       Personality = LandingPads[i].Personality;
       break;
     }
 
-  for (unsigned i = 0; i < Personalities.size(); ++i) {
+  for (unsigned i = 0, e = Personalities.size(); i < e; ++i) {
     if (Personalities[i] == Personality)
       return i;
   }

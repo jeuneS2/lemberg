@@ -12,42 +12,36 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Target/TargetInstrInfo.h"
-#include "llvm/Target/TargetInstrItineraries.h"
 #include "llvm/Target/TargetRegisterInfo.h"
-#include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCInstrItineraries.h"
 #include "llvm/Support/ErrorHandling.h"
 #include <cctype>
 using namespace llvm;
 
 //===----------------------------------------------------------------------===//
-//  TargetOperandInfo
-//===----------------------------------------------------------------------===//
-
-/// getRegClass - Get the register class for the operand, handling resolution
-/// of "symbolic" pointer register classes etc.  If this is not a register
-/// operand, this returns null.
-const TargetRegisterClass *
-TargetOperandInfo::getRegClass(const TargetRegisterInfo *TRI) const {
-  if (isLookupPtrRegClass())
-    return TRI->getPointerRegClass(RegClass);
-  // Instructions like INSERT_SUBREG do not have fixed register classes.
-  if (RegClass < 0)
-    return 0;
-  // Otherwise just look it up normally.
-  return TRI->getRegClass(RegClass);
-}
-
-//===----------------------------------------------------------------------===//
 //  TargetInstrInfo
 //===----------------------------------------------------------------------===//
 
-TargetInstrInfo::TargetInstrInfo(const TargetInstrDesc* Desc,
-                                 unsigned numOpcodes)
-  : Descriptors(Desc), NumOpcodes(numOpcodes) {
+TargetInstrInfo::~TargetInstrInfo() {
 }
 
-TargetInstrInfo::~TargetInstrInfo() {
+const TargetRegisterClass*
+TargetInstrInfo::getRegClass(const MCInstrDesc &MCID, unsigned OpNum,
+                             const TargetRegisterInfo *TRI) const {
+  if (OpNum >= MCID.getNumOperands())
+    return 0;
+
+  short RegClass = MCID.OpInfo[OpNum].RegClass;
+  if (MCID.OpInfo[OpNum].isLookupPtrRegClass())
+    return TRI->getPointerRegClass(RegClass);
+
+  // Instructions like INSERT_SUBREG do not have fixed register classes.
+  if (RegClass < 0)
+    return 0;
+
+  // Otherwise just look it up normally.
+  return TRI->getRegClass(RegClass);
 }
 
 unsigned
@@ -78,23 +72,6 @@ TargetInstrInfo::getOperandLatency(const InstrItineraryData *ItinData,
   return ItinData->getOperandLatency(DefClass, DefIdx, UseClass, UseIdx);
 }
 
-int
-TargetInstrInfo::getOperandLatency(const InstrItineraryData *ItinData,
-                                   SDNode *DefNode, unsigned DefIdx,
-                                   SDNode *UseNode, unsigned UseIdx) const {
-  if (!ItinData || ItinData->isEmpty())
-    return -1;
-
-  if (!DefNode->isMachineOpcode())
-    return -1;
-
-  unsigned DefClass = get(DefNode->getMachineOpcode()).getSchedClass();
-  if (!UseNode->isMachineOpcode())
-    return ItinData->getOperandCycle(DefClass, DefIdx);
-  unsigned UseClass = get(UseNode->getMachineOpcode()).getSchedClass();
-  return ItinData->getOperandLatency(DefClass, DefIdx, UseClass, UseIdx);
-}
-
 int TargetInstrInfo::getInstrLatency(const InstrItineraryData *ItinData,
                                      const MachineInstr *MI,
                                      unsigned *PredCost) const {
@@ -102,17 +79,6 @@ int TargetInstrInfo::getInstrLatency(const InstrItineraryData *ItinData,
     return 1;
 
   return ItinData->getStageLatency(MI->getDesc().getSchedClass());
-}
-
-int TargetInstrInfo::getInstrLatency(const InstrItineraryData *ItinData,
-                                     SDNode *N) const {
-  if (!ItinData || ItinData->isEmpty())
-    return 1;
-
-  if (!N->isMachineOpcode())
-    return 1;
-
-  return ItinData->getStageLatency(get(N->getMachineOpcode()).getSchedClass());
 }
 
 bool TargetInstrInfo::hasLowDefLatency(const InstrItineraryData *ItinData,
@@ -134,25 +100,12 @@ void TargetInstrInfo::insertNoop(MachineBasicBlock &MBB,
 }
 
 
-bool TargetInstrInfo::isUnpredicatedTerminator(const MachineInstr *MI) const {
-  const TargetInstrDesc &TID = MI->getDesc();
-  if (!TID.isTerminator()) return false;
-
-  // Conditional branch is a special case.
-  if (TID.isBranch() && !TID.isBarrier())
-    return true;
-  if (!TID.isPredicable())
-    return true;
-  return !isPredicated(MI);
-}
-
-
 /// Measure the specified inline asm to determine an approximation of its
 /// length.
-/// Comments (which run till the next SeparatorChar or newline) do not
+/// Comments (which run till the next SeparatorString or newline) do not
 /// count as an instruction.
 /// Any other non-whitespace text is considered an instruction, with
-/// multiple instructions separated by SeparatorChar or newlines.
+/// multiple instructions separated by SeparatorString or newlines.
 /// Variable-length instructions are not handled here; this function
 /// may be overloaded in the target code to do that.
 unsigned TargetInstrInfo::getInlineAsmLength(const char *Str,
@@ -163,7 +116,8 @@ unsigned TargetInstrInfo::getInlineAsmLength(const char *Str,
   bool atInsnStart = true;
   unsigned Length = 0;
   for (; *Str; ++Str) {
-    if (*Str == '\n' || *Str == MAI.getSeparatorChar())
+    if (*Str == '\n' || strncmp(Str, MAI.getSeparatorString(),
+                                strlen(MAI.getSeparatorString())) == 0)
       atInsnStart = true;
     if (atInsnStart && !std::isspace(*Str)) {
       Length += MAI.getMaxInstLength();

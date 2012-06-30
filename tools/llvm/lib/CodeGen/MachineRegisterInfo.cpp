@@ -14,15 +14,16 @@
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/Target/TargetInstrInfo.h"
-#include "llvm/Support/CommandLine.h"
+#include "llvm/Target/TargetMachine.h"
 using namespace llvm;
 
-MachineRegisterInfo::MachineRegisterInfo(const TargetRegisterInfo &TRI) {
+MachineRegisterInfo::MachineRegisterInfo(const TargetRegisterInfo &TRI)
+  : TRI(&TRI), IsSSA(true), TracksLiveness(true) {
   VRegInfo.reserve(256);
   RegAllocHints.reserve(256);
-  RegClass2VRegMap = new std::vector<unsigned>[TRI.getNumRegClasses()];
   UsedPhysRegs.resize(TRI.getNumRegs());
-  
+  UsedPhysRegMask.resize(TRI.getNumRegs());
+
   // Create the physreg use/def lists.
   PhysRegUseDefLists = new MachineOperand*[TRI.getNumRegs()];
   memset(PhysRegUseDefLists, 0, sizeof(MachineOperand*)*TRI.getNumRegs());
@@ -30,47 +31,64 @@ MachineRegisterInfo::MachineRegisterInfo(const TargetRegisterInfo &TRI) {
 
 MachineRegisterInfo::~MachineRegisterInfo() {
 #ifndef NDEBUG
-  for (unsigned i = 0, e = getNumVirtRegs(); i != e; ++i)
-    assert(VRegInfo[TargetRegisterInfo::index2VirtReg(i)].second == 0 &&
-           "Vreg use list non-empty still?");
+  clearVirtRegs();
   for (unsigned i = 0, e = UsedPhysRegs.size(); i != e; ++i)
     assert(!PhysRegUseDefLists[i] &&
            "PhysRegUseDefLists has entries after all instructions are deleted");
 #endif
   delete [] PhysRegUseDefLists;
-  delete [] RegClass2VRegMap;
 }
 
 /// setRegClass - Set the register class of the specified virtual register.
 ///
 void
 MachineRegisterInfo::setRegClass(unsigned Reg, const TargetRegisterClass *RC) {
-  const TargetRegisterClass *OldRC = VRegInfo[Reg].first;
   VRegInfo[Reg].first = RC;
-
-  // Remove from old register class's vregs list. This may be slow but
-  // fortunately this operation is rarely needed.
-  std::vector<unsigned> &VRegs = RegClass2VRegMap[OldRC->getID()];
-  std::vector<unsigned>::iterator I =
-    std::find(VRegs.begin(), VRegs.end(), Reg);
-  VRegs.erase(I);
-
-  // Add to new register class's vregs list.
-  RegClass2VRegMap[RC->getID()].push_back(Reg);
 }
 
 const TargetRegisterClass *
 MachineRegisterInfo::constrainRegClass(unsigned Reg,
-                                       const TargetRegisterClass *RC) {
+                                       const TargetRegisterClass *RC,
+                                       unsigned MinNumRegs) {
   const TargetRegisterClass *OldRC = getRegClass(Reg);
   if (OldRC == RC)
     return RC;
-  const TargetRegisterClass *NewRC = getCommonSubClass(OldRC, RC);
-  if (!NewRC)
+  const TargetRegisterClass *NewRC = TRI->getCommonSubClass(OldRC, RC);
+  if (!NewRC || NewRC == OldRC)
+    return NewRC;
+  if (NewRC->getNumRegs() < MinNumRegs)
     return 0;
-  if (NewRC != OldRC)
-    setRegClass(Reg, NewRC);
+  setRegClass(Reg, NewRC);
   return NewRC;
+}
+
+bool
+MachineRegisterInfo::recomputeRegClass(unsigned Reg, const TargetMachine &TM) {
+  const TargetInstrInfo *TII = TM.getInstrInfo();
+  const TargetRegisterClass *OldRC = getRegClass(Reg);
+  const TargetRegisterClass *NewRC = TRI->getLargestLegalSuperClass(OldRC);
+
+  // Stop early if there is no room to grow.
+  if (NewRC == OldRC)
+    return false;
+
+  // Accumulate constraints from all uses.
+  for (reg_nodbg_iterator I = reg_nodbg_begin(Reg), E = reg_nodbg_end(); I != E;
+       ++I) {
+    const TargetRegisterClass *OpRC =
+      I->getRegClassConstraint(I.getOperandNo(), TII, TRI);
+    if (unsigned SubIdx = I.getOperand().getSubReg()) {
+      if (OpRC)
+        NewRC = TRI->getMatchingSuperRegClass(NewRC, OpRC, SubIdx);
+      else
+        NewRC = TRI->getSubClassWithSubReg(NewRC, SubIdx);
+    } else if (OpRC)
+      NewRC = TRI->getCommonSubClass(NewRC, OpRC);
+    if (!NewRC || NewRC == OldRC)
+      return false;
+  }
+  setRegClass(Reg, NewRC);
+  return true;
 }
 
 /// createVirtualRegister - Create and return a new virtual register in the
@@ -79,6 +97,8 @@ MachineRegisterInfo::constrainRegClass(unsigned Reg,
 unsigned
 MachineRegisterInfo::createVirtualRegister(const TargetRegisterClass *RegClass){
   assert(RegClass && "Cannot create register without RegClass!");
+  assert(RegClass->isAllocatable() &&
+         "Virtual register RegClass must be allocatable.");
 
   // New virtual register number.
   unsigned Reg = TargetRegisterInfo::index2VirtReg(getNumVirtRegs());
@@ -93,8 +113,17 @@ MachineRegisterInfo::createVirtualRegister(const TargetRegisterClass *RegClass){
   if (ArrayBase && &VRegInfo[FirstVirtReg] != ArrayBase)
     // The vector reallocated, handle this now.
     HandleVRegListReallocation();
-  RegClass2VRegMap[RegClass->getID()].push_back(Reg);
   return Reg;
+}
+
+/// clearVirtRegs - Remove all virtual registers (after physreg assignment).
+void MachineRegisterInfo::clearVirtRegs() {
+#ifndef NDEBUG
+  for (unsigned i = 0, e = getNumVirtRegs(); i != e; ++i)
+    assert(VRegInfo[TargetRegisterInfo::index2VirtReg(i)].second == 0 &&
+           "Vreg use list non-empty still?");
+#endif
+  VRegInfo.clear();
 }
 
 /// HandleVRegListReallocation - We just added a virtual register to the
@@ -132,9 +161,8 @@ void MachineRegisterInfo::replaceRegWith(unsigned FromReg, unsigned ToReg) {
 /// form, so there should only be one definition.
 MachineInstr *MachineRegisterInfo::getVRegDef(unsigned Reg) const {
   // Since we are in SSA form, we can use the first definition.
-  if (!def_empty(Reg))
-    return &*def_begin(Reg);
-  return 0;
+  def_iterator I = def_begin(Reg);
+  return !I.atEnd() ? &*I : 0;
 }
 
 bool MachineRegisterInfo::hasOneUse(unsigned RegNo) const {
@@ -224,18 +252,31 @@ MachineRegisterInfo::EmitLiveInCopies(MachineBasicBlock *EntryMBB,
     }
 }
 
-void MachineRegisterInfo::closePhysRegsUsed(const TargetRegisterInfo &TRI) {
-  for (int i = UsedPhysRegs.find_first(); i >= 0;
-       i = UsedPhysRegs.find_next(i))
-         for (const unsigned *SS = TRI.getSubRegisters(i);
-              unsigned SubReg = *SS; ++SS)
-           if (SubReg > unsigned(i))
-             UsedPhysRegs.set(SubReg);
-}
-
 #ifndef NDEBUG
 void MachineRegisterInfo::dumpUses(unsigned Reg) const {
   for (use_iterator I = use_begin(Reg), E = use_end(); I != E; ++I)
     I.getOperand().getParent()->dump();
 }
 #endif
+
+void MachineRegisterInfo::freezeReservedRegs(const MachineFunction &MF) {
+  ReservedRegs = TRI->getReservedRegs(MF);
+}
+
+bool MachineRegisterInfo::isConstantPhysReg(unsigned PhysReg,
+                                            const MachineFunction &MF) const {
+  assert(TargetRegisterInfo::isPhysicalRegister(PhysReg));
+
+  // Check if any overlapping register is modified.
+  for (const uint16_t *R = TRI->getOverlaps(PhysReg); *R; ++R)
+    if (!def_empty(*R))
+      return false;
+
+  // Check if any overlapping register is allocatable so it may be used later.
+  if (AllocatableRegs.empty())
+    AllocatableRegs = TRI->getAllocatableSet(MF);
+  for (const uint16_t *R = TRI->getOverlaps(PhysReg); *R; ++R)
+    if (AllocatableRegs.test(*R))
+      return false;
+  return true;
+}

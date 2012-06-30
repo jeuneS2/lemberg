@@ -485,3 +485,132 @@ entry:
 ; CHECK: ret i8 %tmp551
   ret i8 %tmp55
 }
+
+; PR9809
+define i32 @test40(i32 %a, i32 %b) nounwind {
+  %shl1 = shl i32 1, %b
+  %shl2 = shl i32 %shl1, 2
+  %div = udiv i32 %a, %shl2
+  ret i32 %div
+; CHECK: @test40
+; CHECK-NEXT: add i32 %b, 2
+; CHECK-NEXT: lshr i32 %a
+; CHECK-NEXT: ret i32
+}
+
+define i32 @test41(i32 %a, i32 %b) nounwind {
+  %1 = shl i32 1, %b
+  %2 = shl i32 %1, 3
+  ret i32 %2
+; CHECK: @test41
+; CHECK-NEXT: shl i32 8, %b
+; CHECK-NEXT: ret i32
+}
+
+define i32 @test42(i32 %a, i32 %b) nounwind {
+  %div = lshr i32 4096, %b    ; must be exact otherwise we'd divide by zero
+  %div2 = udiv i32 %a, %div
+  ret i32 %div2
+; CHECK: @test42
+; CHECK-NEXT: lshr exact i32 4096, %b
+}
+
+define i32 @test43(i32 %a, i32 %b) nounwind {
+  %div = shl i32 4096, %b    ; must be exact otherwise we'd divide by zero
+  %div2 = udiv i32 %a, %div
+  ret i32 %div2
+; CHECK: @test43
+; CHECK-NEXT: add i32 %b, 12
+; CHECK-NEXT: lshr
+; CHECK-NEXT: ret
+}
+
+define i32 @test44(i32 %a) nounwind {
+  %y = shl nuw i32 %a, 1
+  %z = shl i32 %y, 4
+  ret i32 %z
+; CHECK: @test44
+; CHECK-NEXT: %y = shl i32 %a, 5
+; CHECK-NEXT: ret i32 %y
+}
+
+define i32 @test45(i32 %a) nounwind {
+  %y = lshr exact i32 %a, 1
+  %z = lshr i32 %y, 4
+  ret i32 %z
+; CHECK: @test45
+; CHECK-NEXT: %y = lshr i32 %a, 5
+; CHECK-NEXT: ret i32 %y
+}
+
+define i32 @test46(i32 %a) {
+  %y = ashr exact i32 %a, 3
+  %z = shl i32 %y, 1
+  ret i32 %z
+; CHECK: @test46
+; CHECK-NEXT: %z = ashr exact i32 %a, 2
+; CHECK-NEXT: ret i32 %z
+}
+
+define i32 @test47(i32 %a) {
+  %y = lshr exact i32 %a, 3
+  %z = shl i32 %y, 1
+  ret i32 %z
+; CHECK: @test47
+; CHECK-NEXT: %z = lshr exact i32 %a, 2
+; CHECK-NEXT: ret i32 %z
+}
+
+define i32 @test48(i32 %x) {
+  %A = lshr exact i32 %x, 1
+  %B = shl i32 %A, 3
+  ret i32 %B
+; CHECK: @test48
+; CHECK-NEXT: %B = shl i32 %x, 2
+; CHECK-NEXT: ret i32 %B
+}
+
+define i32 @test49(i32 %x) {
+  %A = ashr exact i32 %x, 1
+  %B = shl i32 %A, 3
+  ret i32 %B
+; CHECK: @test49
+; CHECK-NEXT: %B = shl i32 %x, 2
+; CHECK-NEXT: ret i32 %B
+}
+
+define i32 @test50(i32 %x) {
+  %A = shl nsw i32 %x, 1
+  %B = ashr i32 %A, 3
+  ret i32 %B
+; CHECK: @test50
+; CHECK-NEXT: %B = ashr i32 %x, 2
+; CHECK-NEXT: ret i32 %B
+}
+
+define i32 @test51(i32 %x) {
+  %A = shl nuw i32 %x, 1
+  %B = lshr i32 %A, 3
+  ret i32 %B
+; CHECK: @test51
+; CHECK-NEXT: %B = lshr i32 %x, 2
+; CHECK-NEXT: ret i32 %B
+}
+
+define i32 @test52(i32 %x) {
+  %A = shl nsw i32 %x, 3
+  %B = ashr i32 %A, 1
+  ret i32 %B
+; CHECK: @test52
+; CHECK-NEXT: %B = shl nsw i32 %x, 2
+; CHECK-NEXT: ret i32 %B
+}
+
+define i32 @test53(i32 %x) {
+  %A = shl nuw i32 %x, 3
+  %B = lshr i32 %A, 1
+  ret i32 %B
+; CHECK: @test53
+; CHECK-NEXT: %B = shl nuw i32 %x, 2
+; CHECK-NEXT: ret i32 %B
+}

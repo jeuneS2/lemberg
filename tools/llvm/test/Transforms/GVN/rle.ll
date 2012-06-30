@@ -1,7 +1,7 @@
-; RUN: opt < %s -basicaa -gvn -S | FileCheck %s
+; RUN: opt < %s -basicaa -gvn -S -die | FileCheck %s
 
 ; 32-bit little endian target.
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:128:128"
+target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:128:128-n8:16:32"
 
 ;; Trivial RLE test.
 define i32 @test0(i32 %V, i32* %P) {
@@ -24,6 +24,15 @@ define i8 @crash0({i32, i32} %A, {i32, i32}* %P) {
   %X = bitcast {i32, i32}* %P to i8*
   %Y = load i8* %X
   ret i8 %Y
+}
+
+;; No PR filed, crashed in CaptureTracker.
+declare void @helper()
+define void @crash1() {
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* undef, i8* undef, i64 undef, i32 1, i1 false) nounwind
+  %tmp = load i8* bitcast (void ()* @helper to i8*)
+  %x = icmp eq i8 %tmp, 15
+  ret void
 }
 
 
@@ -135,7 +144,7 @@ define i8* @coerce_mustalias7(i64 %V, i64* %P) {
 define signext i16 @memset_to_i16_local(i16* %A) nounwind ssp {
 entry:
   %conv = bitcast i16* %A to i8* 
-  tail call void @llvm.memset.i64(i8* %conv, i8 1, i64 200, i32 1)
+  tail call void @llvm.memset.p0i8.i64(i8* %conv, i8 1, i64 200, i32 1, i1 false)
   %arrayidx = getelementptr inbounds i16* %A, i64 42
   %tmp2 = load i16* %arrayidx
   ret i16 %tmp2
@@ -148,7 +157,7 @@ entry:
 define float @memset_to_float_local(float* %A, i8 %Val) nounwind ssp {
 entry:
   %conv = bitcast float* %A to i8*                ; <i8*> [#uses=1]
-  tail call void @llvm.memset.i64(i8* %conv, i8 %Val, i64 400, i32 1)
+  tail call void @llvm.memset.p0i8.i64(i8* %conv, i8 %Val, i64 400, i32 1, i1 false)
   %arrayidx = getelementptr inbounds float* %A, i64 42 ; <float*> [#uses=1]
   %tmp2 = load float* %arrayidx                   ; <float> [#uses=1]
   ret float %tmp2
@@ -168,11 +177,11 @@ define i16 @memset_to_i16_nonlocal0(i16* %P, i1 %cond) {
   %P3 = bitcast i16* %P to i8*
   br i1 %cond, label %T, label %F
 T:
-  tail call void @llvm.memset.i64(i8* %P3, i8 1, i64 400, i32 1)
+  tail call void @llvm.memset.p0i8.i64(i8* %P3, i8 1, i64 400, i32 1, i1 false)
   br label %Cont
   
 F:
-  tail call void @llvm.memset.i64(i8* %P3, i8 2, i64 400, i32 1)
+  tail call void @llvm.memset.p0i8.i64(i8* %P3, i8 2, i64 400, i32 1, i1 false)
   br label %Cont
 
 Cont:
@@ -193,7 +202,7 @@ Cont:
 define float @memcpy_to_float_local(float* %A) nounwind ssp {
 entry:
   %conv = bitcast float* %A to i8*                ; <i8*> [#uses=1]
-  tail call void @llvm.memcpy.i64(i8* %conv, i8* bitcast ({i32, float, i32 }* @GCst to i8*), i64 12, i32 1)
+  tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %conv, i8* bitcast ({i32, float, i32 }* @GCst to i8*), i64 12, i32 1, i1 false)
   %arrayidx = getelementptr inbounds float* %A, i64 1 ; <float*> [#uses=1]
   %tmp2 = load float* %arrayidx                   ; <float> [#uses=1]
   ret float %tmp2
@@ -201,11 +210,6 @@ entry:
 ; CHECK-NOT: load
 ; CHECK: ret float 1.400000e+01
 }
-
-
-declare void @llvm.memset.i64(i8* nocapture, i8, i64, i32) nounwind
-declare void @llvm.memcpy.i64(i8* nocapture, i8* nocapture, i64, i32) nounwind
-
 
 
 
@@ -360,8 +364,11 @@ Cont:
 
 define i32 @chained_load(i32** %p) {
 block1:
+  %A = alloca i32*
+
   %z = load i32** %p
-	br i1 true, label %block2, label %block3
+  store i32* %z, i32** %A
+  br i1 true, label %block2, label %block3
 
 block2:
  %a = load i32** %p
@@ -536,7 +543,7 @@ define i32 @memset_to_load() nounwind readnone {
 entry:
   %x = alloca [256 x i32], align 4                ; <[256 x i32]*> [#uses=2]
   %tmp = bitcast [256 x i32]* %x to i8*           ; <i8*> [#uses=1]
-  call void @llvm.memset.i64(i8* %tmp, i8 0, i64 1024, i32 4)
+  call void @llvm.memset.p0i8.i64(i8* %tmp, i8 0, i64 1024, i32 4, i1 false)
   %arraydecay = getelementptr inbounds [256 x i32]* %x, i32 0, i32 0 ; <i32*>
   %tmp1 = load i32* %arraydecay                   ; <i32> [#uses=1]
   ret i32 %tmp1
@@ -544,3 +551,128 @@ entry:
 ; CHECK: ret i32 0
 }
 
+
+;;===----------------------------------------------------------------------===;;
+;; Load -> Load forwarding in partial alias case.
+;;===----------------------------------------------------------------------===;;
+
+define i32 @load_load_partial_alias(i8* %P) nounwind ssp {
+entry:
+  %0 = bitcast i8* %P to i32*
+  %tmp2 = load i32* %0
+  %add.ptr = getelementptr inbounds i8* %P, i64 1
+  %tmp5 = load i8* %add.ptr
+  %conv = zext i8 %tmp5 to i32
+  %add = add nsw i32 %tmp2, %conv
+  ret i32 %add
+
+; TEMPORARILYDISABLED: @load_load_partial_alias
+; TEMPORARILYDISABLED: load i32*
+; TEMPORARILYDISABLED-NOT: load
+; TEMPORARILYDISABLED: lshr i32 {{.*}}, 8
+; TEMPORARILYDISABLED-NOT: load
+; TEMPORARILYDISABLED: trunc i32 {{.*}} to i8
+; TEMPORARILYDISABLED-NOT: load
+; TEMPORARILYDISABLED: ret i32
+}
+
+
+; Cross block partial alias case.
+define i32 @load_load_partial_alias_cross_block(i8* %P) nounwind ssp {
+entry:
+  %xx = bitcast i8* %P to i32*
+  %x1 = load i32* %xx, align 4
+  %cmp = icmp eq i32 %x1, 127
+  br i1 %cmp, label %land.lhs.true, label %if.end
+
+land.lhs.true:                                    ; preds = %entry
+  %arrayidx4 = getelementptr inbounds i8* %P, i64 1
+  %tmp5 = load i8* %arrayidx4, align 1
+  %conv6 = zext i8 %tmp5 to i32
+  ret i32 %conv6
+
+if.end:
+  ret i32 52
+; TEMPORARILY_DISABLED: @load_load_partial_alias_cross_block
+; TEMPORARILY_DISABLED: land.lhs.true:
+; TEMPORARILY_DISABLED-NOT: load i8
+; TEMPORARILY_DISABLED: ret i32 %conv6
+}
+
+
+;;===----------------------------------------------------------------------===;;
+;; Load Widening
+;;===----------------------------------------------------------------------===;;
+
+%widening1 = type { i32, i8, i8, i8, i8 }
+
+@f = global %widening1 zeroinitializer, align 4
+
+define i32 @test_widening1(i8* %P) nounwind ssp noredzone {
+entry:
+  %tmp = load i8* getelementptr inbounds (%widening1* @f, i64 0, i32 1), align 4
+  %conv = zext i8 %tmp to i32
+  %tmp1 = load i8* getelementptr inbounds (%widening1* @f, i64 0, i32 2), align 1
+  %conv2 = zext i8 %tmp1 to i32
+  %add = add nsw i32 %conv, %conv2
+  ret i32 %add
+; CHECK: @test_widening1
+; CHECK-NOT: load
+; CHECK: load i16*
+; CHECK-NOT: load
+; CHECK-ret i32
+}
+
+define i32 @test_widening2() nounwind ssp noredzone {
+entry:
+  %tmp = load i8* getelementptr inbounds (%widening1* @f, i64 0, i32 1), align 4
+  %conv = zext i8 %tmp to i32
+  %tmp1 = load i8* getelementptr inbounds (%widening1* @f, i64 0, i32 2), align 1
+  %conv2 = zext i8 %tmp1 to i32
+  %add = add nsw i32 %conv, %conv2
+
+  %tmp2 = load i8* getelementptr inbounds (%widening1* @f, i64 0, i32 3), align 2
+  %conv3 = zext i8 %tmp2 to i32
+  %add2 = add nsw i32 %add, %conv3
+
+  %tmp3 = load i8* getelementptr inbounds (%widening1* @f, i64 0, i32 4), align 1
+  %conv4 = zext i8 %tmp3 to i32
+  %add3 = add nsw i32 %add2, %conv3
+
+  ret i32 %add3
+; CHECK: @test_widening2
+; CHECK-NOT: load
+; CHECK: load i32*
+; CHECK-NOT: load
+; CHECK-ret i32
+}
+
+declare void @llvm.memset.p0i8.i64(i8* nocapture, i8, i64, i32, i1) nounwind
+
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture, i64, i32, i1) nounwind
+
+;;===----------------------------------------------------------------------===;;
+;; Load -> Store dependency which isn't interfered with by a call that happens
+;; before the pointer was captured.
+;;===----------------------------------------------------------------------===;;
+
+%class.X = type { [8 x i8] }
+
+@_ZTV1X = weak_odr constant [5 x i8*] zeroinitializer
+@_ZTV1Y = weak_odr constant [5 x i8*] zeroinitializer
+
+declare void @use()
+declare void @use3(i8***, i8**)
+
+; PR8908
+define void @test_escape1() nounwind {
+  %x = alloca i8**, align 8
+  store i8** getelementptr inbounds ([5 x i8*]* @_ZTV1X, i64 0, i64 2), i8*** %x, align 8
+  call void @use() nounwind
+  %DEAD = load i8*** %x, align 8
+  call void @use3(i8*** %x, i8** %DEAD) nounwind
+  ret void
+; CHECK: test_escape1
+; CHECK-NOT: DEAD
+; CHECK: ret
+}

@@ -7,8 +7,8 @@ define i32 @decode_byte(%struct.decode_t* %decode) nounwind {
 ; CHECK: decode_byte:
 ; CHECK: pushl
 ; CHECK: popl
-; CHECK: popl
 ; CHECK: jmp
+; CHECK: popl
 entry:
         %tmp2 = getelementptr %struct.decode_t* %decode, i32 0, i32 4           ; <i16*> [#uses=1]
         %tmp23 = bitcast i16* %tmp2 to i32*             ; <i32*> [#uses=1]
@@ -27,3 +27,19 @@ UnifiedReturnBlock:             ; preds = %entry
 }
 
 declare i32 @f(%struct.decode_t*)
+
+
+; There should be no store for the undef operand.
+
+; CHECK: _test2:
+; CHECK-NOT: 8(%esp)
+; CHECK: 4(%esp)
+; CHECK-NOT: 8(%esp)
+; CHECK: calll 
+declare i32 @foo(i32, i32, i32)
+
+define void @test2() nounwind {
+entry:
+  %call = call i32 @foo(i32 8, i32 6, i32 undef)
+  ret void
+}

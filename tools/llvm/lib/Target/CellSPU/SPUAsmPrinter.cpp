@@ -1,4 +1,4 @@
-//===-- SPUAsmPrinter.cpp - Print machine instrs to Cell SPU assembly -------=//
+//===-- SPUAsmPrinter.cpp - Print machine instrs to Cell SPU assembly -----===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -29,10 +29,10 @@
 #include "llvm/Target/TargetInstrInfo.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/TargetRegisterInfo.h"
-#include "llvm/Target/TargetRegistry.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
 using namespace llvm;
 
@@ -248,7 +248,6 @@ void SPUAsmPrinter::printOp(const MachineOperand &MO, raw_ostream &O) {
   switch (MO.getType()) {
   case MachineOperand::MO_Immediate:
     report_fatal_error("printOp() does not handle immediate values");
-    return;
 
   case MachineOperand::MO_MachineBasicBlock:
     O << *MO.getMBB()->getSymbol();

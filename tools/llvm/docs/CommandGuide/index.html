@@ -3,15 +3,15 @@
 <html>
 <head>
   <title>LLVM Command Guide</title>
-  <link rel="stylesheet" href="/docs/llvm.css" type="text/css">
+  <link rel="stylesheet" href="../llvm.css" type="text/css">
 </head>
 <body>
 
-<div class="doc_title">
+<h1>
   LLVM Command Guide
-</div>
+</h1>
 
-<div class="doc_text">
+<div>
 
 <p>These documents are HTML versions of the <a href="man/man1/">man pages</a>
 for all of the LLVM tools.  These pages describe how to use the LLVM commands
@@ -23,12 +23,12 @@ options) arguments to the tool you are interested in.</p>
 </div>
 
 <!-- *********************************************************************** -->
-<div class="doc_section">
+<h2>
   <a name="basic">Basic Commands</a>
-</div>
+</h2>
 <!-- *********************************************************************** -->
 
-<div class="doc_text">
+<div>
 
 <ul>
 
@@ -69,43 +69,27 @@ options) arguments to the tool you are interested in.</p>
 <li><a href="/cmds/llvm-config.html"><b>llvm-config</b></a> -
     print out LLVM compilation options, libraries, etc. as configured</li>
 
-<li><a href="/cmds/llvmc.html"><b>llvmc</b></a> -
-    a generic customizable compiler driver</li>
-
 <li><a href="/cmds/llvm-diff.html"><b>llvm-diff</b></a> -
     structurally compare two modules</li>
 
-</ul>
+<li><a href="/cmds/llvm-cov.html"><b>llvm-cov</b></a> -
+    emit coverage information</li>
 
-</div>
-
-<!-- *********************************************************************** -->
-<div class="doc_section">
-  <a name="frontend">C and C++ Front-end Commands</a>
-</div>
-<!-- *********************************************************************** -->
-
-<div class="doc_text">
-<ul>
-
-<li><a href="/cmds/llvmgcc.html"><b>llvm-gcc</b></a> -
-    GCC-based C front-end for LLVM
-
-<li><a href="/cmds/llvmgxx.html"><b>llvm-g++</b></a> -
-    GCC-based C++ front-end for LLVM</li>
+<li><a href="/cmds/llvm-stress.html"><b>llvm-stress</b></a> -
+    generate random .ll files to fuzz different llvm components</li>
 
 </ul>
 
 </div>
 
 <!-- *********************************************************************** -->
-<div class="doc_section">
+<h2>
   <a name="debug">Debugging Tools</a>
-</div>
+</h2>
 <!-- *********************************************************************** -->
 
 
-<div class="doc_text">
+<div>
 
 <ul>
 
@@ -123,12 +107,12 @@ options) arguments to the tool you are interested in.</p>
 </div>
 
 <!-- *********************************************************************** -->
-<div class="doc_section">
+<h2>
   <a name="internal">Internal Tools</a>
-</div>
+</h2>
 <!-- *********************************************************************** -->
 
-<div class="doc_text">
+<div>
 <ul>
 
 <li><a href="/cmds/FileCheck.html"><b>FileCheck</b></a> -
@@ -150,8 +134,8 @@ options) arguments to the tool you are interested in.</p>
   <a href="http://validator.w3.org/check/referer"><img
   src="http://www.w3.org/Icons/valid-html401-blue" alt="Valid HTML 4.01"></a>
 
-  <a href="http://llvm.org">LLVM Compiler Infrastructure</a><br>
-  Last modified: $Date: 2010-09-07 16:10:21 -0700 (Tue, 07 Sep 2010) $
+  <a href="http://llvm.org/">LLVM Compiler Infrastructure</a><br>
+  Last modified: $Date: 2012-02-26 00:35:53 -0800 (Sun, 26 Feb 2012) $
 </address>
 
 </body>

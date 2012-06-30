@@ -34,12 +34,12 @@ namespace llvm {
 }
 
 namespace {
-  static llvm::cl::opt<bool> 
-    DisableLoopExtraction("disable-loop-extraction", 
+  static llvm::cl::opt<bool>
+    DisableLoopExtraction("disable-loop-extraction",
         cl::desc("Don't extract loops when searching for miscompilations"),
         cl::init(false));
-  static llvm::cl::opt<bool> 
-    DisableBlockExtraction("disable-block-extraction", 
+  static llvm::cl::opt<bool>
+    DisableBlockExtraction("disable-block-extraction",
         cl::desc("Don't extract blocks when searching for miscompilations"),
         cl::init(false));
 
@@ -75,7 +75,7 @@ ReduceMiscompilingPasses::doTest(std::vector<std::string> &Prefix,
     BD.EmitProgressBitcode(BD.getProgram(), "pass-error",  false);
     exit(BD.debugOptimizerCrash());
   }
-  
+
   // Check to see if the finished program matches the reference output...
   bool Diff = BD.diffProgram(BD.getProgram(), BitcodeResult, "",
                              true /*delete bitcode*/, &Error);
@@ -222,7 +222,7 @@ static Module *TestMergedProgram(const BugDriver &BD, Module *M1, Module *M2,
     M1 = CloneModule(M1);
     M2 = CloneModule(M2);
   }
-  if (Linker::LinkModules(M1, M2, &ErrorMsg)) {
+  if (Linker::LinkModules(M1, M2, Linker::DestroySource, &ErrorMsg)) {
     errs() << BD.getToolName() << ": Error linking modules together:"
            << ErrorMsg << '\n';
     exit(1);
@@ -309,7 +309,7 @@ static bool ExtractLoops(BugDriver &BD,
   bool MadeChange = false;
   while (1) {
     if (BugpointIsInterrupted) return MadeChange;
-    
+
     ValueToValueMapTy VMap;
     Module *ToNotOptimize = CloneModule(BD.getProgram(), VMap);
     Module *ToOptimize = SplitFunctionsOutOfModule(ToNotOptimize,
@@ -354,7 +354,7 @@ static bool ExtractLoops(BugDriver &BD,
       BD.writeProgramToFile(OutputPrefix + "-loop-extract-fail-to-le.bc",
                             ToOptimizeLoopExtracted);
 
-      errs() << "Please submit the " 
+      errs() << "Please submit the "
              << OutputPrefix << "-loop-extract-fail-*.bc files.\n";
       delete ToOptimize;
       delete ToNotOptimize;
@@ -384,7 +384,7 @@ static bool ExtractLoops(BugDriver &BD,
 
     outs() << "*** Loop extraction successful!\n";
 
-    std::vector<std::pair<std::string, const FunctionType*> > MisCompFunctions;
+    std::vector<std::pair<std::string, FunctionType*> > MisCompFunctions;
     for (Module::iterator I = ToOptimizeLoopExtracted->begin(),
            E = ToOptimizeLoopExtracted->end(); I != E; ++I)
       if (!I->isDeclaration())
@@ -396,7 +396,8 @@ static bool ExtractLoops(BugDriver &BD,
     // Replace the current program with the loop extracted version, and try to
     // extract another loop.
     std::string ErrorMsg;
-    if (Linker::LinkModules(ToNotOptimize, ToOptimizeLoopExtracted, &ErrorMsg)){
+    if (Linker::LinkModules(ToNotOptimize, ToOptimizeLoopExtracted, 
+                            Linker::DestroySource, &ErrorMsg)){
       errs() << BD.getToolName() << ": Error linking modules together:"
              << ErrorMsg << '\n';
       exit(1);
@@ -409,10 +410,8 @@ static bool ExtractLoops(BugDriver &BD,
     MiscompiledFunctions.clear();
     for (unsigned i = 0, e = MisCompFunctions.size(); i != e; ++i) {
       Function *NewF = ToNotOptimize->getFunction(MisCompFunctions[i].first);
-                                                  
+
       assert(NewF && "Function not found??");
-      assert(NewF->getFunctionType() == MisCompFunctions[i].second && 
-             "found wrong function type?");
       MiscompiledFunctions.push_back(NewF);
     }
 
@@ -523,7 +522,7 @@ static bool ExtractBlocks(BugDriver &BD,
                           std::vector<Function*> &MiscompiledFunctions,
                           std::string &Error) {
   if (BugpointIsInterrupted) return false;
-  
+
   std::vector<BasicBlock*> Blocks;
   for (unsigned i = 0, e = MiscompiledFunctions.size(); i != e; ++i)
     for (Function::iterator I = MiscompiledFunctions[i]->begin(),
@@ -569,7 +568,7 @@ static bool ExtractBlocks(BugDriver &BD,
   // together.
   delete ToExtract;
 
-  std::vector<std::pair<std::string, const FunctionType*> > MisCompFunctions;
+  std::vector<std::pair<std::string, FunctionType*> > MisCompFunctions;
   for (Module::iterator I = Extracted->begin(), E = Extracted->end();
        I != E; ++I)
     if (!I->isDeclaration())
@@ -577,7 +576,8 @@ static bool ExtractBlocks(BugDriver &BD,
                                                 I->getFunctionType()));
 
   std::string ErrorMsg;
-  if (Linker::LinkModules(ProgClone, Extracted, &ErrorMsg)) {
+  if (Linker::LinkModules(ProgClone, Extracted, Linker::DestroySource, 
+                          &ErrorMsg)) {
     errs() << BD.getToolName() << ": Error linking modules together:"
            << ErrorMsg << '\n';
     exit(1);
@@ -593,8 +593,6 @@ static bool ExtractBlocks(BugDriver &BD,
   for (unsigned i = 0, e = MisCompFunctions.size(); i != e; ++i) {
     Function *NewF = ProgClone->getFunction(MisCompFunctions[i].first);
     assert(NewF && "Function not found??");
-    assert(NewF->getFunctionType() == MisCompFunctions[i].second && 
-           "Function has wrong type??");
     MiscompiledFunctions.push_back(NewF);
   }
 
@@ -624,9 +622,10 @@ DebugAMiscompilation(BugDriver &BD,
   if (!BugpointIsInterrupted)
     ReduceMiscompilingFunctions(BD, TestFn).reduceList(MiscompiledFunctions,
                                                        Error);
-  if (!Error.empty())
+  if (!Error.empty()) {
+    errs() << "\n***Cannot reduce functions: ";
     return MiscompiledFunctions;
-
+  }
   outs() << "\n*** The following function"
          << (MiscompiledFunctions.size() == 1 ? " is" : "s are")
          << " being miscompiled: ";
@@ -731,7 +730,7 @@ void BugDriver::debugMiscompilation(std::string *Error) {
          << getPassesString(getPassesToRun()) << '\n';
   EmitProgressBitcode(Program, "passinput");
 
-  std::vector<Function *> MiscompiledFunctions = 
+  std::vector<Function *> MiscompiledFunctions =
     DebugAMiscompilation(*this, TestOptimizer, *Error);
   if (!Error->empty())
     return;
@@ -793,8 +792,7 @@ static void CleanupAndPrepareModules(BugDriver &BD, Module *&Test,
 
       // Call the old main function and return its result
       BasicBlock *BB = BasicBlock::Create(Safe->getContext(), "entry", newMain);
-      CallInst *call = CallInst::Create(oldMainProto, args.begin(), args.end(),
-                                        "", BB);
+      CallInst *call = CallInst::Create(oldMainProto, args, "", BB);
 
       // If the type of old function wasn't void, return value of call
       ReturnInst::Create(Safe->getContext(), call, BB);
@@ -822,7 +820,8 @@ static void CleanupAndPrepareModules(BugDriver &BD, Module *&Test,
       // Don't forward functions which are external in the test module too.
       if (TestFn && !TestFn->isDeclaration()) {
         // 1. Add a string constant with its name to the global file
-        Constant *InitArray = ConstantArray::get(F->getContext(), F->getName());
+        Constant *InitArray =
+          ConstantDataArray::getString(F->getContext(), F->getName());
         GlobalVariable *funcName =
           new GlobalVariable(*Safe, InitArray->getType(), true /*isConstant*/,
                              GlobalValue::InternalLinkage, InitArray,
@@ -834,8 +833,7 @@ static void CleanupAndPrepareModules(BugDriver &BD, Module *&Test,
         // GetElementPtr *funcName, ulong 0, ulong 0
         std::vector<Constant*> GEPargs(2,
                      Constant::getNullValue(Type::getInt32Ty(F->getContext())));
-        Value *GEP =
-                ConstantExpr::getGetElementPtr(funcName, &GEPargs[0], 2);
+        Value *GEP = ConstantExpr::getGetElementPtr(funcName, GEPargs);
         std::vector<Value*> ResolverArgs;
         ResolverArgs.push_back(GEP);
 
@@ -845,12 +843,12 @@ static void CleanupAndPrepareModules(BugDriver &BD, Module *&Test,
           // Create a new global to hold the cached function pointer.
           Constant *NullPtr = ConstantPointerNull::get(F->getType());
           GlobalVariable *Cache =
-            new GlobalVariable(*F->getParent(), F->getType(), 
+            new GlobalVariable(*F->getParent(), F->getType(),
                                false, GlobalValue::InternalLinkage,
                                NullPtr,F->getName()+".fpcache");
 
           // Construct a new stub function that will re-route calls to F
-          const FunctionType *FuncTy = F->getFunctionType();
+          FunctionType *FuncTy = F->getFunctionType();
           Function *FuncWrapper = Function::Create(FuncTy,
                                                    GlobalValue::InternalLinkage,
                                                    F->getName() + "_wrapper",
@@ -872,8 +870,7 @@ static void CleanupAndPrepareModules(BugDriver &BD, Module *&Test,
           //
           // call resolver(GetElementPtr...)
           CallInst *Resolver =
-            CallInst::Create(resolverFunc, ResolverArgs.begin(),
-                             ResolverArgs.end(), "resolver", LookupBB);
+            CallInst::Create(resolverFunc, ResolverArgs, "resolver", LookupBB);
 
           // Cast the result from the resolver to correctly-typed function.
           CastInst *CastedResolver =
@@ -885,7 +882,7 @@ static void CleanupAndPrepareModules(BugDriver &BD, Module *&Test,
           new StoreInst(CastedResolver, Cache, LookupBB);
           BranchInst::Create(DoCallBB, LookupBB);
 
-          PHINode *FuncPtr = PHINode::Create(NullPtr->getType(),
+          PHINode *FuncPtr = PHINode::Create(NullPtr->getType(), 2,
                                              "fp", DoCallBB);
           FuncPtr->addIncoming(CastedResolver, LookupBB);
           FuncPtr->addIncoming(CachedVal, EntryBB);
@@ -898,10 +895,10 @@ static void CleanupAndPrepareModules(BugDriver &BD, Module *&Test,
 
           // Pass on the arguments to the real function, return its result
           if (F->getReturnType()->isVoidTy()) {
-            CallInst::Create(FuncPtr, Args.begin(), Args.end(), "", DoCallBB);
+            CallInst::Create(FuncPtr, Args, "", DoCallBB);
             ReturnInst::Create(F->getContext(), DoCallBB);
           } else {
-            CallInst *Call = CallInst::Create(FuncPtr, Args.begin(), Args.end(),
+            CallInst *Call = CallInst::Create(FuncPtr, Args,
                                               "retval", DoCallBB);
             ReturnInst::Create(F->getContext(),Call, DoCallBB);
           }
@@ -943,7 +940,7 @@ static bool TestCodeGenerator(BugDriver &BD, Module *Test, Module *Safe,
   }
   delete Test;
 
-  FileRemover TestModuleBCRemover(TestModuleBC, !SaveTemps);
+  FileRemover TestModuleBCRemover(TestModuleBC.str(), !SaveTemps);
 
   // Make the shared library
   sys::Path SafeModuleBC("bugpoint.safe.bc");
@@ -959,14 +956,14 @@ static bool TestCodeGenerator(BugDriver &BD, Module *Test, Module *Safe,
     exit(1);
   }
 
-  FileRemover SafeModuleBCRemover(SafeModuleBC, !SaveTemps);
+  FileRemover SafeModuleBCRemover(SafeModuleBC.str(), !SaveTemps);
 
   std::string SharedObject = BD.compileSharedObject(SafeModuleBC.str(), Error);
   if (!Error.empty())
     return false;
   delete Safe;
 
-  FileRemover SharedObjectRemover(sys::Path(SharedObject), !SaveTemps);
+  FileRemover SharedObjectRemover(SharedObject, !SaveTemps);
 
   // Run the code generator on the `Test' code, loading the shared library.
   // The function returns whether or not the new output differs from reference.

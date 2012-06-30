@@ -1,4 +1,4 @@
-//==-- MSP430TargetMachine.h - Define TargetMachine for MSP430 ---*- C++ -*-==//
+//===-- MSP430TargetMachine.h - Define TargetMachine for MSP430 -*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -38,8 +38,10 @@ class MSP430TargetMachine : public LLVMTargetMachine {
   MSP430FrameLowering    FrameLowering;
 
 public:
-  MSP430TargetMachine(const Target &T, const std::string &TT,
-                      const std::string &FS);
+  MSP430TargetMachine(const Target &T, StringRef TT,
+                      StringRef CPU, StringRef FS, const TargetOptions &Options,
+                      Reloc::Model RM, CodeModel::Model CM,
+                      CodeGenOpt::Level OL);
 
   virtual const TargetFrameLowering *getFrameLowering() const {
     return &FrameLowering;
@@ -60,8 +62,7 @@ public:
     return &TSInfo;
   }
 
-  virtual bool addInstSelector(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
-  virtual bool addPreEmitPass(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
+  virtual TargetPassConfig *createPassConfig(PassManagerBase &PM);
 }; // MSP430TargetMachine.
 
 } // end namespace llvm

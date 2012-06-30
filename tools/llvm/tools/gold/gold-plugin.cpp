@@ -12,11 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/Config/config.h"
+#include "llvm/Config/config.h" // plugin-api.h requires HAVE_STDINT_H
 #include "plugin-api.h"
 
 #include "llvm-c/lto.h"
 
+#include "llvm/ADT/OwningPtr.h"
+#include "llvm/Support/system_error.h"
+#include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/Errno.h"
 #include "llvm/Support/Path.h"
@@ -50,6 +53,7 @@ namespace {
   ld_plugin_add_input_file add_input_file = NULL;
   ld_plugin_add_input_library add_input_library = NULL;
   ld_plugin_set_extra_library_path set_extra_library_path = NULL;
+  ld_plugin_get_view get_view = NULL;
   ld_plugin_message message = discard_message;
 
   int api_version = 0;
@@ -205,6 +209,9 @@ ld_plugin_status onload(ld_plugin_tv *tv) {
       case LDPT_SET_EXTRA_LIBRARY_PATH:
         set_extra_library_path = tv->tv_u.tv_set_extra_library_path;
         break;
+      case LDPT_GET_VIEW:
+        get_view = tv->tv_u.tv_get_view;
+        break;
       case LDPT_MESSAGE:
         message = tv->tv_u.tv_message;
         break;
@@ -231,49 +238,41 @@ ld_plugin_status onload(ld_plugin_tv *tv) {
 static ld_plugin_status claim_file_hook(const ld_plugin_input_file *file,
                                         int *claimed) {
   lto_module_t M;
-
-  if (file->offset) {
+  const void *view;
+  OwningPtr<MemoryBuffer> buffer;
+  if (get_view) {
+    if (get_view(file->handle, &view) != LDPS_OK) {
+      (*message)(LDPL_ERROR, "Failed to get a view of %s", file->name);
+      return LDPS_ERR;
+    }
+  } else {
+    int64_t offset = 0;
     // Gold has found what might be IR part-way inside of a file, such as
     // an .a archive.
-    if (lseek(file->fd, file->offset, SEEK_SET) == -1) {
+    if (file->offset) {
+      offset = file->offset;
+    }
+    if (error_code ec =
+        MemoryBuffer::getOpenFile(file->fd, file->name, buffer, file->filesize,
+                                  -1, offset, false)) {
+      (*message)(LDPL_ERROR, ec.message().c_str());
+      return LDPS_ERR;
+    }
+    view = buffer->getBufferStart();
+  }
+
+  if (!lto_module_is_object_file_in_memory(view, file->filesize))
+    return LDPS_OK;
+
+  M = lto_module_create_from_memory(view, file->filesize);
+  if (!M) {
+    if (const char* msg = lto_get_error_message()) {
       (*message)(LDPL_ERROR,
-                 "Failed to seek to archive member of %s at offset %d: %s\n",
-                 file->name,
-                 file->offset, sys::StrError(errno).c_str());
+                 "LLVM gold plugin has failed to create LTO module: %s",
+                 msg);
       return LDPS_ERR;
     }
-    void *buf = malloc(file->filesize);
-    if (!buf) {
-      (*message)(LDPL_ERROR,
-                 "Failed to allocate buffer for archive member of size: %d\n",
-                 file->filesize);
-      return LDPS_ERR;
-    }
-    if (read(file->fd, buf, file->filesize) != file->filesize) {
-      (*message)(LDPL_ERROR,
-                 "Failed to read archive member of %s at offset %d: %s\n",
-                 file->name,
-                 file->offset,
-                 sys::StrError(errno).c_str());
-      free(buf);
-      return LDPS_ERR;
-    }
-    if (!lto_module_is_object_file_in_memory(buf, file->filesize)) {
-      free(buf);
-      return LDPS_OK;
-    }
-    M = lto_module_create_from_memory(buf, file->filesize);
-    if (!M) {
-      (*message)(LDPL_ERROR, "Failed to create LLVM module: %s",
-                 lto_get_error_message());
-      return LDPS_ERR;
-    }
-    free(buf);
-  } else {
-    lseek(file->fd, 0, SEEK_SET);
-    M = lto_module_create_from_fd(file->fd, file->name, file->filesize);
-    if (!M)
-      return LDPS_OK;
+    return LDPS_OK;
   }
 
   *claimed = 1;
@@ -382,6 +381,8 @@ static ld_plugin_status all_symbols_read_hook(void) {
   bool anySymbolsPreserved = false;
   for (std::list<claimed_file>::iterator I = Modules.begin(),
          E = Modules.end(); I != E; ++I) {
+    if (I->syms.empty())
+      continue;
     (*get_symbols)(I->handle, I->syms.size(), &I->syms[0]);
     for (unsigned i = 0, e = I->syms.size(); i != e; i++) {
       if (I->syms[i].resolution == LDPR_PREVAILING_DEF) {
@@ -430,39 +431,10 @@ static ld_plugin_status all_symbols_read_hook(void) {
     if (options::generate_bc_file == options::BC_ONLY)
       exit(0);
   }
-  size_t bufsize = 0;
-  const char *buffer = static_cast<const char *>(lto_codegen_compile(code_gen,
-                                                                     &bufsize));
-
-  std::string ErrMsg;
-
   const char *objPath;
-  sys::Path uniqueObjPath("/tmp/llvmgold.o");
-  if (!options::obj_path.empty()) {
-    objPath = options::obj_path.c_str();
-  } else {
-    if (uniqueObjPath.createTemporaryFileOnDisk(true, &ErrMsg)) {
-      (*message)(LDPL_ERROR, "%s", ErrMsg.c_str());
-      return LDPS_ERR;
-    }
-    objPath = uniqueObjPath.c_str();
+  if (lto_codegen_compile_to_file(code_gen, &objPath)) {
+    (*message)(LDPL_ERROR, "Could not produce a combined object file\n");
   }
-  tool_output_file objFile(objPath, ErrMsg,
-                             raw_fd_ostream::F_Binary);
-    if (!ErrMsg.empty()) {
-      (*message)(LDPL_ERROR, "%s", ErrMsg.c_str());
-      return LDPS_ERR;
-    }
-
-  objFile.os().write(buffer, bufsize);
-  objFile.os().close();
-  if (objFile.os().has_error()) {
-    (*message)(LDPL_ERROR, "Error writing output file '%s'",
-               objPath);
-    objFile.os().clear_error();
-    return LDPS_ERR;
-  }
-  objFile.keep();
 
   lto_codegen_dispose(code_gen);
   for (std::list<claimed_file>::iterator I = Modules.begin(),

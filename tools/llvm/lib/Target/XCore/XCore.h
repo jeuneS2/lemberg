@@ -15,6 +15,7 @@
 #ifndef TARGET_XCORE_H
 #define TARGET_XCORE_H
 
+#include "MCTargetDesc/XCoreMCTargetDesc.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace llvm {
@@ -23,19 +24,9 @@ namespace llvm {
   class XCoreTargetMachine;
   class formatted_raw_ostream;
 
-  FunctionPass *createXCoreISelDag(XCoreTargetMachine &TM);
-
-  extern Target TheXCoreTarget;
+  FunctionPass *createXCoreISelDag(XCoreTargetMachine &TM,
+                                   CodeGenOpt::Level OptLevel);
 
 } // end namespace llvm;
-
-// Defines symbolic names for XCore registers.  This defines a mapping from
-// register name to register number.
-//
-#include "XCoreGenRegisterNames.inc"
-
-// Defines symbolic names for the XCore instructions.
-//
-#include "XCoreGenInstrNames.inc"
 
 #endif

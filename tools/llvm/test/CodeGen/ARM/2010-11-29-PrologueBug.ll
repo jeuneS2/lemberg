@@ -1,5 +1,5 @@
-; RUN: llc < %s -mtriple=armv7-apple-darwin   | FileCheck %s --check-prefix=ARM
-; RUN: llc < %s -mtriple=thumbv7-apple-darwin | FileCheck %s --check-prefix=THUMB2
+; RUN: llc < %s -mtriple=armv7-apple-ios   | FileCheck %s --check-prefix=ARM
+; RUN: llc < %s -mtriple=thumbv7-apple-ios | FileCheck %s --check-prefix=THUMB2
 ; rdar://8690640
 
 define i32* @t(i32* %x) nounwind {
@@ -10,7 +10,7 @@ entry:
 ; ARM: bl _foo
 ; ARM: bl _foo
 ; ARM: bl _foo
-; ARM: ldmia sp!, {r7, pc}
+; ARM: pop {r7, pc}
 
 ; THUMB2: t:
 ; THUMB2: push

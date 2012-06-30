@@ -1,4 +1,4 @@
-//===-- ARMAsmPrinter.h - Print machine code to an ARM .s file ------------===//
+//===-- ARMAsmPrinter.h - Print machine code to an ARM .s file --*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -20,6 +20,8 @@
 #include "llvm/Support/Compiler.h"
 
 namespace llvm {
+
+class MCOperand;
 
 namespace ARM {
   enum DW_ISA {
@@ -71,6 +73,10 @@ public:
   virtual void EmitFunctionEntryLabel();
   void EmitStartOfAsmFile(Module &M);
   void EmitEndOfAsmFile(Module &M);
+  void EmitXXStructor(const Constant *CV);
+
+  // lowerOperand - Convert a MachineOperand into the equivalent MCOperand.
+  bool lowerOperand(const MachineOperand &MO, MCOperand &MCOp);
 
 private:
   // Helpers for EmitStartOfAsmFile() and EmitEndOfAsmFile()
@@ -84,19 +90,27 @@ private:
 
   void EmitUnwindingInstruction(const MachineInstr *MI);
 
+  // emitPseudoExpansionLowering - tblgen'erated.
+  bool emitPseudoExpansionLowering(MCStreamer &OutStreamer,
+                                   const MachineInstr *MI);
+
 public:
   void PrintDebugValueComment(const MachineInstr *MI, raw_ostream &OS);
 
   MachineLocation getDebugValueLocation(const MachineInstr *MI) const;
+
+  /// EmitDwarfRegOp - Emit dwarf register operation.
+  virtual void EmitDwarfRegOp(const MachineLocation &MLoc) const;
 
   virtual unsigned getISAEncoding() {
     // ARM/Darwin adds ISA to the DWARF info for each function.
     if (!Subtarget->isTargetDarwin())
       return 0;
     return Subtarget->isThumb() ?
-      llvm::ARM::DW_ISA_ARM_thumb : llvm::ARM::DW_ISA_ARM_arm;
+      ARM::DW_ISA_ARM_thumb : ARM::DW_ISA_ARM_arm;
   }
 
+  MCOperand GetSymbolRef(const MachineOperand &MO, const MCSymbol *Symbol);
   MCSymbol *GetARMSetPICJumpTableLabel2(unsigned uid, unsigned uid2,
                                         const MachineBasicBlock *MBB) const;
   MCSymbol *GetARMJTIPICJumpTableLabel2(unsigned uid, unsigned uid2) const;
@@ -104,7 +118,7 @@ public:
   MCSymbol *GetARMSJLJEHLabel(void) const;
 
   MCSymbol *GetARMGVSymbol(const GlobalValue *GV);
-  
+
   /// EmitMachineConstantPoolValue - Print a machine constantpool value to
   /// the .s file.
   virtual void EmitMachineConstantPoolValue(MachineConstantPoolValue *MCPV);

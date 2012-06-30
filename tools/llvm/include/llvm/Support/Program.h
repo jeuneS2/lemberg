@@ -17,6 +17,7 @@
 #include "llvm/Support/Path.h"
 
 namespace llvm {
+class error_code;
 namespace sys {
 
   // TODO: Add operations to communicate with the process, redirect its I/O,
@@ -85,8 +86,9 @@ namespace sys {
     /// This function waits for the program to exit. This function will block
     /// the current program until the invoked program exits.
     /// @returns an integer result code indicating the status of the program.
-    /// A zero or positive value indicates the result code of the program. A
-    /// negative value is the signal number on which it terminated.
+    /// A zero or positive value indicates the result code of the program.
+    /// -1 indicates failure to execute
+    /// -2 indicates a crash during execution or timeout
     /// @see Execute
     /// @brief Waits for the program to exit.
     int Wait
@@ -102,7 +104,7 @@ namespace sys {
       );
 
     /// This function terminates the program.
-    /// @returns true if an error occured.
+    /// @returns true if an error occurred.
     /// @see Execute
     /// @brief Terminates the program.
     bool Kill
@@ -121,12 +123,12 @@ namespace sys {
     /// @brief Construct a Program by finding it by name.
     static Path FindProgramByName(const std::string& name);
 
-    // These methods change the specified standard stream (stdin,
-    // stdout, or stderr) to binary mode. They return true if an error
-    // occurred
-    static bool ChangeStdinToBinary();
-    static bool ChangeStdoutToBinary();
-    static bool ChangeStderrToBinary();
+    // These methods change the specified standard stream (stdin, stdout, or
+    // stderr) to binary mode. They return errc::success if the specified stream
+    // was changed. Otherwise a platform dependent error is returned.
+    static error_code ChangeStdinToBinary();
+    static error_code ChangeStdoutToBinary();
+    static error_code ChangeStderrToBinary();
 
     /// A convenience function equivalent to Program prg; prg.Execute(..);
     /// prg.Wait(..);

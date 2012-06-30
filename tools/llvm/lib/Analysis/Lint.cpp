@@ -44,6 +44,7 @@
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Assembly/Writer.h"
 #include "llvm/Target/TargetData.h"
+#include "llvm/Target/TargetLibraryInfo.h"
 #include "llvm/Pass.h"
 #include "llvm/PassManager.h"
 #include "llvm/IntrinsicInst.h"
@@ -71,7 +72,7 @@ namespace {
     void visitCallSite(CallSite CS);
     void visitMemoryReference(Instruction &I, Value *Ptr,
                               uint64_t Size, unsigned Align,
-                              const Type *Ty, unsigned Flags);
+                              Type *Ty, unsigned Flags);
 
     void visitCallInst(CallInst &I);
     void visitInvokeInst(InvokeInst &I);
@@ -103,6 +104,7 @@ namespace {
     AliasAnalysis *AA;
     DominatorTree *DT;
     TargetData *TD;
+    TargetLibraryInfo *TLI;
 
     std::string Messages;
     raw_string_ostream MessagesStr;
@@ -117,6 +119,7 @@ namespace {
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.setPreservesAll();
       AU.addRequired<AliasAnalysis>();
+      AU.addRequired<TargetLibraryInfo>();
       AU.addRequired<DominatorTree>();
     }
     virtual void print(raw_ostream &O, const Module *M) const {}
@@ -149,6 +152,7 @@ namespace {
 char Lint::ID = 0;
 INITIALIZE_PASS_BEGIN(Lint, "lint", "Statically lint-checks LLVM IR",
                       false, true)
+INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfo)
 INITIALIZE_PASS_DEPENDENCY(DominatorTree)
 INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
 INITIALIZE_PASS_END(Lint, "lint", "Statically lint-checks LLVM IR",
@@ -174,6 +178,7 @@ bool Lint::runOnFunction(Function &F) {
   AA = &getAnalysis<AliasAnalysis>();
   DT = &getAnalysis<DominatorTree>();
   TD = getAnalysisIfAvailable<TargetData>();
+  TLI = &getAnalysis<TargetLibraryInfo>();
   visit(F);
   dbgs() << MessagesStr.str();
   Messages.clear();
@@ -201,7 +206,7 @@ void Lint::visitCallSite(CallSite CS) {
             "Undefined behavior: Caller and callee calling convention differ",
             &I);
 
-    const FunctionType *FT = F->getFunctionType();
+    FunctionType *FT = F->getFunctionType();
     unsigned NumActualArgs = unsigned(CS.arg_end()-CS.arg_begin());
 
     Assert1(FT->isVarArg() ?
@@ -240,7 +245,7 @@ void Lint::visitCallSite(CallSite CS) {
 
         // Check that an sret argument points to valid memory.
         if (Formal->hasStructRetAttr() && Actual->getType()->isPointerTy()) {
-          const Type *Ty =
+          Type *Ty =
             cast<PointerType>(Formal->getType())->getElementType();
           visitMemoryReference(I, Actual, AA->getTypeStoreSize(Ty),
                                TD ? TD->getABITypeAlignment(Ty) : 0,
@@ -364,7 +369,7 @@ void Lint::visitReturnInst(ReturnInst &I) {
 // TODO: Check readnone/readonly function attributes.
 void Lint::visitMemoryReference(Instruction &I,
                                 Value *Ptr, uint64_t Size, unsigned Align,
-                                const Type *Ty, unsigned Flags) {
+                                Type *Ty, unsigned Flags) {
   // If no memory is being referenced, it doesn't matter if the pointer
   // is valid.
   if (Size == 0)
@@ -411,9 +416,8 @@ void Lint::visitMemoryReference(Instruction &I,
 
     if (Align != 0) {
       unsigned BitWidth = TD->getTypeSizeInBits(Ptr->getType());
-      APInt Mask = APInt::getAllOnesValue(BitWidth),
-                   KnownZero(BitWidth, 0), KnownOne(BitWidth, 0);
-      ComputeMaskedBits(Ptr, Mask, KnownZero, KnownOne, TD);
+      APInt KnownZero(BitWidth, 0), KnownOne(BitWidth, 0);
+      ComputeMaskedBits(Ptr, KnownZero, KnownOne, TD);
       Assert1(!(KnownOne & APInt::getLowBitsSet(BitWidth, Log2_32(Align))),
               "Undefined behavior: Memory reference address is misaligned", &I);
     }
@@ -471,9 +475,8 @@ static bool isZero(Value *V, TargetData *TD) {
   if (isa<UndefValue>(V)) return true;
 
   unsigned BitWidth = cast<IntegerType>(V->getType())->getBitWidth();
-  APInt Mask = APInt::getAllOnesValue(BitWidth),
-               KnownZero(BitWidth, 0), KnownOne(BitWidth, 0);
-  ComputeMaskedBits(V, Mask, KnownZero, KnownOne, TD);
+  APInt KnownZero(BitWidth, 0), KnownOne(BitWidth, 0);
+  ComputeMaskedBits(V, KnownZero, KnownOne, TD);
   return KnownZero.isAllOnesValue();
 }
 
@@ -592,8 +595,7 @@ Value *Lint::findValueImpl(Value *V, bool OffsetOk,
       return findValueImpl(CI->getOperand(0), OffsetOk, Visited);
   } else if (ExtractValueInst *Ex = dyn_cast<ExtractValueInst>(V)) {
     if (Value *W = FindInsertedValue(Ex->getAggregateOperand(),
-                                     Ex->idx_begin(),
-                                     Ex->idx_end()))
+                                     Ex->getIndices()))
       if (W != V)
         return findValueImpl(W, OffsetOk, Visited);
   } else if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V)) {
@@ -606,10 +608,8 @@ Value *Lint::findValueImpl(Value *V, bool OffsetOk,
                                     Type::getInt64Ty(V->getContext())))
         return findValueImpl(CE->getOperand(0), OffsetOk, Visited);
     } else if (CE->getOpcode() == Instruction::ExtractValue) {
-      const SmallVector<unsigned, 4> &Indices = CE->getIndices();
-      if (Value *W = FindInsertedValue(CE->getOperand(0),
-                                       Indices.begin(),
-                                       Indices.end()))
+      ArrayRef<unsigned> Indices = CE->getIndices();
+      if (Value *W = FindInsertedValue(CE->getOperand(0), Indices))
         if (W != V)
           return findValueImpl(W, OffsetOk, Visited);
     }
@@ -617,10 +617,10 @@ Value *Lint::findValueImpl(Value *V, bool OffsetOk,
 
   // As a last resort, try SimplifyInstruction or constant folding.
   if (Instruction *Inst = dyn_cast<Instruction>(V)) {
-    if (Value *W = SimplifyInstruction(Inst, TD, DT))
+    if (Value *W = SimplifyInstruction(Inst, TD, TLI, DT))
       return findValueImpl(W, OffsetOk, Visited);
   } else if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V)) {
-    if (Value *W = ConstantFoldConstantExpression(CE, TD))
+    if (Value *W = ConstantFoldConstantExpression(CE, TD, TLI))
       if (W != V)
         return findValueImpl(W, OffsetOk, Visited);
   }
