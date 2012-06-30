@@ -57,8 +57,11 @@ SYM [\._a-zA-Z0-9]+
 
 ".stabs".*\n { line_number++; /* ignore .stabs directive */ }
 
+".size".*\n { line_number++; /* ignore .size directive */ }
+".type".* return TYPE;
+
 ".align" return ALIGN;
-".size" return SIZE;
+".funsz" return SIZE;
 ".quad" return QUAD;
 ".long" return LONG;
 ".short" return SHORT;

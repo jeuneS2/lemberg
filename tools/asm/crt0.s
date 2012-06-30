@@ -1,5 +1,5 @@
 __crt0:
-		.size __crt0_end-__crt0
+		.funsz __crt0_end-__crt0
 		#0: ldiu 0 -> r15
 		#1: ldx $ro -> r1.31
 		#2: ldx $rb -> r2.31
@@ -42,7 +42,7 @@ __crt0_return:
 __crt0_end:
 		
 __crt0_exit:
-		.size __crt0_exit_end-__crt0_exit
+		.funsz __crt0_exit_end-__crt0_exit
 		#0: ldmg.d __crt0_sp
 		;;
 		#0: ldx $mem -> r15
@@ -73,4 +73,3 @@ __crt0_sp:
 		
 ___mem_emergency:
 		.long 0
-

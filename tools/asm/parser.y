@@ -62,7 +62,7 @@
 	struct bundle bundle;
 }
 
-%token IF DEST BSEP ALIGN SIZE QUAD LONG SHORT BYTE ASCII COMM
+%token IF DEST BSEP ALIGN TYPE SIZE QUAD LONG SHORT BYTE ASCII COMM
 
 %token <intval>  CLUST FLAG REG EXT FREG DREG
 %token <strval>  STR
@@ -118,6 +118,13 @@ Directive : ALIGN NUM NewLine
 			  $$.size = pos % align == 0 ? 0 : align - pos % align;
 			  $$.raw = NULL_EXPR;
 			  pos = ((pos+align-1) / align) * align;
+		  }
+          | TYPE NewLine
+		  {
+			  $$.type = TYPE_ALIGN;
+			  $$.size = pos % 4 == 0 ? 0 : 4 - pos % 4;
+			  $$.raw = NULL_EXPR;
+			  pos = ((pos+4-1) / 4) * 4;
 		  }
           | SIZE Constant NewLine
 		  {
