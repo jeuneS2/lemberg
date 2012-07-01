@@ -17,7 +17,7 @@ configure-libc:
 	cd tools/libc/src; ./configure_lemberg
 
 configure-llvm:
-	cd tools/llvm; ./configure --target=lemberg --enable-assertions
+	cd tools/llvm; ./configure --enable-assertions
 
 # Building
 tools: asm libll libc llvm
