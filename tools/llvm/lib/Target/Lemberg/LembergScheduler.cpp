@@ -359,8 +359,8 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
 	DEBUG(dbgs() << "Scheduling BB:\n");
 	DEBUG(MBB->dump());
 
-	// Reserve five times the size of the MBB to fit separators and potential nops
-	Scheduler.SUnits.reserve(5*MBB->size());
+	// Reserve ten times the size of the MBB to fit separators and potential nops
+	Scheduler.SUnits.reserve(10*MBB->size());
 
     // Initialize register live-range state for scheduling in this block.
     Scheduler.startBlock(MBB);
