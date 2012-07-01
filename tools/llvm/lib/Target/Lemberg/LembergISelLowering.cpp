@@ -76,8 +76,10 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	// const LembergRegisterInfo *LRI = (const LembergRegisterInfo *)TM.getRegisterInfo();
 	// setStackPointerRegisterToSaveRestore(LRI->getStackRegister());
 	setStackPointerRegisterToSaveRestore(Lemberg::R15);
-	setJumpIsExpensive(true);
+	setSelectIsExpensive(false);
 	setIntDivIsCheap(false);
+	setPow2DivIsCheap(false);
+	setJumpIsExpensive(true);
 	setBooleanContents(ZeroOrOneBooleanContent);
 
 	maxStoresPerMemset = maxStoresPerMemcpy = maxStoresPerMemmove = 12;
