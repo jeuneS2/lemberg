@@ -16,7 +16,6 @@
 #include "llvm/PassManager.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/Support/TargetRegistry.h"
-#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
@@ -55,7 +54,9 @@ public:
   }
 
   virtual bool addInstSelector();
-  virtual bool addPreRegAlloc();
+  // virtual bool addPreRegAlloc();  
+  virtual void addOptimizedRegAlloc(FunctionPass *RegAllocPass);
+  virtual void addFastRegAlloc(FunctionPass *RegAllocPass);
   virtual bool addPreEmitPass();
 };
 } // namespace
@@ -69,9 +70,42 @@ bool LembergPassConfig::addInstSelector() {
   return false;
 }
 
-bool LembergPassConfig::addPreRegAlloc() {
+// bool LembergPassConfig::addPreRegAlloc() {
+//   PM->add(createLembergClusterizerPass(getLembergTargetMachine(), getOptLevel()));
+//   return true;
+// }
+
+/* Insert Clusterizer into register allocation after register coalescing */
+void LembergPassConfig::addOptimizedRegAlloc(FunctionPass *RegAllocPass) {
+  addPass(LiveVariablesID);
+  addPass(MachineLoopInfoID);
+  addPass(PHIEliminationID);
+  addPass(TwoAddressInstructionPassID);
+  addPass(ProcessImplicitDefsID);
+  addPass(RegisterCoalescerID);
+
   PM->add(createLembergClusterizerPass(getLembergTargetMachine(), getOptLevel()));
-  return true;
+
+  if (addPass(MachineSchedulerID) != &NoPassID)
+    printAndVerify("After Machine Scheduling");
+  PM->add(RegAllocPass);
+  printAndVerify("After Register Allocation");
+  if (addFinalizeRegAlloc())
+    printAndVerify("After RegAlloc finalization");
+  addPass(StackSlotColoringID);
+  addPass(PostRAMachineLICMID);
+  printAndVerify("After StackSlotColoring and postra Machine LICM");
+}
+
+/* Insert Clusterizer into register allocation */
+void LembergPassConfig::addFastRegAlloc(FunctionPass *RegAllocPass) {
+  addPass(PHIEliminationID);
+  addPass(TwoAddressInstructionPassID);
+
+  PM->add(createLembergClusterizerPass(getLembergTargetMachine(), getOptLevel()));
+
+  PM->add(RegAllocPass);
+  printAndVerify("After Register Allocation");
 }
 
 bool LembergPassConfig::addPreEmitPass() {
