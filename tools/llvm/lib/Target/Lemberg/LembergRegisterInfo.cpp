@@ -721,46 +721,52 @@ unsigned LembergRegisterInfo::getEmergencyRegister() const {
 
 unsigned LembergRegisterInfo::getRegPressureLimit(const TargetRegisterClass *RC,
 												  MachineFunction &MF) const {
+
 	switch (RC->getID()) {
 	default:
-		return 0;
+	  return 0;
 
+	case Lemberg::ARegClassID:
+	    return (MF.getTarget().getFrameLowering()->hasFP(MF) ? 74 : 75) - 5;
+	case Lemberg::AImmRegClassID:
+		return 20-3;
+	case Lemberg::AImm_and_L0RegClassID:
+	case Lemberg::AImm_and_L1RegClassID:
+	case Lemberg::AImm_and_L2RegClassID:
+	case Lemberg::AImm_and_L3RegClassID:
+		return 4-1;
+	case Lemberg::CRegClassID:
+		return 3-1;
+	case Lemberg::DRegClassID:
+		return 8-2;
+	case Lemberg::FRegClassID:
+		return 16-3;
+	case Lemberg::GRegClassID:
+	    return (MF.getTarget().getFrameLowering()->hasFP(MF) ? 14 : 15) - 3;
+	case Lemberg::GImmRegClassID:
+		return 4-1;
 	case Lemberg::L0RegClassID:
 	case Lemberg::L1RegClassID:
 	case Lemberg::L2RegClassID:
 	case Lemberg::L3RegClassID:
-		return 15;
-
+		return 15-3;
 	case Lemberg::LG0RegClassID:
 	case Lemberg::LG1RegClassID:
 	case Lemberg::LG2RegClassID:
 	case Lemberg::LG3RegClassID:
-		return MF.getTarget().getFrameLowering()->hasFP(MF) ? 29 : 30;
-	case Lemberg::GRegClassID:
-		return MF.getTarget().getFrameLowering()->hasFP(MF) ? 14 : 15;
-
+  	    return (MF.getTarget().getFrameLowering()->hasFP(MF) ? 29 : 30) - 4;
 	case Lemberg::LG0ImmRegClassID:
 	case Lemberg::LG1ImmRegClassID:
 	case Lemberg::LG2ImmRegClassID:
 	case Lemberg::LG3ImmRegClassID:
-		return 8;
-	case Lemberg::GImmRegClassID:
-		return 4;
-
+		return 8-2;
 	case Lemberg::M0RegClassID:
 	case Lemberg::M1RegClassID:
 	case Lemberg::M2RegClassID:
 	case Lemberg::M3RegClassID:
-		return 1;
+		return 2;
 	case Lemberg::MulRegClassID:
-		return 4;
-
-	case Lemberg::CRegClassID:
-		return 3;
-	case Lemberg::FRegClassID:
-		return 16;
-	case Lemberg::DRegClassID:
-		return 8;
+		return 8-2;
 	}
 }
 
