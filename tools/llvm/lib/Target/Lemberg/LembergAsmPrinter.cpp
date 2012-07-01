@@ -164,7 +164,7 @@ void LembergAsmPrinter::EmitFunctionBodyEnd() {
 bool LembergAsmPrinter::
 isBlockOnlyReachableByFallthrough(const MachineBasicBlock *MBB) const {
   // The predecessor has to be immediately before this block.
-  const MachineBasicBlock *Pred = *MBB->pred_begin();
+  // const MachineBasicBlock *Pred = *MBB->pred_begin();
 
   // Make all basic blocks reachable
   return false;
