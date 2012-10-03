@@ -251,6 +251,18 @@ begin  -- behavior
 				fl_out <= (others => '0');
 				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
 					<= lt_tmp;
+			when ALU_CMPGE =>
+				fl_wren <= (others => '0');
+				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
+				fl_out <= (others => '0');
+				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
+					<= not lt_tmp;
+			when ALU_CMPGT =>
+				fl_wren <= (others => '0');
+				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
+				fl_out <= (others => '0');
+				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
+					<= not (lt_tmp or eq_tmp);
 			when ALU_CMPLE =>
 				fl_wren <= (others => '0');
 				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
@@ -263,6 +275,18 @@ begin  -- behavior
 				fl_out <= (others => '0');
 				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
 					<= sub_tmp(DATA_WIDTH);
+			when ALU_CMPUGE =>
+				fl_wren <= (others => '0');
+				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
+				fl_out <= (others => '0');
+				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
+					<= not sub_tmp(DATA_WIDTH);
+			when ALU_CMPUGT =>
+				fl_wren <= (others => '0');
+				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;
+				fl_out <= (others => '0');
+				fl_out(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0))))
+					<= not (sub_tmp(DATA_WIDTH) or eq_tmp);
 			when ALU_CMPULE =>
 				fl_wren <= (others => '0');
 				fl_wren(to_integer(unsigned(op.wraddr(FLAG_BITS-1 downto 0)))) <= valid;

@@ -86,15 +86,10 @@ SYM [\._a-zA-Z0-9]+
 "borr"     ACCEPT(BORR,  THREEOP);
 "bbh"      ACCEPT(BBH,   BBHOP);
 
-"cmpeq"    ACCEPT(CMPEQ,  CMPOP);
-"cmpne"    ACCEPT(CMPNE,  CMPOP);
-"cmplt"    ACCEPT(CMPLT,  CMPOP);
-"cmple"    ACCEPT(CMPLE,  CMPOP);
-"cmpult"   ACCEPT(CMPULT, CMPOP);
-"cmpule"   ACCEPT(CMPULE, CMPOP);
-"btest"    ACCEPT(BTEST,  CMPOP);
-
-"comb"     ACCEPT(COMB, CCOP);
+"cmp"      ACCEPT(CMP,   CMPOP);
+"cmpu"     ACCEPT(CMPU,  CMPOP);
+"btest"    ACCEPT(BTEST, BTESTOP);
+"comb"     ACCEPT(COMB,  CCOP);
 
 "ldi"      ACCEPT(LDI,  LDIOP);
 "ldiu"     ACCEPT(LDIU, LDIOP);
@@ -140,12 +135,12 @@ SYM [\._a-zA-Z0-9]+
 "pop"      ACCEPT(POP,    BBHSUBOP);
 "par"      ACCEPT(PAR,    BBHSUBOP);
 
-"eq"       ACCEPT(EQ,    BRZSUBOP);
-"ne"       ACCEPT(NE,    BRZSUBOP);
-"lt"       ACCEPT(LT,    BRZSUBOP);
-"ge"       ACCEPT(GE,    BRZSUBOP);
-"le"       ACCEPT(LE,    BRZSUBOP);
-"gt"       ACCEPT(GT,    BRZSUBOP);
+"eq"       ACCEPT(EQ,    CMPSUBOP);
+"ne"       ACCEPT(NE,    CMPSUBOP);
+"lt"       ACCEPT(LT,    CMPSUBOP);
+"ge"       ACCEPT(GE,    CMPSUBOP);
+"gt"       ACCEPT(GT,    CMPSUBOP);
+"le"       ACCEPT(LE,    CMPSUBOP);
 
 "fadd"     ACCEPT(FADD,  FTHREEOP);
 "fsub"     ACCEPT(FSUB,  FTHREEOP);

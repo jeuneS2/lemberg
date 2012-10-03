@@ -67,10 +67,11 @@
 %token <intval>  CLUST FLAG REG EXT FREG DREG
 %token <strval>  STR
 %token <exprval> NUM EXPR SYM
-%token <opcode>  NOP THREEOP ONEOP NULLOP LDIOP WBOP CMPOP
-                 BRANCHOP BRANCHZOP BRZSUBOP JOP JSUBOP
+%token <opcode>  NOP THREEOP ONEOP NULLOP LDIOP WBOP
+                 CMPOP CMPSUBOP BTESTOP CCOP
+                 BRANCHOP BRANCHZOP JOP JSUBOP
                  GLOBOP LDGAOP STOREOP LOADOP LDXOP STXOP
-                 MULOP CCOP BBHOP BBHSUBOP
+                 MULOP BBHOP BBHSUBOP
                  FOP FTHREEOP FCMPOP FTWOOP FONEOP F2DOP
                  DTHREEOP DCMPOP DTWOOP DONEOP D2FOP
 
@@ -328,7 +329,27 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.fmt.B.imm = 0;
 		  $$.fmt.B.cond = $1;
       }
-      | Condition CMPOP REG ',' Constant DEST FLAG
+      | Condition CMPOP CMPSUBOP REG ',' Constant DEST FLAG
+      {
+		  $$.op = $2;
+		  $$.fmt.C.src1 = $4;
+		  $$.fmt.C.src2.imm = $6;
+		  $$.fmt.C.dest = $8;
+		  $$.fmt.C.op = $3;
+		  $$.fmt.C.imm = 1;
+		  $$.fmt.C.cond = $1;
+      }
+      | Condition CMPOP CMPSUBOP REG ',' REG DEST FLAG
+      {
+		  $$.op = $2;
+		  $$.fmt.C.src1 = $4;
+		  $$.fmt.C.src2.reg = $6;
+		  $$.fmt.C.dest = $8;
+		  $$.fmt.C.op = $3;
+		  $$.fmt.C.imm = 0;
+		  $$.fmt.C.cond = $1;
+      }
+      | Condition BTESTOP REG ',' Constant DEST FLAG
       {
 		  $$.op = $2;
 		  $$.fmt.B.src1 = $3;
@@ -337,7 +358,7 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.fmt.B.imm = 1;
 		  $$.fmt.B.cond = $1;
       }
-      | Condition CMPOP REG ',' REG DEST FLAG
+      | Condition BTESTOP REG ',' REG DEST FLAG
       {
 		  $$.op = $2;
 		  $$.fmt.B.src1 = $3;
@@ -392,7 +413,7 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.fmt.J.cond = $1;
 		  $$.fmt.J.delayed = $3;
       }
-      | BRANCHZOP BRZSUBOP DelayOpt REG ',' Constant
+      | BRANCHZOP CMPSUBOP DelayOpt REG ',' Constant
       {
 		  $$.op = $1;
 		  $$.fmt.Z.reg = $4;
@@ -512,32 +533,32 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
       | Condition CCOP THREEOP NotOptFlag ',' NotOptFlag DEST FLAG
 	  {
 		  $$.op = $2;
-		  $$.fmt.C.dest = $8;
+		  $$.fmt.X.dest = $8;
 
 		  switch ($3) {
-		  case OP_AND: $$.fmt.C.op = 0; break;
-		  case OP_OR:  $$.fmt.C.op = 1; break;
-		  case OP_XOR: $$.fmt.C.op = 2; break;
+		  case OP_AND: $$.fmt.X.op = 0; break;
+		  case OP_OR:  $$.fmt.X.op = 1; break;
+		  case OP_XOR: $$.fmt.X.op = 2; break;
 		  default:
 			  yyerror("Invalid combination operation.");
 		  }
 
 		  if ($4 < 0) {
-			  $$.fmt.C.not1 = 1;
-			  $$.fmt.C.src1 = ~$4;
+			  $$.fmt.X.not1 = 1;
+			  $$.fmt.X.src1 = ~$4;
 		  } else {
-			  $$.fmt.C.not1 = 0;
-			  $$.fmt.C.src1 = $4;
+			  $$.fmt.X.not1 = 0;
+			  $$.fmt.X.src1 = $4;
 		  }
 		  if ($6 < 0) {
-			  $$.fmt.C.not2 = 1;
-			  $$.fmt.C.src2 = ~$6;
+			  $$.fmt.X.not2 = 1;
+			  $$.fmt.X.src2 = ~$6;
 		  } else {
-			  $$.fmt.C.not2 = 0;
-			  $$.fmt.C.src2 = $6;
+			  $$.fmt.X.not2 = 0;
+			  $$.fmt.X.src2 = $6;
 		  }
 
-		  $$.fmt.C.cond = $1;
+		  $$.fmt.X.cond = $1;
 	  }
       | Condition FOP FTHREEOP FREG ',' FREG DEST FREG
 	  {

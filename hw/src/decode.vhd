@@ -134,7 +134,7 @@ begin  -- behavior
 			stallop(i).value <= (others => '1');
 						
 			jmpop(i).op <= JMP_NOP;
-			jmpop(i).zop <= BRZ_EQ;
+			jmpop(i).zop <= CMP_EQ;
 			jmpop(i).delayed <= bundle_reg(i).imm;
 			jmpop(i).cond <= COND_FALSE;
 			jmpop(i).flag <= (others => '0');
@@ -239,32 +239,33 @@ begin  -- behavior
 					op(i).op <= ALU_BBH;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-				when "010000" =>
-					op(i).op <= ALU_CMPEQ;
-					op(i).cond <= bundle_reg(i).cond;
-					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-				when "010001" =>
-					op(i).op <= ALU_CMPNE;
-					op(i).cond <= bundle_reg(i).cond;
-					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-				when "010010" =>
-					op(i).op <= ALU_CMPLT;
-					op(i).cond <= bundle_reg(i).cond;
-					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-				when "010011" =>
-					op(i).op <= ALU_CMPLE;
-					op(i).cond <= bundle_reg(i).cond;
-					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
 				when "010100" =>
-					op(i).op <= ALU_CMPULT;
-					op(i).cond <= bundle_reg(i).cond;
+                    case bundle_reg(i).dest(REG_BITS-FLAG_BITS-1 downto 0) is
+						when "000" => op(i).op <= ALU_CMPEQ;
+						when "001" => op(i).op <= ALU_CMPNE;
+						when "010" => op(i).op <= ALU_CMPLT;
+						when "011" => op(i).op <= ALU_CMPGE;
+						when "100" => op(i).op <= ALU_CMPGT;
+						when "101" => op(i).op <= ALU_CMPLE;
+						when others =>
+							assert false report "Cannot decode CMP operation" severity error;
+                    end case;
+                    op(i).wraddr <= "000" & bundle_reg(i).dest(REG_BITS-1 downto REG_BITS-FLAG_BITS);
+                    op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
 				when "010101" =>
-					op(i).op <= ALU_CMPULE;
+                    case bundle_reg(i).dest(REG_BITS-FLAG_BITS-1 downto 0) is
+						when "000" => op(i).op <= ALU_CMPEQ;
+						when "001" => op(i).op <= ALU_CMPNE;
+						when "010" => op(i).op <= ALU_CMPULT;
+						when "011" => op(i).op <= ALU_CMPUGE;
+						when "100" => op(i).op <= ALU_CMPUGT;
+						when "101" => op(i).op <= ALU_CMPULE;
+						when others =>
+							assert false report "Cannot decode CMPU operation" severity error;
+                    end case;
+                    op(i).wraddr <= "000" & bundle_reg(i).dest(REG_BITS-1 downto REG_BITS-FLAG_BITS);
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "010110" =>
@@ -334,12 +335,12 @@ begin  -- behavior
 					jmpop(i).cond <= '1';
 					jmpop(i).flag(0) <= '1';
 					case bundle_reg(i).cond & bundle_reg(i).flag is
-						when "000" => jmpop(i).zop <= BRZ_EQ;
-						when "001" => jmpop(i).zop <= BRZ_NE;
-						when "010" => jmpop(i).zop <= BRZ_LT;
-						when "011" => jmpop(i).zop <= BRZ_GE;
-						when "100" => jmpop(i).zop <= BRZ_LE;
-						when "101" => jmpop(i).zop <= BRZ_GT;
+						when "000" => jmpop(i).zop <= CMP_EQ;
+						when "001" => jmpop(i).zop <= CMP_NE;
+						when "010" => jmpop(i).zop <= CMP_LT;
+						when "011" => jmpop(i).zop <= CMP_GE;
+						when "100" => jmpop(i).zop <= CMP_GT;
+						when "101" => jmpop(i).zop <= CMP_LE;
 						when others =>
 							assert false report "Cannot decode BRZ operation" severity error;
 					end case;
@@ -689,7 +690,7 @@ begin  -- behavior
 				memop(i).wrdata <= rddata(2*i+1);
 			end if;			
 
-            jmpop(i).rddata <= rddata(2*i)(PC_WIDTH-1 downto 0);
+			jmpop(i).rddata <= rddata(2*i)(PC_WIDTH-1 downto 0);
 
 		end loop;  -- i
 	end process decode;

@@ -40,14 +40,22 @@ static int is_format_B(unsigned int opcode)
 	case OP_OR: case OP_XOR: case OP_SL: case OP_SR:
 	case OP_SRA: case OP_RL: case OP_MUL: case OP_BBH:
 	case OP_CARR: case OP_BORR:
-	case OP_CMPEQ: case OP_CMPNE: case OP_CMPLT: case OP_CMPLE:
-	case OP_CMPULT: case OP_CMPULE:	case OP_BTEST:
+	case OP_BTEST:
 	case OP_JOP:
 	case OP_LDX: case OP_STX:
 		return 1;
 	default: return 0;
 	}
 }
+
+static int is_format_C(unsigned int opcode)
+{
+	switch (opcode) {
+	case OP_CMP: case OP_CMPU:
+		return 1;
+	default: return 0;
+	}
+}	  
 
 static int is_format_I(unsigned int opcode)
 {
@@ -123,7 +131,7 @@ static int is_format_F(unsigned int opcode)
 	}
 }
 
-static int is_format_C(unsigned int opcode)
+static int is_format_X(unsigned int opcode)
 {
 	switch (opcode) {
 	case OP_COMB:
@@ -156,6 +164,34 @@ static unsigned long conv_format_B(struct asmop op)
 		| (op.fmt.B.imm << 3)
 		| (op.fmt.B.cond.cond << 2)
 		| (op.fmt.B.cond.flag << 0);
+}
+
+static unsigned long conv_format_C(struct asmop op)
+{
+	unsigned int src2;
+	if (op.fmt.C.imm)
+		src2 = expr_evaluate(op.fmt.C.src2.imm);
+	else
+		src2 = op.fmt.C.src2.reg;
+
+	check_bits(op.op, 6);
+	check_bits(op.fmt.C.src1, 5);
+	check_bits(src2, 5);
+	check_bits(op.fmt.C.dest, 2);
+	check_bits(op.fmt.C.op, 3);
+	check_bits(op.fmt.C.imm, 1);
+	check_bits(op.fmt.C.cond.cond, 1);
+	check_bits(op.fmt.C.cond.flag, 2);
+
+	return
+		(op.op << 19)
+		| (op.fmt.C.src1 << 14)
+		| ((src2 & 0x1f) << 9)
+		| (op.fmt.C.dest << 7)
+		| (op.fmt.C.op << 4)
+		| (op.fmt.C.imm << 3)
+		| (op.fmt.C.cond.cond << 2)
+		| (op.fmt.C.cond.flag << 0);
 }
 
 static unsigned long conv_format_I(struct asmop op)
@@ -316,34 +352,36 @@ static unsigned long conv_format_F(struct asmop op)
 		| (op.fmt.F.cond.flag << 0);
 }
 
-static unsigned long conv_format_C(struct asmop op)
+static unsigned long conv_format_X(struct asmop op)
 {
 	check_bits(op.op, 6);
-	check_bits(op.fmt.C.dest, 2);
-	check_bits(op.fmt.C.src1, 2);
-	check_bits(op.fmt.C.src2, 2);
-	check_bits(op.fmt.C.not1, 1);
-	check_bits(op.fmt.C.not2, 1);
-	check_bits(op.fmt.C.op, 2);
-	check_bits(op.fmt.C.cond.cond, 1);
-	check_bits(op.fmt.C.cond.flag, 2);
+	check_bits(op.fmt.X.dest, 2);
+	check_bits(op.fmt.X.src1, 2);
+	check_bits(op.fmt.X.src2, 2);
+	check_bits(op.fmt.X.not1, 1);
+	check_bits(op.fmt.X.not2, 1);
+	check_bits(op.fmt.X.op, 2);
+	check_bits(op.fmt.X.cond.cond, 1);
+	check_bits(op.fmt.X.cond.flag, 2);
 
 	return
 		(op.op << 19)
-		| (op.fmt.C.dest << 15)
-		| (op.fmt.C.src1 << 11)
-		| (op.fmt.C.src2 << 7)
-		| (op.fmt.C.not1 << 6)
-		| (op.fmt.C.not2 << 5)
-		| (op.fmt.C.op   << 3)
-		| (op.fmt.C.cond.cond << 2)
-		| (op.fmt.C.cond.flag << 0);
+		| (op.fmt.X.dest << 15)
+		| (op.fmt.X.src1 << 11)
+		| (op.fmt.X.src2 << 7)
+		| (op.fmt.X.not1 << 6)
+		| (op.fmt.X.not2 << 5)
+		| (op.fmt.X.op   << 3)
+		| (op.fmt.X.cond.cond << 2)
+		| (op.fmt.X.cond.flag << 0);
 }
 
 unsigned long conv_asmop(struct asmop op)
 {
 	if (is_format_B(op.op)) {
 		return conv_format_B(op);
+	} else if (is_format_C(op.op)) {
+		return conv_format_C(op);
 	} else if (is_format_I(op.op)) {
 		return conv_format_I(op);
 	} else if (is_format_L(op.op)) {
@@ -360,8 +398,8 @@ unsigned long conv_asmop(struct asmop op)
 		return conv_format_H(op);
 	} else if (is_format_F(op.op)) {
 		return conv_format_F(op);
-	} else if (is_format_C(op.op)) {
-		return conv_format_C(op);
+	} else if (is_format_X(op.op)) {
+		return conv_format_X(op);
 	} else {
 		fprintf(stderr, "error: Wrong instruction format.\n");
 		exit(EXIT_FAILURE);

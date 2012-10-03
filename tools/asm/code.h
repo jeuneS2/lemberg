@@ -24,7 +24,7 @@
 #define FLAG_BITS 2
 #define REG_BITS 5
 
-#define BRZOP_BITS 3
+#define CMPOP_BITS 3
 
 #define FOP_BITS 4
 #define FREG_BITS 4
@@ -55,6 +55,17 @@ struct asmop {
 			struct cond cond;
 		} B;
 		struct {
+			unsigned int src1 : REG_BITS;
+			union {
+				unsigned int reg : REG_BITS;
+				struct expr imm;
+			} src2;
+			unsigned int dest : FLAG_BITS;
+   		    unsigned int op : CMPOP_BITS;
+			unsigned int imm : 1;
+			struct cond cond;
+		} C;
+		struct {
 			unsigned int dest : REG_BITS;
 			struct expr val;
 			struct cond cond;
@@ -83,7 +94,7 @@ struct asmop {
 			unsigned int reg : REG_BITS;
 			struct expr target;
 			unsigned int delayed : 1;
-			unsigned int op : BRZOP_BITS;
+			unsigned int op : CMPOP_BITS;
 		} Z;
 		struct {
 			struct expr address;
@@ -107,7 +118,7 @@ struct asmop {
 			unsigned int not2 : 1;
 			unsigned int op   : CCOP_BITS;
 			struct cond cond;
-		} C;
+		} X;
 	} fmt;
 };
 

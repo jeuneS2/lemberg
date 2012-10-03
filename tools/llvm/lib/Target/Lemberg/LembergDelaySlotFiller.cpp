@@ -94,6 +94,10 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 			|| Opcode == Lemberg::JUMPfalse
 			|| Opcode == Lemberg::JUMPeqz
 			|| Opcode == Lemberg::JUMPnez
+			|| Opcode == Lemberg::JUMPltz
+			|| Opcode == Lemberg::JUMPgez
+			|| Opcode == Lemberg::JUMPgtz
+			|| Opcode == Lemberg::JUMPlez
 			|| Opcode == Lemberg::CALLga
 			|| Opcode == Lemberg::RET)) {
 
@@ -107,6 +111,10 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 		case Lemberg::JUMPfalse:
 		case Lemberg::JUMPeqz:
 		case Lemberg::JUMPnez:
+		case Lemberg::JUMPltz:
+		case Lemberg::JUMPgez:
+		case Lemberg::JUMPgtz:
+		case Lemberg::JUMPlez:
 			condReg = II->getOperand(0).getReg();
 			break;
 		}
@@ -144,7 +152,15 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							&& (ConflictOpcode == Lemberg::JUMPeqz
 								|| ConflictOpcode == Lemberg::JUMPeqz_now
 								|| ConflictOpcode == Lemberg::JUMPnez
-								|| ConflictOpcode == Lemberg::JUMPnez_now)) {
+								|| ConflictOpcode == Lemberg::JUMPnez_now
+								|| ConflictOpcode == Lemberg::JUMPltz
+								|| ConflictOpcode == Lemberg::JUMPltz_now
+								|| ConflictOpcode == Lemberg::JUMPgez
+								|| ConflictOpcode == Lemberg::JUMPgez_now
+								|| ConflictOpcode == Lemberg::JUMPgtz
+								|| ConflictOpcode == Lemberg::JUMPgtz_now
+								|| ConflictOpcode == Lemberg::JUMPlez
+								|| ConflictOpcode == Lemberg::JUMPlez_now)) {
 
 							MachineInstr *MI = J;
 							if (ConflictOpcode != Lemberg::JUMPeqz) {
@@ -161,12 +177,33 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							II->RemoveOperand(0);
 							
 							unsigned ConvOpcode = 0;
-							if (ConflictOpcode == Lemberg::JUMPeqz
-								|| ConflictOpcode == Lemberg::JUMPeqz_now) {
-								ConvOpcode = Lemberg::JUMPnez;
-							} else {
-								ConvOpcode = Lemberg::JUMPeqz;
+							switch (ConflictOpcode) {
+							case Lemberg::JUMPeqz:
+							case Lemberg::JUMPeqz_now:
+							  ConvOpcode = Lemberg::JUMPnez;
+							  break;
+							case Lemberg::JUMPnez:
+							case Lemberg::JUMPnez_now:
+							  ConvOpcode = Lemberg::JUMPeqz;
+							  break;
+							case Lemberg::JUMPltz:
+							case Lemberg::JUMPltz_now:
+							  ConvOpcode = Lemberg::JUMPgez;
+							  break;
+							case Lemberg::JUMPgez:
+							case Lemberg::JUMPgez_now:
+							  ConvOpcode = Lemberg::JUMPltz;
+							  break;
+							case Lemberg::JUMPgtz:
+							case Lemberg::JUMPgtz_now:
+							  ConvOpcode = Lemberg::JUMPlez;
+							  break;
+							case Lemberg::JUMPlez:
+							case Lemberg::JUMPlez_now:
+							  ConvOpcode = Lemberg::JUMPgtz;
+							  break;
 							}
+
 							MCInstrDesc *NMID = new MCInstrDesc();
 							*NMID = TII->get(ConvOpcode);
 							NMID->SchedClass = J->getDesc().getSchedClass();
@@ -290,7 +327,12 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 				}
 						
 				// avoid clashes with other ops in same slot
-				if (Opcode == Lemberg::JUMPeqz || Opcode == Lemberg::JUMPnez) {
+				if (Opcode == Lemberg::JUMPeqz
+					|| Opcode == Lemberg::JUMPnez
+					|| Opcode == Lemberg::JUMPltz
+					|| Opcode == Lemberg::JUMPgez
+					|| Opcode == Lemberg::JUMPgtz
+					|| Opcode == Lemberg::JUMPlez) {
 					unsigned SchedClass = J->getDesc().getSchedClass();
 					unsigned Slot = IIStages[IITab[SchedClass].FirstStage].getUnits();
 					if (Slot == BrSlot
@@ -343,6 +385,10 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 			case Lemberg::JUMPfalse: OpcodeNow = Lemberg::JUMPfalse_now; break;
 			case Lemberg::JUMPeqz: OpcodeNow = Lemberg::JUMPeqz_now; break;
 			case Lemberg::JUMPnez: OpcodeNow = Lemberg::JUMPnez_now; break;
+			case Lemberg::JUMPltz: OpcodeNow = Lemberg::JUMPltz_now; break;
+			case Lemberg::JUMPgez: OpcodeNow = Lemberg::JUMPgez_now; break;
+			case Lemberg::JUMPgtz: OpcodeNow = Lemberg::JUMPgtz_now; break;
+			case Lemberg::JUMPlez: OpcodeNow = Lemberg::JUMPlez_now; break;
 			case Lemberg::JUMPpred: OpcodeNow = Lemberg::JUMPpred_now; break;
 			}
 			// found a replacement
@@ -374,6 +420,10 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 			case Lemberg::JUMPfalse: OpcodeNow = Lemberg::JUMPfalse_now; break;
 			case Lemberg::JUMPeqz: OpcodeNow = Lemberg::JUMPeqz_now; break;
 			case Lemberg::JUMPnez: OpcodeNow = Lemberg::JUMPnez_now; break;
+			case Lemberg::JUMPltz: OpcodeNow = Lemberg::JUMPltz_now; break;
+			case Lemberg::JUMPgez: OpcodeNow = Lemberg::JUMPgez_now; break;
+			case Lemberg::JUMPgtz: OpcodeNow = Lemberg::JUMPgtz_now; break;
+			case Lemberg::JUMPlez: OpcodeNow = Lemberg::JUMPlez_now; break;
 			case Lemberg::JUMPpred: OpcodeNow = Lemberg::JUMPpred_now; break;
 			}
 			// found a replacement

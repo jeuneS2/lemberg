@@ -182,12 +182,12 @@ begin  -- behavior
 				pc1_out <= op(idx).target1;
 			when JMP_BRZ =>
 				case op(idx).zop is
-					when BRZ_EQ => valid := zero(idx);
-					when BRZ_NE => valid := not zero(idx);
-					when BRZ_LT => valid := neg(idx);
-					when BRZ_GE => valid := not neg(idx);
-					when BRZ_LE => valid := zero(idx) or neg(idx);
-					when BRZ_GT => valid := not (zero(idx) or neg(idx));
+					when CMP_EQ => valid := zero(idx);
+					when CMP_NE => valid := not zero(idx);
+					when CMP_LT => valid := neg(idx);
+					when CMP_GE => valid := not neg(idx);
+					when CMP_GT => valid := not (zero(idx) or neg(idx));
+					when CMP_LE => valid := zero(idx) or neg(idx);
 					when others =>
 						assert false report "Invalid BRZ sub-operation" severity error;
 				end case;

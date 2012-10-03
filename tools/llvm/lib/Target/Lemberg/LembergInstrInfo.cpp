@@ -210,8 +210,8 @@ LembergInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 
   // A normal register
   if (inClass(Lemberg::ARegClass, DestReg, RC, RI)) {
-	  if ((I->getDesc().getOpcode() != Lemberg::LDXa)
-		  && (I->getDesc().getOpcode() != Lemberg::LDXi)) {
+	  if (I->getOpcode() != Lemberg::LDXa
+		  && I->getOpcode() != Lemberg::LDXi) {
 		  BuildMI(MBB, I, DL, get(Lemberg::LOAD32s_pseudo), DestReg)
 			  .addImm(0).addFrameIndex(FI);
 	  } else {
@@ -366,17 +366,46 @@ LembergInstrInfo::AnalyzeBranch(MachineBasicBlock &MBB,
 		}
 	}
 
-	// Replace an unconditional jump with a fall-through after JUMPeqz/JUMPnez
-	// We pretend we cannot analyze them, because we cannot use eqz/nez as predicates
+	// Replace an unconditional jump with a fall-through after JUMPxxz
+	// We pretend we cannot analyze them, because we cannot use xxz as predicates
 	if ((SecondLastInst->getOpcode() == Lemberg::JUMPeqz ||
-		 SecondLastInst->getOpcode() == Lemberg::JUMPnez) &&
+		 SecondLastInst->getOpcode() == Lemberg::JUMPnez ||
+		 SecondLastInst->getOpcode() == Lemberg::JUMPltz ||
+		 SecondLastInst->getOpcode() == Lemberg::JUMPgez ||
+		 SecondLastInst->getOpcode() == Lemberg::JUMPgtz ||
+		 SecondLastInst->getOpcode() == Lemberg::JUMPlez) &&
 		LastInst->getOpcode() == Lemberg::JUMP &&
 		AllowModify) {
 
 		MachineBasicBlock *Target = LastInst->getOperand(0).getMBB();
+		MachineBasicBlock *RevTarget = SecondLastInst->getOperand(1).getMBB();
 		if (MBB.isLayoutSuccessor(Target)) {
-			I = LastInst;
-			I->eraseFromParent();
+			LastInst->eraseFromParent();
+		} else if (MBB.isLayoutSuccessor(RevTarget)) {			
+			unsigned ConvOpcode = 0;
+			switch (SecondLastInst->getOpcode()) {
+			case Lemberg::JUMPeqz:
+			  ConvOpcode = Lemberg::JUMPnez;
+			  break;
+			case Lemberg::JUMPnez:
+			  ConvOpcode = Lemberg::JUMPeqz;
+			  break;
+			case Lemberg::JUMPltz:
+			  ConvOpcode = Lemberg::JUMPgez;
+			  break;
+			case Lemberg::JUMPgez:
+			  ConvOpcode = Lemberg::JUMPltz;
+			  break;
+			case Lemberg::JUMPgtz:
+			  ConvOpcode = Lemberg::JUMPlez;
+			  break;
+			case Lemberg::JUMPlez:
+			  ConvOpcode = Lemberg::JUMPgtz;
+			  break;
+			}
+ 		    LastInst->eraseFromParent();
+			SecondLastInst->setDesc(get(ConvOpcode));
+			SecondLastInst->getOperand(1).setMBB(Target);
 		}
 
 		return true;
@@ -407,7 +436,11 @@ unsigned LembergInstrInfo::RemoveBranch(MachineBasicBlock &MBB) const {
 	  I->getOpcode() != Lemberg::JUMPfalse &&
 	  I->getOpcode() != Lemberg::JUMPpred &&
 	  I->getOpcode() != Lemberg::JUMPeqz &&
-	  I->getOpcode() != Lemberg::JUMPnez)
+	  I->getOpcode() != Lemberg::JUMPnez &&
+	  I->getOpcode() != Lemberg::JUMPltz &&
+	  I->getOpcode() != Lemberg::JUMPgez &&
+	  I->getOpcode() != Lemberg::JUMPgtz &&
+	  I->getOpcode() != Lemberg::JUMPlez)
     return 0;
 
   // Remove the branch.
@@ -421,7 +454,11 @@ unsigned LembergInstrInfo::RemoveBranch(MachineBasicBlock &MBB) const {
 	  I->getOpcode() != Lemberg::JUMPfalse &&
 	  I->getOpcode() != Lemberg::JUMPpred &&
 	  I->getOpcode() != Lemberg::JUMPeqz &&
-	  I->getOpcode() != Lemberg::JUMPnez)
+	  I->getOpcode() != Lemberg::JUMPnez &&
+	  I->getOpcode() != Lemberg::JUMPltz &&
+	  I->getOpcode() != Lemberg::JUMPgez &&
+	  I->getOpcode() != Lemberg::JUMPgtz &&
+	  I->getOpcode() != Lemberg::JUMPlez)
     return 1;
 
   // Remove the branch.

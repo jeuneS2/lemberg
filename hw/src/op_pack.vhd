@@ -83,8 +83,12 @@ package op_pack is
 					  ALU_CMPEQ,
 					  ALU_CMPNE,
 					  ALU_CMPLT,
+					  ALU_CMPGE,
+					  ALU_CMPGT,
 					  ALU_CMPLE,
 					  ALU_CMPULT,
+					  ALU_CMPUGE,
+					  ALU_CMPUGT,
 					  ALU_CMPULE,
 					  ALU_BTEST,
 					  ALU_CCAND,
@@ -196,12 +200,12 @@ package op_pack is
 					  JMP_CALL,
 					  JMP_RET);
 
-	type brz_type is (BRZ_EQ,
-					  BRZ_NE,
-					  BRZ_LT,
-					  BRZ_GE,
-					  BRZ_LE,
-					  BRZ_GT);
+	type cmp_type is (CMP_EQ,
+					  CMP_NE,
+					  CMP_LT,
+					  CMP_GE,
+					  CMP_LE,
+					  CMP_GT);
 
 	type jmpop_type is
 	record
@@ -210,7 +214,7 @@ package op_pack is
         rddata  : std_logic_vector(PC_WIDTH-1 downto 0);
 		rdaddr  : std_logic_vector(REG_BITS-1 downto 0);
 		op	    : jmp_type;
-		zop     : brz_type;
+		zop     : cmp_type;
 		delayed : std_logic;
 		cond    : std_logic;
 		flag    : std_logic_vector(FLAG_COUNT-1 downto 0);		
@@ -218,7 +222,7 @@ package op_pack is
 
 	constant JMPOP_NOP : jmpop_type :=
 		((others => '0'), (others => '0'), (others => '0'), (others => '0'),
-		 JMP_NOP, BRZ_EQ,
+		 JMP_NOP, CMP_EQ,
 		 '0', COND_FALSE, (others => '0'));
 
 	type jmpop_arr_type is array (0 to CLUSTERS-1) of jmpop_type;

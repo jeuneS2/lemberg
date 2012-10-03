@@ -36,12 +36,8 @@
 #define OP_BORR      0x0C
 #define OP_BBH       0x0D
 
-#define OP_CMPEQ     0x10
-#define OP_CMPNE     0x11
-#define OP_CMPLT     0x12
-#define OP_CMPLE     0x13
-#define OP_CMPULT    0x14
-#define OP_CMPULE    0x15
+#define OP_CMP       0x14
+#define OP_CMPU      0x15
 #define OP_BTEST     0x16
 #define OP_COMB      0x17
 
@@ -92,8 +88,8 @@
 #define OP_NE        0x01
 #define OP_LT        0x02
 #define OP_GE        0x03
-#define OP_LE        0x04
-#define OP_GT        0x05
+#define OP_GT        0x04
+#define OP_LE        0x05
 
 /* jump operations */
 #define OP_BRIND     0x00

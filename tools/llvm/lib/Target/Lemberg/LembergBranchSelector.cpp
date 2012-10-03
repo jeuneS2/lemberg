@@ -111,6 +111,10 @@ bool BranchSelector::runOnMachineFunction(MachineFunction &Fn) {
 			for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end(); I != E; ++I) {
 				if ((I->getOpcode() != Lemberg::JUMPeqz)
 					&& (I->getOpcode() != Lemberg::JUMPnez)
+					&& (I->getOpcode() != Lemberg::JUMPltz)
+					&& (I->getOpcode() != Lemberg::JUMPgez)
+					&& (I->getOpcode() != Lemberg::JUMPgtz)
+					&& (I->getOpcode() != Lemberg::JUMPlez)
 					&& (I->getOpcode() != Lemberg::JUMP)) {
 
 					MBBStartOffset += 4;
@@ -161,10 +165,18 @@ bool BranchSelector::runOnMachineFunction(MachineFunction &Fn) {
 				DebugLoc DL = OldBranch->getDebugLoc();
 		  
 				unsigned Reg = I->getOperand(0).getReg();
-				bool Inv = I->getOpcode() == Lemberg::JUMPnez;
+				unsigned Opcode = 0;
+				switch (I->getOpcode()) {
+				case Lemberg::JUMPeqz: Opcode = Lemberg::CMPEQaic; break;
+				case Lemberg::JUMPnez: Opcode = Lemberg::CMPNEaic; break;
+				case Lemberg::JUMPltz: Opcode = Lemberg::CMPLTaic; break;
+				case Lemberg::JUMPgez: Opcode = Lemberg::CMPGEaic; break;
+				case Lemberg::JUMPgtz: Opcode = Lemberg::CMPGTaic; break;
+				case Lemberg::JUMPlez: Opcode = Lemberg::CMPLEaic; break;
+				}
 
 				// Create branch with larger displacement
-				BuildMI(MBB, I, DL, TII->get(Inv ? Lemberg::CMPNEaic : Lemberg::CMPEQaic), Lemberg::C3)
+				BuildMI(MBB, I, DL, TII->get(Opcode), Lemberg::C3)
 					.addImm(-1).addReg(0)
 					.addReg(Reg).addImm(0);
 

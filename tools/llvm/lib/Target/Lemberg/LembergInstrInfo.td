@@ -272,25 +272,42 @@ multiclass OP3<SDNode opnode, string opstr, PatLeaf immtype> {
 		IIAlu>;
 	let Constraints = "$src3 = $dst" in {
 	def aaat: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
-		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aaat")),
 		[(set A:$dst, (select C:$cond, (opnode A:$src1, A:$src2), A:$src3))],
 		IIAlu>;
 	def aaaf: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
-		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aaaf")),
 		[(set A:$dst, (select C:$cond, A:$src3, (opnode A:$src1, A:$src2)))],
 		IIAlu>;
 	def aiat: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
-		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aiat")),
 		[(set A:$dst, (select C:$cond, (opnode A:$src1, (i32 immtype:$src2)), A:$src3))],
 		IIAlu>;
 	def aiaf: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
-		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aiaf")),
 		[(set A:$dst, (select C:$cond, A:$src3, (opnode A:$src1, (i32 immtype:$src2))))],
+		IIAlu>;
+
+	def aaant: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aaant")),
+        [(set A:$dst, (select (not C:$cond), (opnode A:$src1, A:$src2), A:$src3))],
+		IIAlu>;
+	def aaanf: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
+		!strconcat("if $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aaanf")),
+        [(set A:$dst, (select (not C:$cond), A:$src3, (opnode A:$src1, A:$src2)))],
+		IIAlu>;
+	def aiant: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aiant")),
+        [(set A:$dst, (select (not C:$cond), (opnode A:$src1, (i32 immtype:$src2)), A:$src3))],
+		IIAlu>;
+	def aianf: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
+		!strconcat("if $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aianf")),
+        [(set A:$dst, (select (not C:$cond), A:$src3, (opnode A:$src1, (i32 immtype:$src2))))],
 		IIAlu>;
 	}
 }
 
-multiclass OPCMP<PatFrag opnode, PatFrag revnode, string opstr, PatLeaf immtype> {
+multiclass OPCMP<PatFrag opnode, string opstr, PatLeaf immtype> {
 
 	def aac : F1<(outs C:$dst), (ins pred:$p, A:$src1, A:$src2),
 		!strconcat("$p ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
@@ -300,46 +317,23 @@ multiclass OPCMP<PatFrag opnode, PatFrag revnode, string opstr, PatLeaf immtype>
 		!strconcat("$p ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
 		[(set C:$dst, (opnode A:$src1, (i32 immtype:$src2)))],
 		IIAlu>;
-	def aan : F1<(outs C:$dst), (ins pred:$p, A:$src1, A:$src2),
-		!strconcat("$p ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
-		[(set C:$dst, (revnode A:$src2, A:$src1))],
-		IIAlu>;
-	def ain : F1<(outs C:$dst), (ins pred:$p, A:$src1, i32imm:$src2),
-		!strconcat("$p ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
-		[(set C:$dst, (revnode (i32 immtype:$src2), A:$src1))],
-		IIAlu>;
+
 	let Constraints = "$src3 = $dst" in {
 	def aact: F1<(outs C:$dst), (ins C:$cond, A:$src1, A:$src2, C:$src3),
-		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aact")),
 		[(set C:$dst, (select C:$cond, (opnode A:$src1, A:$src2), C:$src3))],
 		IIAlu>;
 	def aacf: F1<(outs C:$dst), (ins C:$cond, A:$src1, A:$src2, C:$src3),
-		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aacf")),
 		[(set C:$dst, (select C:$cond, C:$src3, (opnode A:$src1, A:$src2)))],
 		IIAlu>;
 	def aict: F1<(outs C:$dst), (ins C:$cond, A:$src1, i32imm:$src2, C:$src3),
-		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aict")),
 		[(set C:$dst, (select C:$cond, (opnode A:$src1, (i32 immtype:$src2)), C:$src3))],
 		IIAlu>;
 	def aicf: F1<(outs C:$dst), (ins C:$cond, A:$src1, i32imm:$src2, C:$src3),
-		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
+		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aicf")),
 		[(set C:$dst, (select C:$cond, C:$src3, (opnode A:$src1, (i32 immtype:$src2))))],
-		IIAlu>;
-	def aant: F1<(outs C:$dst), (ins C:$cond, A:$src1, A:$src2, C:$src3),
-		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
-		[(set C:$dst, (select C:$cond, (revnode A:$src2, A:$src1), C:$src3))],
-		IIAlu>;
-	def aanf: F1<(outs C:$dst), (ins C:$cond, A:$src1, A:$src2, C:$src3),
-		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
-		[(set C:$dst, (select C:$cond, C:$src3, (revnode A:$src2, A:$src1)))],
-		IIAlu>;
-	def aint: F1<(outs C:$dst), (ins C:$cond, A:$src1, i32imm:$src2, C:$src3),
-		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
-		[(set C:$dst, (select C:$cond, (revnode (i32 immtype:$src2), A:$src1), C:$src3))],
-		IIAlu>;
-	def ainf: F1<(outs C:$dst), (ins C:$cond, A:$src1, i32imm:$src2, C:$src3),
-		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst")),
-		[(set C:$dst, (select C:$cond, C:$src3, (revnode (i32 immtype:$src2), A:$src1)))],
 		IIAlu>;
 	}
 }
@@ -636,12 +630,19 @@ defm SRA: OP3<sra, "sra", uimm5>;
 defm RL:  OP3<rotl, "rl", uimm5>;
 
 // Compares
-defm CMPEQ:  OPCMP<seteq, seteq, "cmpeq", imm5>;
-defm CMPNE:  OPCMP<setne, setne, "cmpne", imm5>;
-defm CMPLT:  OPCMP<setlt, setgt, "cmplt", imm5>;
-defm CMPLE:  OPCMP<setle, setge, "cmple", imm5>;
-defm CMPULT: OPCMP<setult, setugt, "cmpult", uimm5>;
-defm CMPULE: OPCMP<setule, setuge, "cmpule", uimm5>;
+defm CMPEQ: OPCMP<seteq, "cmp eq", imm5>;
+defm CMPNE: OPCMP<setne, "cmp ne", imm5>;
+defm CMPLT: OPCMP<setlt, "cmp lt", imm5>;
+defm CMPGE: OPCMP<setge, "cmp ge", imm5>;
+defm CMPGT: OPCMP<setgt, "cmp gt", imm5>;
+defm CMPLE: OPCMP<setle, "cmp le", imm5>;
+
+defm CMPUEQ: OPCMP<seteq, "cmpu eq", uimm5>;
+defm CMPUNE: OPCMP<setne, "cmpu ne", uimm5>;
+defm CMPULT: OPCMP<setult, "cmpu lt", uimm5>;
+defm CMPUGE: OPCMP<setuge, "cmpu ge", uimm5>;
+defm CMPUGT: OPCMP<setugt, "cmpu gt", uimm5>;
+defm CMPULE: OPCMP<setule, "cmpu le", uimm5>;
 
 // Bit test
 def BTEST: F1<(outs C:$dst), (ins pred:$p, A:$src1, uimm5mask:$src2),
@@ -650,7 +651,7 @@ def BTEST: F1<(outs C:$dst), (ins pred:$p, A:$src1, uimm5mask:$src2),
 			  IIAlu>;
 
 // Immediate constant loads
-let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
+let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
   def LOADimm11: F1<(outs A:$dst), (ins pred:$p, i32imm:$src),
                     "$p ldi\t$src -> $dst",
                     [(set A:$dst, imm11:$src)],
@@ -699,7 +700,7 @@ def : Pat<(i32 imm:$imm),
 		   (high11 imm:$imm))>;
 
 // load symbolic constants
-let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
+let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
   def LOADsym11lo: F1<(outs A:$dst), (ins pred:$p, i32imm:$src),
 				      "$p ldiu\tlo11\\{ $src \\} -> $dst", 
 					  [(set A:$dst, (and imm:$src, (i32 0x000007ff)))],
@@ -719,7 +720,7 @@ let Constraints = "$src1 = $dst" in {
 }
 
 // load global address in small code model
-let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
+let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
   def LOADga: F1<(outs AImm:$dst), (ins i32imm:$addr),
 			     "       ldga\t$addr -> $dst",
                  [(set AImm:$dst, (LembergWrapper tglobaladdr:$addr))],
@@ -899,6 +900,8 @@ def EXTCC: F1<(outs A:$dst), (ins pred:$p, C:$src),
 def : Pat<(i32 (anyext C:$src)),
 		  (EXTCC C:$src)>;
 
+
+
 // Conversion from a register to a flag
 def TRNCC: F1<(outs C:$dst), (ins pred:$p, A:$src),
 			  "$p btest\t$src, 0 -> $dst",
@@ -912,11 +915,16 @@ def : Pat<(i32 (sext C:$src)),
 		  (SRAaia (SLaia (EXTCC C:$src), (i32 31)), (i32 31))>;
 
 // Special case where we do not need to extract flag explicitly
-let Constraints = "$src2 = $dst" in
-def ORcond: F1<(outs A:$dst), (ins C:$src1, A:$src2),
-			   "if  $src1 or\t$src2, 1 -> $dst",
-			   [(set A:$dst, (or (i32 (zext C:$src1)), A:$src2))],
-			   IIAlu>;		 
+let Constraints = "$src2 = $dst" in {
+  def ORcond: F1<(outs A:$dst), (ins C:$src1, A:$src2),
+				 "if  $src1 or\t$src2, 1 -> $dst",
+				 [(set A:$dst, (or (i32 (zext C:$src1)), A:$src2))],
+				 IIAlu>;
+  def ADDcond: F1<(outs A:$dst), (ins C:$src1, A:$src2),
+				 "if  $src1 add\t$src2, 1 -> $dst",
+				 [(set A:$dst, (add (i32 (zext C:$src1)), A:$src2))],
+				 IIAlu>;
+}
 
 // Single-precision floating-point operations
 def FMOV: F1<(outs F:$dst), (ins pred:$p, F:$src),
@@ -1021,7 +1029,7 @@ def MOVEfa: F1<(outs A:$dst), (ins pred:$p, F:$src),
 			   IIFpu0>;
 
 // load +0.0 and -0.0
-let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
+let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
 	def FZERO: F1<(outs F:$dst), (ins pred:$p),
 	              "$p fop\tfzero -> $dst",
 	              [(set (f32 F:$dst), fpimm0)],
@@ -1048,7 +1056,7 @@ def : Pat<(f32 fpimmHneg), (FNEG (FHALF))>;
 def : Pat<(f32 fpimm1neg), (FNEG (FONE))>;
 def : Pat<(f32 fpimm2neg), (FNEG (FTWO))>;
 
-let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
+let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
 	def DZERO: F1<(outs D:$dst), (ins pred:$p),
 			      "$p fop\tdzero -> $dst",
 			      [(set D:$dst, fpimm0)],
@@ -1238,10 +1246,37 @@ let isBranch = 1, isTerminator = 1, hasDelaySlot=1 in {
 	                   "       brz ne\t$src, $target",
                        [(brcond (i1 (setne A:$src, (i32 0))), bb:$target)],
 	                   IIBranch>;
+
+	  def JUMPltz : F1<(outs), (ins A:$src, brtarget:$target),
+	                   "       brz lt\t$src, $target",
+                       [(brcond (i1 (setlt A:$src, (i32 0))), bb:$target)],
+	                   IIBranch>;
+      def JUMPgez : F1<(outs), (ins A:$src, brtarget:$target),
+	                   "       brz ge\t$src, $target",
+                       [(brcond (i1 (setge A:$src, (i32 0))), bb:$target)],
+	                   IIBranch>;
+	  def JUMPgtz : F1<(outs), (ins A:$src, brtarget:$target),
+	                   "       brz gt\t$src, $target",
+                       [(brcond (i1 (setgt A:$src, (i32 0))), bb:$target)],
+	                   IIBranch>;
+      def JUMPlez : F1<(outs), (ins A:$src, brtarget:$target),
+	                   "       brz le\t$src, $target",
+                       [(brcond (i1 (setle A:$src, (i32 0))), bb:$target)],
+	                   IIBranch>;
+
 	  def JUMPeqz_now : F1<(outs), (ins A:$src, brtarget:$target),
 	                       "       brz eq @\t$src, $target", [], IIBranch>;
       def JUMPnez_now : F1<(outs), (ins A:$src, brtarget:$target),
 	                       "       brz ne @\t$src, $target", [], IIBranch>;
+
+	  def JUMPltz_now : F1<(outs), (ins A:$src, brtarget:$target),
+	                       "       brz lt @\t$src, $target", [], IIBranch>;
+      def JUMPgez_now : F1<(outs), (ins A:$src, brtarget:$target),
+	                       "       brz ge @\t$src, $target", [], IIBranch>;
+	  def JUMPgtz_now : F1<(outs), (ins A:$src, brtarget:$target),
+	                       "       brz gt @\t$src, $target", [], IIBranch>;
+      def JUMPlez_now : F1<(outs), (ins A:$src, brtarget:$target),
+	                       "       brz le @\t$src, $target", [], IIBranch>;
 	}
 
 	// predicated version for easier if-conversion
@@ -1260,40 +1295,6 @@ def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src3,
 		  (MOVEtrue (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4)>;
 def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src3, A:$src4),
 		  (MOVEfalse (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4)>;
-
-def : Pat<(select (not C:$cond), A:$src3, (add A:$src1, A:$src2)),
-		  (ADDaaat C:$cond, A:$src1, A:$src2, A:$src3)>;
-def : Pat<(select (not C:$cond), A:$src3, (sub A:$src1, A:$src2)),
-		  (SUBaaat C:$cond, A:$src1, A:$src2, A:$src3)>;
-def : Pat<(select (not C:$cond), A:$src3, (and A:$src1, A:$src2)),
-		  (ANDaaat C:$cond, A:$src1, A:$src2, A:$src3)>;
-def : Pat<(select (not C:$cond), A:$src3, (or A:$src1, A:$src2)),
-		  (ORaaat C:$cond, A:$src1, A:$src2, A:$src3)>;
-def : Pat<(select (not C:$cond), A:$src3, (xor A:$src1, A:$src2)),
-		  (XORaaat C:$cond, A:$src1, A:$src2, A:$src3)>;
-def : Pat<(select (not C:$cond), A:$src3, (shl A:$src1, A:$src2)),
-		  (SLaaat C:$cond, A:$src1, A:$src2, A:$src3)>;
-def : Pat<(select (not C:$cond), A:$src3, (srl A:$src1, A:$src2)),
-		  (SRaaat C:$cond, A:$src1, A:$src2, A:$src3)>;
-def : Pat<(select (not C:$cond), A:$src3, (sra A:$src1, A:$src2)),
-		  (SRAaaat C:$cond, A:$src1, A:$src2, A:$src3)>;
-
-def : Pat<(select (not C:$cond), A:$src3, (add A:$src1, uimm5:$src2)),
-		  (ADDaiat C:$cond, A:$src1, A:$src2, (i32 uimm5:$src3))>;
-def : Pat<(select (not C:$cond), A:$src3, (sub A:$src1, uimm5:$src2)),
-		  (SUBaiat C:$cond, A:$src1, A:$src2, (i32 uimm5:$src3))>;
-def : Pat<(select (not C:$cond), A:$src3, (and A:$src1, uimm5:$src2)),
-		  (ANDaiat C:$cond, A:$src1, A:$src2, (i32 uimm5:$src3))>;
-def : Pat<(select (not C:$cond), A:$src3, (or A:$src1, uimm5:$src2)),
-		  (ORaiat C:$cond, A:$src1, A:$src2, (i32 uimm5:$src3))>;
-def : Pat<(select (not C:$cond), A:$src3, (xor A:$src1, imm5:$src2)),
-		  (XORaiat C:$cond, A:$src1, A:$src2, (i32 imm5:$src3))>;
-def : Pat<(select (not C:$cond), A:$src3, (shl A:$src1, (i32 uimm5:$src2))),
-		  (SLaiat C:$cond, A:$src1, A:$src2, (i32 uimm5:$src3))>;
-def : Pat<(select (not C:$cond), A:$src3, (srl A:$src1, (i32 uimm5:$src2))),
-		  (SRaiat C:$cond, A:$src1, A:$src2, (i32 uimm5:$src3))>;
-def : Pat<(select (not C:$cond), A:$src3, (sra A:$src1, (i32 uimm5:$src2))),
-		  (SRAaiat C:$cond, A:$src1, A:$src2, (i32 uimm5:$src3))>;
 
 // Pseudo instructions for calls
 let Defs = [R15], Uses = [R15] in {
