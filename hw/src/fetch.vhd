@@ -204,20 +204,14 @@ begin  -- behavior
 
 	mux: process (raw_next, start_pos)
 	begin  -- process mux
-		if start_pos < FETCHBUF_BYTES/2 then
-			for i in 0 to FETCH_WIDTH-1 loop
-				raw_out(i) <= raw_next(to_integer(start_pos*BYTE_WIDTH)+i);
-			end loop;  -- i
-		else
-			for i in 0 to FETCH_WIDTH-1 loop
-				-- wrap around
-				if to_integer(start_pos*BYTE_WIDTH)+i < FETCHBUF_WIDTH then
-					raw_out(i) <= raw_next(to_integer(start_pos*BYTE_WIDTH)+i);
-				else
-					raw_out(i) <= raw_next(to_integer(start_pos*BYTE_WIDTH)+i-FETCHBUF_WIDTH);
-				end if;
-			end loop;  -- i
-		end if;
+        for i in 0 to FETCH_WIDTH-1 loop
+            -- wrap around
+            if to_integer(start_pos*BYTE_WIDTH)+i < FETCHBUF_WIDTH then
+                raw_out(i) <= raw_next(to_integer(start_pos*BYTE_WIDTH)+i);
+            else
+                raw_out(i) <= raw_next(to_integer(start_pos*BYTE_WIDTH)+i-FETCHBUF_WIDTH);
+            end if;
+        end loop;  -- i
 	end process mux;
 	
 end behavior;
