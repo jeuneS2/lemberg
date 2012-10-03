@@ -96,9 +96,9 @@ namespace {
 					&& classes[rhs] == Lemberg::AImmRegisterClass) {
 					return true;
 				}
-				// prefer registers with fewer neighbors
+				// prefer registers with more neighbors
 				if (hood[lhs]->size() != hood[rhs]->size()) {
-					return hood[lhs]->size() > hood[rhs]->size();
+					return hood[lhs]->size() < hood[rhs]->size();
 				}
 				// use register number as tie-breaker
 				return lhs > rhs;
