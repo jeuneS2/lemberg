@@ -81,7 +81,6 @@ let Namespace = "Lemberg" in {
   def R0_28 : LembergLocalReg< 28, 0, "r0.28">,  DwarfRegNum<[28]>;
   def R0_29 : LembergLocalReg< 29, 0, "r0.29">,  DwarfRegNum<[29]>;
   def R0_30 : LembergLocalReg< 30, 0, "r0.30">,  DwarfRegNum<[30]>;
-  def R0_31 : LembergLocalReg< 31, 0, "r0.31">,  DwarfRegNum<[31]>;
 
   def R1_16 : LembergLocalReg< 16, 1, "r1.16">,  DwarfRegNum<[32]>;
   def R1_17 : LembergLocalReg< 17, 1, "r1.17">,  DwarfRegNum<[33]>;
@@ -98,7 +97,6 @@ let Namespace = "Lemberg" in {
   def R1_28 : LembergLocalReg< 28, 1, "r1.28">,  DwarfRegNum<[44]>;
   def R1_29 : LembergLocalReg< 29, 1, "r1.29">,  DwarfRegNum<[45]>;
   def R1_30 : LembergLocalReg< 30, 1, "r1.30">,  DwarfRegNum<[46]>;
-  def R1_31 : LembergLocalReg< 31, 1, "r1.31">,  DwarfRegNum<[47]>;
 
   def R2_16 : LembergLocalReg< 16, 2, "r2.16">,  DwarfRegNum<[48]>;
   def R2_17 : LembergLocalReg< 17, 2, "r2.17">,  DwarfRegNum<[49]>;
@@ -115,7 +113,6 @@ let Namespace = "Lemberg" in {
   def R2_28 : LembergLocalReg< 28, 2, "r2.28">,  DwarfRegNum<[60]>;
   def R2_29 : LembergLocalReg< 29, 2, "r2.29">,  DwarfRegNum<[61]>;
   def R2_30 : LembergLocalReg< 30, 2, "r2.30">,  DwarfRegNum<[62]>;
-  def R2_31 : LembergLocalReg< 31, 2, "r2.31">,  DwarfRegNum<[63]>;
 
   def R3_16 : LembergLocalReg< 16, 3, "r3.16">,  DwarfRegNum<[64]>;
   def R3_17 : LembergLocalReg< 17, 3, "r3.17">,  DwarfRegNum<[65]>;
@@ -132,20 +129,15 @@ let Namespace = "Lemberg" in {
   def R3_28 : LembergLocalReg< 28, 3, "r3.28">,  DwarfRegNum<[76]>;
   def R3_29 : LembergLocalReg< 29, 3, "r3.29">,  DwarfRegNum<[77]>;
   def R3_30 : LembergLocalReg< 30, 3, "r3.30">,  DwarfRegNum<[78]>;
-  def R3_31 : LembergLocalReg< 31, 3, "r3.31">,  DwarfRegNum<[79]>;
+
+  // Register for memory results
+  def R31  : LembergGlobalReg< 31, "r31">, DwarfRegNum<[31]>;
 
   // Condition flags, C0 hardwired to true
   def C0   : LembergGlobalReg<  0, "c0">, DwarfRegNum<[80]>;
   def C1   : LembergGlobalReg<  1, "c1">, DwarfRegNum<[81]>;
   def C2   : LembergGlobalReg<  2, "c2">, DwarfRegNum<[82]>;
   def C3   : LembergGlobalReg<  3, "c3">, DwarfRegNum<[83]>;
-
-  // Global special registers for memory
-  def MEM   : LembergGlobalReg< 4, "mem">,  DwarfRegNum<[84]>;
-  def MEMHU : LembergGlobalReg< 5, "memhu">, DwarfRegNum<[85]>;
-  def MEMHS : LembergGlobalReg< 6, "memhs">, DwarfRegNum<[86]>;
-  def MEMBU : LembergGlobalReg< 7, "membu">, DwarfRegNum<[87]>;
-  def MEMBS : LembergGlobalReg< 8, "membs">, DwarfRegNum<[88]>;
 
   // Local special registers
   def MUL0_0 : LembergLocalReg< 9, 0, "mul0.0">, DwarfRegNum<[89]>;
@@ -202,9 +194,9 @@ def L0 : RegisterClass<"Lemberg", [i32], 32,
    R0_20, R0_21, R0_22,
    // Callee saved local regs
    R0_23, R0_24, R0_25, R0_26,
-   R0_27, R0_28, R0_29, R0_30,
+   R0_27, R0_28, R0_29,
    // Reserved
-   R0_31 )>;
+   R0_30 )>;
 
 def L1 : RegisterClass<"Lemberg", [i32], 32,
   (add
@@ -213,9 +205,9 @@ def L1 : RegisterClass<"Lemberg", [i32], 32,
    R1_20, R1_21, R1_22,
    // Callee saved local regs
    R1_23, R1_24, R1_25, R1_26,
-   R1_27, R1_28, R1_29, R1_30,
+   R1_27, R1_28, R1_29,
    // Reserved
-   R1_31 )>;
+   R1_30 )>;
 
 def L2 : RegisterClass<"Lemberg", [i32], 32,
   (add
@@ -224,9 +216,9 @@ def L2 : RegisterClass<"Lemberg", [i32], 32,
    R2_20, R2_21, R2_22,
    // Callee saved local regs
    R2_23, R2_24, R2_25, R2_26,
-   R2_27, R2_28, R2_29, R2_30,
+   R2_27, R2_28, R2_29,
    // Reserved
-   R2_31 )>;
+   R2_30 )>;
 
 def L3 : RegisterClass<"Lemberg", [i32], 32,
   (add
@@ -235,9 +227,9 @@ def L3 : RegisterClass<"Lemberg", [i32], 32,
    R3_20, R3_21, R3_22,
    // Callee saved local regs
    R3_23, R3_24, R3_25, R3_26,
-   R3_27, R3_28, R3_29, R3_30,
+   R3_27, R3_28, R3_29,
    // Reserved
-   R3_31 )>;
+   R3_30 )>;
 
 // Global general purpose registers
 def G : RegisterClass<"Lemberg", [i32], 32, 
@@ -249,7 +241,7 @@ def G : RegisterClass<"Lemberg", [i32], 32,
    // Callee saved
    R10, R11, R12, R13, R14,
    // Reserved
-   R15 )>;
+   R15, R31 )>;
 
 // Registers that may be accessed from an individual cluster
 def LG0 : RegisterClass<"Lemberg", [i32], 32,
@@ -263,9 +255,9 @@ def LG0 : RegisterClass<"Lemberg", [i32], 32,
    // Callee saved
    R10, R11, R12, R13, R14,
    R0_23, R0_24, R0_25, R0_26,
-   R0_27, R0_28, R0_29, R0_30,
+   R0_27, R0_28, R0_29,
    // Reserved
-   R15, R0_31 )>;
+   R15, R0_30, R31 )>;
 
 def LG1 : RegisterClass<"Lemberg", [i32], 32,
   (add
@@ -278,9 +270,9 @@ def LG1 : RegisterClass<"Lemberg", [i32], 32,
    // Callee saved
    R10, R11, R12, R13, R14,
    R1_23, R1_24, R1_25, R1_26,
-   R1_27, R1_28, R1_29, R1_30,
+   R1_27, R1_28, R1_29,
    // Reserved
-   R15, R1_31 )>;
+   R15, R1_30, R31 )>;
 
 def LG2 : RegisterClass<"Lemberg", [i32], 32,
   (add
@@ -293,9 +285,9 @@ def LG2 : RegisterClass<"Lemberg", [i32], 32,
    // Callee saved
    R10, R11, R12, R13, R14,
    R2_23, R2_24, R2_25, R2_26,
-   R2_27, R2_28, R2_29, R2_30,
+   R2_27, R2_28, R2_29,
    // Reserved
-   R15, R2_31 )>;
+   R15, R2_30, R31 )>;
 
 def LG3 : RegisterClass<"Lemberg", [i32], 32,
   (add
@@ -308,9 +300,9 @@ def LG3 : RegisterClass<"Lemberg", [i32], 32,
    // Callee saved
    R10, R11, R12, R13, R14,
    R3_23, R3_24, R3_25, R3_26,
-   R3_27, R3_28, R3_29, R3_30,
+   R3_27, R3_28, R3_29,
    // Reserved
-   R15, R3_31 )>;
+   R15, R3_30, R31 )>;
 
 // All general purpose registers
 def A : RegisterClass<"Lemberg", [i32], 32,
@@ -337,9 +329,8 @@ def A : RegisterClass<"Lemberg", [i32], 32,
    R0_27, R1_27, R2_27, R3_27,
    R0_28, R1_28, R2_28, R3_28,
    R0_29, R1_29, R2_29, R3_29,
-   R0_30, R1_30, R2_30, R3_30,
    // Reserved
-   R15, R0_31, R1_31, R2_31, R3_31 )>;
+   R15, R0_30, R1_30, R2_30, R3_30, R31 )>;
 
 // Registers that can load global addresses directly
 def LG0Imm : RegisterClass<"Lemberg", [i32], 32,
@@ -403,9 +394,6 @@ let CopyCost = -1 in {
   def M2 : RegisterClass<"Lemberg", [i32], 32, (add MUL2_0, MUL2_1)>;
   def M3 : RegisterClass<"Lemberg", [i32], 32, (add MUL3_0, MUL3_1)>;
 
-  // Class for memory result
-  def Mem : RegisterClass<"Lemberg", [i32], 32, (add MEM, MEMHU, MEMHS, MEMBU, MEMBS)>;
-
   // Registers for call/return
   def CallRet : RegisterClass<"Lemberg", [i32], 32, (add RB, RO, BA)>;
 
@@ -417,7 +405,6 @@ let CopyCost = -1 in {
 	 C1, C2, C3,
 	 F0, F1, F2, F3, F4, F5, F6, F7,
 	 F8, F9, F10, F11, F12, F13, F14, F15,
-	 MEM, MEMHU, MEMHS, MEMBU, MEMBS,
 	 RB, RO, BA )>;
 
 }

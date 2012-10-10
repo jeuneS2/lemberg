@@ -9,11 +9,11 @@
 --
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
 -- GNU General Public License for more details.
 --
 -- You should have received a copy of the GNU General Public License
--- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-- along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 ----------------------------------------------------------------------------
 
 library ieee;
@@ -28,20 +28,20 @@ use work.fpu_pack.all;
 entity decode is
 	
 	port (
-		clk     : in  std_logic;
-		reset   : in  std_logic;
-		bundle  : in  bundle_type;
-		pc      : in  std_logic_vector(PC_WIDTH-1 downto 0);
-		ena     : in  std_logic;
-		flush   : in  std_logic;
-		op   	: out op_arr_type;
-		memop   : out memop_arr_type;
+		clk		: in  std_logic;
+		reset	: in  std_logic;
+		bundle	: in  bundle_type;
+		pc		: in  std_logic_vector(PC_WIDTH-1 downto 0);
+		ena		: in  std_logic;
+		flush	: in  std_logic;
+		op		: out op_arr_type;
+		memop	: out memop_arr_type;
 		stallop : out stallop_arr_type;
-		jmpop   : out jmpop_arr_type;
-		fpop    : out fpop_arr_type;
-		wren    : in  reg_wren_type;
-		wraddr  : in  reg_wraddr_type;
-		wrdata  : in  reg_wrdata_type);
+		jmpop	: out jmpop_arr_type;
+		fpop	: out fpop_arr_type;
+		wren	: in  reg_wren_type;
+		wraddr	: in  reg_wraddr_type;
+		wrdata	: in  reg_wrdata_type);
 
 end decode;
 
@@ -67,7 +67,7 @@ begin  -- behavior
 	rf : entity work.regfile port map (
 		clk	   => clk,
 		reset  => reset,
-		ena    => ena,
+		ena	   => ena,
 		
 		rdaddr => rdaddr,
 		rddata => rddata,
@@ -81,7 +81,7 @@ begin  -- behavior
 		if reset = '0' then
 			bundle_reg <= BUNDLE_NOP;
 			pc_reg <= (others => '0');
-		elsif clk'event and clk = '1' then  -- rising clock edge
+		elsif clk'event and clk = '1' then	-- rising clock edge
 			if ena = '1' then
 				bundle_reg <= bundle;
 				pc_reg <= pc;
@@ -95,16 +95,16 @@ begin  -- behavior
 	decode: process (bundle_reg, rddata, pc_reg)
 
 		variable always_imm : std_logic;
-		variable imm        : std_logic_vector(DATA_WIDTH-1 downto 0);
-		variable imm_ldi    : std_logic_vector(2*REG_BITS downto 0);
-		variable idx_stm    : std_logic_vector(INDEX_WIDTH downto 0);
-		variable idx_ldm    : std_logic_vector(INDEX_WIDTH downto 0);
-		variable idx        : std_logic_vector(INDEX_WIDTH downto 0);
-		variable use_glob   : std_logic;
-		variable glob       : std_logic_vector(ADDR_WIDTH+1 downto 0);
-		variable target     : std_logic_vector(PC_WIDTH-1 downto 0);
-		variable ztarget    : std_logic_vector(PC_WIDTH-1 downto 0);
-		variable raw_op     : std_logic_vector(3*REG_BITS downto 0);
+		variable imm		: std_logic_vector(DATA_WIDTH-1 downto 0);
+		variable imm_ldi	: std_logic_vector(2*REG_BITS downto 0);
+		variable idx_stm	: std_logic_vector(INDEX_WIDTH downto 0);
+		variable idx_ldm	: std_logic_vector(INDEX_WIDTH downto 0);
+		variable idx		: std_logic_vector(INDEX_WIDTH downto 0);
+		variable use_glob	: std_logic;
+		variable glob		: std_logic_vector(ADDR_WIDTH+1 downto 0);
+		variable target		: std_logic_vector(PC_WIDTH-1 downto 0);
+		variable ztarget	: std_logic_vector(PC_WIDTH-1 downto 0);
+		variable raw_op		: std_logic_vector(3*REG_BITS downto 0);
 		
 	begin  -- process async
 
@@ -117,16 +117,36 @@ begin  -- behavior
 			op(i).cond <= COND_FALSE;
 			op(i).flag <= (others => '0');			
 			op(i).rdaddr0 <= bundle_reg(i).src1;
+			if bundle_reg(i).src1 = "11111" then
+				op(i).mem0 <= '1';
+			else
+				op(i).mem0 <= '0';
+			end if;
 			op(i).rdaddr1 <= bundle_reg(i).src2;
 			op(i).fwd1 <= not bundle_reg(i).imm;
+			if bundle_reg(i).src2 = "11111" and bundle_reg(i).imm = '0' then
+				op(i).mem1 <= '1';
+			else
+				op(i).mem1 <= '0';
+			end if;
 
 			memop(i).op <= MEM_NOP;
 			memop(i).cond <= COND_FALSE;
 			memop(i).flag <= (others => '0');			
 			memop(i).rdaddrA <= bundle_reg(i).src1;
 			memop(i).fwdA <= '1';
+			if bundle_reg(i).src1 = "11111" then
+				memop(i).memA <= '1';
+			else
+				memop(i).memA <= '0';
+			end if;
 			memop(i).rdaddrD <= bundle_reg(i).src2;
 			memop(i).fwdD <= not bundle_reg(i).imm;
+			if bundle_reg(i).src2 = "11111" and bundle_reg(i).imm = '0' then
+				memop(i).memD <= '1';
+			else
+				memop(i).memD <= '0';
+			end if;
 
 			stallop(i).op <= STALL_NOP;
 			stallop(i).cond <= COND_FALSE;
@@ -139,6 +159,11 @@ begin  -- behavior
 			jmpop(i).cond <= COND_FALSE;
 			jmpop(i).flag <= (others => '0');
 			jmpop(i).rdaddr <= bundle_reg(i).src1;
+			if bundle_reg(i).src1 = "11111" then
+				jmpop(i).rdmem <= '1';
+			else
+				jmpop(i).rdmem <= '0';
+			end if;
 			
 			fpop(i).op <= FPU_NOP;
 			fpop(i).wraddr <= raw_op(15 downto 12);
@@ -176,71 +201,189 @@ begin  -- behavior
 										+ resize(signed(bundle_reg(i).src2)
 												 & signed(bundle_reg(i).dest), PC_WIDTH));
 
-            jmpop(i).target0 <= std_logic_vector(unsigned(target)+0);
-            jmpop(i).target1 <= std_logic_vector(unsigned(target)
-                                                 +FETCH_WIDTH/BYTE_WIDTH);
+			jmpop(i).target0 <= std_logic_vector(unsigned(target)+0);
+			jmpop(i).target1 <= std_logic_vector(unsigned(target)
+												 +FETCH_WIDTH/BYTE_WIDTH);
 
 			case bundle_reg(i).op is
 				when "000000" =>
 					op(i).op <= ALU_ADD;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "000001" =>
 					op(i).op <= ALU_SUB;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "000010" =>
 					op(i).op <= ALU_S2ADD;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "000011" =>
 					op(i).op <= ALU_AND;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "000100" =>
 					op(i).op <= ALU_OR;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "000101" =>
 					op(i).op <= ALU_XOR;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "000110" =>
 					op(i).op <= ALU_SL;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "000111" =>
 					op(i).op <= ALU_SR;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "001000" =>
 					op(i).op <= ALU_SAR;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "001001" =>
 					op(i).op <= ALU_RL;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "001010" =>
 					op(i).op <= ALU_MUL;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "001011" =>
 					op(i).op <= ALU_CARR;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "001100" =>
 					op(i).op <= ALU_BORR;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "001101" =>
-					op(i).op <= ALU_BBH;
+					case bundle_reg(i).src1 is
+						when "00000" => op(i).op <= ALU_SEXT8;
+						when "00001" => op(i).op <= ALU_SEXT16;
+						when "00010" => op(i).op <= ALU_ZEXT8;
+						when "00011" => op(i).op <= ALU_ZEXT16;
+						when "00100" => op(i).op <= ALU_CLZ;
+						when "00101" => op(i).op <= ALU_CTZ;
+						when "00110" => op(i).op <= ALU_POP;
+						when "00111" => op(i).op <= ALU_PAR;
+						when "01000" => op(i).op <= ALU_MSEXT8;
+										op(i).mem0 <= '1';
+						when "01001" => op(i).op <= ALU_MSEXT16;
+										op(i).mem0 <= '1';
+						when "01010" => op(i).op <= ALU_MZEXT8;
+										op(i).mem0 <= '1';
+						when "01011" => op(i).op <= ALU_MZEXT16;
+										op(i).mem0 <= '1';
+						when others =>
+							assert false report "Cannot decode BBH operation" severity error;
+					end case;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if (bundle_reg(i).src1 = "01000" or bundle_reg(i).src1 = "01001"
+						or bundle_reg(i).src1 = "01010" or bundle_reg(i).src1 = "01011")
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "010100" =>
-                    case bundle_reg(i).dest(REG_BITS-FLAG_BITS-1 downto 0) is
+					case bundle_reg(i).dest(REG_BITS-FLAG_BITS-1 downto 0) is
 						when "000" => op(i).op <= ALU_CMPEQ;
 						when "001" => op(i).op <= ALU_CMPNE;
 						when "010" => op(i).op <= ALU_CMPLT;
@@ -249,13 +392,20 @@ begin  -- behavior
 						when "101" => op(i).op <= ALU_CMPLE;
 						when others =>
 							assert false report "Cannot decode CMP operation" severity error;
-                    end case;
-                    op(i).wraddr <= "000" & bundle_reg(i).dest(REG_BITS-1 downto REG_BITS-FLAG_BITS);
-                    op(i).cond <= bundle_reg(i).cond;
+					end case;
+					op(i).wraddr <= "000" & bundle_reg(i).dest(REG_BITS-1 downto REG_BITS-FLAG_BITS);
+					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "010101" =>
-                    case bundle_reg(i).dest(REG_BITS-FLAG_BITS-1 downto 0) is
+					case bundle_reg(i).dest(REG_BITS-FLAG_BITS-1 downto 0) is
 						when "000" => op(i).op <= ALU_CMPEQ;
 						when "001" => op(i).op <= ALU_CMPNE;
 						when "010" => op(i).op <= ALU_CMPULT;
@@ -264,14 +414,28 @@ begin  -- behavior
 						when "101" => op(i).op <= ALU_CMPULE;
 						when others =>
 							assert false report "Cannot decode CMPU operation" severity error;
-                    end case;
-                    op(i).wraddr <= "000" & bundle_reg(i).dest(REG_BITS-1 downto REG_BITS-FLAG_BITS);
+					end case;
+					op(i).wraddr <= "000" & bundle_reg(i).dest(REG_BITS-1 downto REG_BITS-FLAG_BITS);
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "010110" =>
 					op(i).op <= ALU_BTEST;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
 				when "010111" =>
 					case raw_op(1 downto 0) is
 						when "00" => op(i).op <= ALU_CCAND;
@@ -347,31 +511,51 @@ begin  -- behavior
 					jmpop(i).target0 <= std_logic_vector(unsigned(ztarget)+0);
 					jmpop(i).target1 <= std_logic_vector(unsigned(ztarget)
 														 +FETCH_WIDTH/BYTE_WIDTH);
-				when "011110" =>  		-- jump operation
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= '1';
+						stallop(i).flag(0) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
+				when "011110" =>		-- jump operation
 					jmpop(i).cond <= bundle_reg(i).cond;
 					jmpop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';			
 					case bundle_reg(i).src2 is
 						when "00000" =>
 							jmpop(i).op <= JMP_BRIND;
+							if bundle_reg(i).src1 = "11111" then
+								stallop(i).op <= STALL_WAIT;
+								stallop(i).cond <= bundle_reg(i).cond;				
+								stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+								stallop(i).value <= (others => '0');
+							end if;
 						when "00001" | "00010" =>
 							if bundle_reg(i).src2 = "00001" then
 								jmpop(i).op <= JMP_CALL;
 								memop(i).op <= MEM_CALL;
+								if bundle_reg(i).src1 = "11111" then
+									stallop(i).op <= STALL_WAIT;
+									stallop(i).value <= (others => '0');
+								else
+									stallop(i).op <= STALL_SOFTWAIT;
+									stallop(i).value <= (others => '0');
+									stallop(i).value(1) <= '1';
+								end if;
 							else
 								jmpop(i).op <= JMP_RET;
 								memop(i).op <= MEM_RET;								
+								stallop(i).op <= STALL_SOFTWAIT;
+								stallop(i).value <= (others => '0');
+								stallop(i).value(1) <= '1';
 							end if;
 							memop(i).cond <= bundle_reg(i).cond;
 							memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-							stallop(i).op <= STALL_SOFTWAIT;
 							stallop(i).cond <= bundle_reg(i).cond;				
 							stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-							stallop(i).value <= (others => '0');
-							stallop(i).value(1) <= '1';
 						when others =>
 							assert false report "Cannot decode JOP operation" severity error;
 					end case;
-				when "011111" =>  		-- call global
+				when "011111" =>		-- call global
 					jmpop(i).op <= JMP_CALL;
 					jmpop(i).cond <= '1';
 					jmpop(i).flag(0) <= '1';
@@ -391,11 +575,17 @@ begin  -- behavior
 					idx(INDEX_WIDTH downto 2) := idx_stm(INDEX_WIDTH-2 downto 0);
 					idx(1 downto 0) := "00";
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "100001" =>
 					memop(i).op <= MEM_STMH_A;
 					memop(i).cond <= bundle_reg(i).cond;
@@ -403,22 +593,34 @@ begin  -- behavior
 					idx(INDEX_WIDTH downto 1) := idx_stm(INDEX_WIDTH-1 downto 0);
 					idx(0) := '0';
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "100010" =>
 					memop(i).op <= MEM_STMB_A;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_stm;
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "100011" =>
 					memop(i).op <= MEM_STM_S;
 					memop(i).cond <= bundle_reg(i).cond;
@@ -426,11 +628,17 @@ begin  -- behavior
 					idx(INDEX_WIDTH downto 2) := idx_stm(INDEX_WIDTH-2 downto 0);
 					idx(1 downto 0) := "00";
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "100100" =>
 					memop(i).op <= MEM_STMH_S;
 					memop(i).cond <= bundle_reg(i).cond;
@@ -438,72 +646,109 @@ begin  -- behavior
 					idx(INDEX_WIDTH downto 1) := idx_stm(INDEX_WIDTH-1 downto 0);
 					idx(0) := '0';
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "100101" =>
 					memop(i).op <= MEM_STMB_S;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_stm;
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "100110" =>
 					memop(i).op <= MEM_WB_S;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_ldm;
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "100111" =>
 					memop(i).op <= MEM_LDM_B;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_ldm;
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "101000" =>
 					memop(i).op <= MEM_LDM_D;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_ldm;
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "101001" =>
 					memop(i).op <= MEM_LDM_F;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_ldm;
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "101010" =>
 					memop(i).op <= MEM_LDM_S;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_ldm;
-					stallop(i).op <= STALL_SOFTWAIT;
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					stallop(i).value <= (others => '0');
-					stallop(i).value(0) <= '1';
 				when "101011" =>
 					memop(i).op <= MEM_LDM_D;
 					memop(i).cond <= '1';
@@ -519,12 +764,14 @@ begin  -- behavior
 					-- decode LDX
 					case bundle_reg(i).src1 is
 						when "00000" | "00001" | "00010" | "00011" => op(i).op <= ALU_LDCOND;
-						when "00100" => op(i).op <= ALU_LDMEM;
-						when "00101" => op(i).op <= ALU_LDMEMHU;
-						when "00110" => op(i).op <= ALU_LDMEMHS;
-						when "00111" => op(i).op <= ALU_LDMEMBU;
-						when "01000" => op(i).op <= ALU_LDMEMBS;
-						when "01001" | "01010" => op(i).op <= ALU_LDMUL;
+						when "01001" | "01010" =>
+							op(i).op <= ALU_LDMUL;
+							if bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111" then
+								stallop(i).op <= STALL_WAIT;
+								stallop(i).value <= (others => '0');
+								stallop(i).cond <= bundle_reg(i).cond;				
+								stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+							end if;
 						when "01011" => op(i).op <= ALU_LDRB;
 						when "01100" => op(i).op <= ALU_LDRO;
 						when "01101" => op(i).op <= ALU_LDBA;
@@ -546,16 +793,7 @@ begin  -- behavior
 					end case;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					-- wait until results are ready
-					case bundle_reg(i).src1 is
-						when "00100" | "00101" | "00110" | "00111" | "01000" =>
-							stallop(i).op <= STALL_WAIT;
-							stallop(i).cond <= bundle_reg(i).cond;				
-							stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-							stallop(i).value <= (others => '0');  -- wait till data is ready
-						when others => null;
-					end case;
-				when "101101" =>  		-- STX
+				when "101101" =>		-- STX
 					case bundle_reg(i).dest is
 						when "00000" | "00001" | "00010" | "00011" => op(i).op <= ALU_STCOND;
 						when "01001" | "01010" => op(i).op <= ALU_STMUL;
@@ -576,10 +814,17 @@ begin  -- behavior
 							end if;
 						when others =>
 							assert false report "Cannot decode STX destination" severity error;
-					end case;					
+					end case;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-				when "101110" =>  		-- FOP
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_WAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
+
+				when "101110" =>		-- FOP
 					assert ENABLE_SINGLE or ENABLE_DOUBLE
 						report "FP operation not supported" severity error;
 					if ENABLE_SINGLE then
@@ -660,11 +905,11 @@ begin  -- behavior
 					op(i).cond <= '1';
 					op(i).flag(0) <= '1';
 					always_imm := '1';
-					imm := std_logic_vector(resize(unsigned(glob), DATA_WIDTH));					
+					imm := std_logic_vector(resize(unsigned(glob), DATA_WIDTH));
 					-- destination needs some decoding
 					op(i).wraddr <= (others => '0');
 					op(i).wraddr(REG_BITS-1) <= bundle_reg(i).op(2);
-					op(i).wraddr(1 downto 0) <= bundle_reg(i).op(1 downto 0);					
+					op(i).wraddr(1 downto 0) <= bundle_reg(i).op(1 downto 0);
 				when others =>
 					assert false report "Cannot decode operation" severity error;
 			end case;
@@ -673,6 +918,7 @@ begin  -- behavior
 			if bundle_reg(i).imm = '1' or always_imm = '1' then
 				op(i).rddata1 <= imm;
 				op(i).fwd1 <= '0';
+				op(i).mem1 <= '0';
 			else
 				op(i).rddata1 <= rddata(2*i+1);
 			end if;
@@ -680,6 +926,7 @@ begin  -- behavior
 			if use_glob = '1' then
 				memop(i).address <= glob;
 				memop(i).fwdA <= '0';
+				memop(i).memA <= '0';
 			else
 				memop(i).address <= rddata(2*i)(ADDR_WIDTH+1 downto 0);				
 			end if;
@@ -688,7 +935,7 @@ begin  -- behavior
 				memop(i).wrdata <= imm;				
 			else
 				memop(i).wrdata <= rddata(2*i+1);
-			end if;			
+			end if;
 
 			jmpop(i).rddata <= rddata(2*i)(PC_WIDTH-1 downto 0);
 
@@ -709,7 +956,7 @@ begin  -- behavior
 	--pragma synthesis off
 	stat: process (clk)
 	begin  -- process
-		if clk'event and clk = '1' then  -- rising clock edge
+		if clk'event and clk = '1' then	 -- rising clock edge
 			if ena = '1' then
 				if flush = '1' then
 					flush_cnt <= flush_cnt + 1;

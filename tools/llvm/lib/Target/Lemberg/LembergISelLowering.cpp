@@ -200,7 +200,7 @@ const char *LembergTargetLowering::getTargetNodeName(unsigned Opcode) const {
   case LembergISD::Wrapper:    return "LembergISD::Wrapper";
   case LembergISD::Call:       return "LembergISD::Call";
   case LembergISD::Return:     return "LembergISD::Return";
-  case LembergISD::WaitLoad:   return "LembergISD::WaitLoad";
+  case LembergISD::MemExtend:  return "LembergISD::MemExtend";
   case LembergISD::Load:       return "LembergISD::Load";
   case LembergISD::LoadStack:  return "LembergISD::LoadStack";
   case LembergISD::Store:      return "LembergISD::Store";
@@ -353,7 +353,8 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 	  LD = dyn_cast<LoadSDNode>
 		  (DAG.getExtLoad(ISD::EXTLOAD, DL, MVT::i32, Chain,
 						  LD->getBasePtr(), LD->getPointerInfo(),
-						  MVT::i8, LD->isVolatile(), LD->isNonTemporal(), LD->getAlignment()));
+						  MVT::i8, LD->isVolatile(), LD->isNonTemporal(),
+						  LD->getAlignment()));
   }
 
   ISD::LoadExtType ExtType = LD->getExtensionType();
@@ -379,7 +380,8 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 
 	  SDValue LDA = DAG.getExtLoad(ISD::ZEXTLOAD, DL, MVT::i32, Chain,
 								   LD->getBasePtr(), LD->getPointerInfo(),
-								   LDHalfType, LD->isVolatile(), LD->isNonTemporal(), LD->getAlignment());
+								   LDHalfType, LD->isVolatile(), LD->isNonTemporal(),
+								   LD->getAlignment());
 	  LDA = LowerLOAD(LDA, DAG);
 	  Chain = LDA.getValue(1);
 
@@ -387,7 +389,8 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 								   DAG.getNode(ISD::ADD, DL, MVT::i32, LD->getBasePtr(), 
 											   DAG.getConstant(LDHalfSize, MVT::i32)),
 								   LD->getPointerInfo().getWithOffset(LDHalfSize),
-								   LDHalfType, LD->isVolatile(), LD->isNonTemporal(), LD->getAlignment());
+								   LDHalfType, LD->isVolatile(), LD->isNonTemporal(),
+								   LD->getAlignment());
 	  LDB = LowerLOAD(LDB, DAG);
 	  Chain = LDB.getValue(1);
 
@@ -404,26 +407,8 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 	  return DAG.getMergeValues(MergeOps, 2, DL);
   }
 
-  // Handle sub-word loads
-  unsigned MemReg = Lemberg::MEM;
-  SDValue WordOffset = DAG.getConstant(0, MVT::i32);
-  if (ExtType == ISD::EXTLOAD
-	  || ExtType == ISD::ZEXTLOAD
-	  || ExtType == ISD::SEXTLOAD) {
-	  EVT AccessType = LD->getMemoryVT();
-	  if (AccessType == MVT::i8) {
-		  MemReg = ExtType == ISD::SEXTLOAD ? Lemberg::MEMBS : Lemberg::MEMBU;
-	  } else if (AccessType == MVT::i16) {
-		  MemReg = ExtType == ISD::SEXTLOAD ? Lemberg::MEMHS : Lemberg::MEMHU;
-	  } else {
-		  llvm_unreachable("Unknown type for extending load");
-	  }
-	  WordOffset = LD->getBasePtr();
-  }
-
   // Type lists with chain & flag
   SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
-  SDVTList WaitLoadTys = DAG.getVTList(MVT::i32, MVT::Other, MVT::Glue);
 
   if (LD->getMemoryVT() != MVT::f64) {
 	  // Create node for load
@@ -431,13 +416,26 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 
 	  Chain = DAG.getMemIntrinsicNode(isStackLoad ? LembergISD::LoadStack : LembergISD::Load,
 									  DL, NodeTys, Ops, 3, MVT::i32,
-									  LD->getPointerInfo(), LD->getAlignment(), LD->isVolatile(),
+									  LD->getPointerInfo(), LD->getAlignment(),
+									  LD->isVolatile(),
 									  true, false);
 	  SDValue Flag = Chain.getValue(1);
 
-	  // Read result from load via LDX
-	  Chain = DAG.getNode(LembergISD::WaitLoad, DL, WaitLoadTys,
-						  Chain, DAG.getRegister(MemReg, MVT::i32), WordOffset, Flag);
+	  // Read result from load
+	  if (LD->getMemoryVT() == MVT::i8 || LD->getMemoryVT() == MVT::i16) {
+		unsigned ExtOp = (LD->getMemoryVT() == MVT::i16
+						  ? (ExtType == ISD::SEXTLOAD ? 0 : 1)
+						  : (ExtType == ISD::SEXTLOAD ? 2 : 3));
+		SDValue AlignOff = (LD->getAlignment() < 4
+							? LD->getBasePtr()
+							: DAG.getConstant(0, MVT::i32));
+		SDVTList MemExtTys = DAG.getVTList(MVT::i32, MVT::Other, MVT::Glue);
+		Chain = DAG.getNode(LembergISD::MemExtend, DL, MemExtTys,
+							Chain, DAG.getRegister(Lemberg::R31, MVT::i32),
+							AlignOff, DAG.getConstant(ExtOp, MVT::i32), Flag);
+	  } else {
+		Chain = DAG.getCopyFromReg(Chain, DL, Lemberg::R31, MVT::i32, Flag);
+	  }
 
 	  if (LD->getMemoryVT() == MVT::f32) {
 		  // SDValue Converted = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Chain);
@@ -449,7 +447,7 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 	  } else if (isBitLoad) {
 	   	  SDValue Converted = DAG.getZExtOrTrunc(Chain, DL, MVT::i1);
 		  SDValue MergeOps [] = { Converted, Chain.getOperand(0) };
-		  Chain = DAG.getMergeValues(MergeOps, 2, DL);		  
+		  Chain = DAG.getMergeValues(MergeOps, 2, DL);
 	  }
   } else {
 	  // Create node for load of low part
@@ -460,10 +458,8 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 									  4, LD->isVolatile(), true, false);
 	  SDValue Flag = Chain.getValue(1);
 
-	  // Read result from load via LDX
-	  SDVTList WaitLoadTys = DAG.getVTList(MVT::i32, MVT::Other, MVT::Glue);
-	  SDValue Lo = DAG.getNode(LembergISD::WaitLoad, DL, WaitLoadTys,
-							   Chain, DAG.getRegister(MemReg, MVT::i32), WordOffset, Flag);
+	  // Read result from load
+	  SDValue Lo = DAG.getCopyFromReg(Chain, DL, Lemberg::R31, MVT::i32, Flag);
 	  Chain = Lo.getValue(1);
 	  Flag = Lo.getValue(2);
 	  // Lo = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Lo);
@@ -480,9 +476,8 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 									  4, LD->isVolatile(), true, false);
 	  Flag = Chain.getValue(1);
 	  
-	  // Read result from load via LDX
-	  SDValue Hi = DAG.getNode(LembergISD::WaitLoad, DL, WaitLoadTys,
-							   Chain, DAG.getRegister(MemReg, MVT::i32), WordOffset, Flag);
+	  // Read result from load
+	  SDValue Hi = DAG.getCopyFromReg(Chain, DL, Lemberg::R31, MVT::i32, Flag);
 	  // Hi = DAG.getNode(ISD::BITCAST, DL, MVT::f32, Hi);
 	  Hi = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, DL, MVT::f32, Hi, 
 									  DAG.getTargetConstant(Lemberg::FRegClassID, MVT::i32)), 0);
@@ -549,7 +544,8 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 	  SDValue STA = ST->getValue();
 	  STA = DAG.getTruncStore(Chain, DL, STA,
 							  ST->getBasePtr(), ST->getPointerInfo(),
-							  STHalfType, ST->isVolatile(), ST->isNonTemporal(), ST->getAlignment());
+							  STHalfType, ST->isVolatile(), ST->isNonTemporal(),
+							  ST->getAlignment());
 	  Chain = LowerSTORE(STA, DAG);
 
 	  SDValue ShiftAmount = DAG.getConstant(8*STHalfSize, MVT::i32);
@@ -559,7 +555,8 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 							  DAG.getNode(ISD::ADD, DL, MVT::i32, ST->getBasePtr(), 
 										  DAG.getConstant(STHalfSize, MVT::i32)),
 							  ST->getPointerInfo().getWithOffset(STHalfSize),
-							  STHalfType, ST->isVolatile(), ST->isNonTemporal(), ST->getAlignment());
+							  STHalfType, ST->isVolatile(), ST->isNonTemporal(),
+							  ST->getAlignment());
 	  Chain = LowerSTORE(STB, DAG);
 
 	  return Chain;
@@ -571,7 +568,8 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 	  SDValue Ops [] = { Chain, ST->getValue(), ST->getBasePtr(), ST->getOffset() };
 	  Chain = DAG.getMemIntrinsicNode(isStackStore ? LembergISD::StoreStack : LembergISD::Store,
 									  DL, NodeTys, Ops, 4, ST->getMemoryVT(),
-									  ST->getPointerInfo(), ST->getAlignment(), ST->isVolatile(),
+									  ST->getPointerInfo(), ST->getAlignment(),
+									  ST->isVolatile(),
 									  false, true);
   } else {
 	  // 64-bit store needs to be split

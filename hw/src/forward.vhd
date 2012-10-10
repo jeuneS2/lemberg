@@ -9,11 +9,11 @@
 --
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
 -- GNU General Public License for more details.
 --
 -- You should have received a copy of the GNU General Public License
--- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-- along with this program.	 If not, see <http://www.gnu.org/licenses/>.
 ----------------------------------------------------------------------------
 
 library ieee;
@@ -28,43 +28,52 @@ use work.io_pack.all;
 entity forward is
 	
 	port (
-		clk	        : in  std_logic;
-		reset       : in  std_logic;
-		ena         : in  std_logic;
-		flush       : in  std_logic;
-		wren        : in  reg_wren_type;
-		wraddr      : in  reg_wraddr_type;
-		wrdata      : in  reg_wrdata_type;
-		op_in       : in  op_arr_type;
-		op_out      : out op_arr_type;
-		memop_in    : in  memop_arr_type;
-		memop_out   : out memop_arr_type;
-		stallop_in  : in  stallop_arr_type;
+		clk			: in  std_logic;
+		reset		: in  std_logic;
+		ena			: in  std_logic;
+		flush		: in  std_logic;
+		memdata		: in  std_logic_vector(DATA_WIDTH-1 downto 0);
+		wren		: in  reg_wren_type;
+		wraddr		: in  reg_wraddr_type;
+		wrdata		: in  reg_wrdata_type;
+		op_in		: in  op_arr_type;
+		op_out		: out op_arr_type;
+		memop_in	: in  memop_arr_type;
+		memop_out	: out memop_arr_type;
+		stallop_in	: in  stallop_arr_type;
 		stallop_out : out stallop_arr_type;
-		jmpop_in    : in  jmpop_arr_type;
-		jmpop_out   : out jmpop_arr_type);
+		jmpop_in	: in  jmpop_arr_type;
+		jmpop_out	: out jmpop_arr_type);
 	
 end forward;
 
 architecture behavior of forward is
 
-	signal wren_reg : reg_wren_type;
-	signal wraddr_reg : reg_wraddr_type;
 	signal wrdata_reg : reg_wrdata_type;
 	signal op_reg : op_arr_type;
 	signal memop_reg : memop_arr_type;
 	signal stallop_reg : stallop_arr_type;
 	signal jmpop_reg : jmpop_arr_type;
+
+	type fwd_mux_type is array (0 to CLUSTERS-1) of std_logic_vector(0 to CLUSTERS-1);
+	signal op_fwd0_reg, op_fwd0_next : fwd_mux_type;
+	signal op_fwd1_reg, op_fwd1_next : fwd_mux_type;
+	signal memop_fwdA_reg, memop_fwdA_next : fwd_mux_type;
+	signal memop_fwdD_reg, memop_fwdD_next : fwd_mux_type;
+	signal jmpop_fwd_reg, jmpop_fwd_next : fwd_mux_type;
 	
 begin  -- behavior
 
 	sync: process (clk, reset)
 	begin  -- process sync
-		if reset = '0' then  			-- asynchronous reset (active low)
-
-			wren_reg <= (others => '0');
-			wraddr_reg <= (others => (others => '0'));
+		if reset = '0' then				-- asynchronous reset (active low)
 			wrdata_reg <= (others => (others => '0'));
+
+			op_fwd0_reg <= (others => (others => '0'));
+			op_fwd1_reg <= (others => (others => '0'));
+			memop_fwdA_reg <= (others => (others => '0'));
+			memop_fwdD_reg <= (others => (others => '0'));
+			jmpop_fwd_reg <= (others => (others => '0'));
 			
 			for i in 0 to CLUSTERS-1 loop
 				op_reg(i) <= OP_NOP;
@@ -82,13 +91,17 @@ begin  -- behavior
 			memop_reg(0).address <= (others => '0');
 			memop_reg(0).address(ADDR_WIDTH-1+2 downto ADDR_WIDTH-AREAMUX_BITS+2) <= IO_SELECT;
 
-		elsif clk'event and clk = '1' then  -- rising clock edge
+		elsif clk'event and clk = '1' then	-- rising clock edge
 
-			if ena = '1' then
-				wren_reg <= wren;
-				wraddr_reg <= wraddr;
+			if ena = '1' then				 
 				wrdata_reg <= wrdata;
-
+				
+				op_fwd0_reg <= op_fwd0_next;
+				op_fwd1_reg <= op_fwd1_next;
+				memop_fwdA_reg <= memop_fwdA_next;
+				memop_fwdD_reg <= memop_fwdD_next;
+				jmpop_fwd_reg <= jmpop_fwd_next;
+				
 				op_reg <= op_in;
 				memop_reg <= memop_in;
 				stallop_reg <= stallop_in;
@@ -107,78 +120,135 @@ begin  -- behavior
 		end if;
 	end process sync;
 
-	async: process (wren_reg, wraddr_reg, wrdata_reg,
-					op_reg, memop_reg, stallop_reg, jmpop_reg)
-	begin  -- process async
+	comp: process (wraddr, wren, op_in, memop_in, jmpop_in)
+	begin  -- process comp
+		op_fwd0_next <= (others => (others => '0'));
+		op_fwd1_next <= (others => (others => '0'));		
+		memop_fwdA_next <= (others => (others => '0'));
+		memop_fwdD_next <= (others => (others => '0'));		   
+		jmpop_fwd_next <= (others => (others => '0'));
+		
+		for i in 0 to CLUSTERS-1 loop
+			if op_in(i).rdaddr0(REG_BITS-1) = '1' then
+				if wren(i) = '1' and wraddr(i) = op_in(i).rdaddr0 then
+					op_fwd0_next(i)(i) <= '1';
+				end if;
+			else
+				for k in 0 to CLUSTERS-1 loop
+					if wren(k) = '1' and wraddr(k) = op_in(i).rdaddr0 then
+						op_fwd0_next(i)(k) <= '1';
+					end if;
+				end loop;  -- k
+			end if;
+			if op_in(i).fwd1 = '1' then
+				if op_in(i).rdaddr1(REG_BITS-1) = '1' then
+					if wren(i) = '1' and wraddr(i) = op_in(i).rdaddr1 then
+						op_fwd1_next(i)(i) <= '1';
+					end if;
+				else
+					for k in 0 to CLUSTERS-1 loop
+						if wren(k) = '1' and wraddr(k) = op_in(i).rdaddr1 then
+							op_fwd1_next(i)(k) <= '1';
+						end if;
+					end loop;  -- k
+				end if; 
+			end if;
+			if memop_in(i).fwdA = '1' then
+				if memop_in(i).rdaddrA(REG_BITS-1) = '1' then
+					if wren(i) = '1' and wraddr(i) = memop_in(i).rdaddrA then
+						memop_fwdA_next(i)(i) <= '1';
+					end if;
+				else
+					for k in 0 to CLUSTERS-1 loop
+						if wren(k) = '1' and wraddr(k) = memop_in(i).rdaddrA then
+							memop_fwdA_next(i)(k) <= '1';
+						end if;
+					end loop;  -- k
+				end if; 
+			end if;
+			if memop_in(i).fwdD = '1' then
+				if memop_in(i).rdaddrD(REG_BITS-1) = '1' then
+					if wren(i) = '1' and wraddr(i) = memop_in(i).rdaddrD then
+						memop_fwdD_next(i)(i) <= '1';
+					end if;
+				else
+					for k in 0 to CLUSTERS-1 loop
+						if wren(k) = '1' and wraddr(k) = memop_in(i).rdaddrD then
+							memop_fwdD_next(i)(k) <= '1';
+						end if;
+					end loop;  -- k
+				end if; 
+			end if;
+			if jmpop_in(i).rdaddr(REG_BITS-1) = '1' then
+				if wren(i) = '1' and wraddr(i) = jmpop_in(i).rdaddr then
+					jmpop_fwd_next(i)(i) <= '1';
+				end if;
+			else
+				for k in 0 to CLUSTERS-1 loop
+					if wren(k) = '1' and wraddr(k) = jmpop_in(i).rdaddr then
+						jmpop_fwd_next(i)(k) <= '1';
+					end if;
+				end loop;  -- k
+			end if;		   end loop;  -- i
+	end process comp;
+	
+	fwd: process (wrdata_reg, memdata,
+				  op_fwd0_reg, op_fwd1_reg, memop_fwdA_reg, memop_fwdD_reg, jmpop_fwd_reg,
+				  op_reg, memop_reg, stallop_reg, jmpop_reg)
+	begin  -- process fwd
 		op_out <= op_reg;
 		memop_out <= memop_reg;
 		stallop_out <= stallop_reg;
 		jmpop_out <= jmpop_reg;
 
 		for i in 0 to CLUSTERS-1 loop
-			if op_reg(i).rdaddr0(REG_BITS-1) = '1' then
-				if wren_reg(i) = '1' and wraddr_reg(i) = op_reg(i).rdaddr0 then
-					op_out(i).rddata0 <= wrdata_reg(i);
-				end if;
+			if op_reg(i).mem0 = '1' then
+				op_out(i).rddata0 <= memdata;
 			else
 				for k in 0 to CLUSTERS-1 loop
-					if wren_reg(k) = '1' and wraddr_reg(k) = op_reg(i).rdaddr0 then
+					if op_fwd0_reg(i)(k) = '1' then
 						op_out(i).rddata0 <= wrdata_reg(k);
 					end if;
 				end loop;  -- k
 			end if; 
-			if op_reg(i).fwd1 = '1' then
-				if op_reg(i).rdaddr1(REG_BITS-1) = '1' then
-					if wren_reg(i) = '1' and wraddr_reg(i) = op_reg(i).rdaddr1 then
-						op_out(i).rddata1 <= wrdata_reg(i);
+			if op_reg(i).mem1 = '1' then
+				op_out(i).rddata1 <= memdata;
+			else
+				for k in 0 to CLUSTERS-1 loop
+					if op_fwd1_reg(i)(k) = '1' then
+						op_out(i).rddata1 <= wrdata_reg(k);
 					end if;
-				else
-					for k in 0 to CLUSTERS-1 loop
-						if wren_reg(k) = '1' and wraddr_reg(k) = op_reg(i).rdaddr1 then
-							op_out(i).rddata1 <= wrdata_reg(k);
-						end if;
-					end loop;  -- k
-				end if; 
-			end if;
-			if memop_reg(i).fwdA = '1' then
-				if memop_reg(i).rdaddrA(REG_BITS-1) = '1' then
-					if wren_reg(i) = '1' and wraddr_reg(i) = memop_reg(i).rdaddrA then
-						memop_out(i).address <= wrdata_reg(i)(ADDR_WIDTH+1 downto 0);
+				end loop;  -- k
+			end if; 
+			if memop_reg(i).memA = '1' then
+				memop_out(i).address <= memdata(ADDR_WIDTH+1 downto 0);
+			else
+				for k in 0 to CLUSTERS-1 loop
+					if memop_fwdA_reg(i)(k) = '1' then
+						memop_out(i).address <= wrdata_reg(k)(ADDR_WIDTH+1 downto 0);
 					end if;
-				else
-					for k in 0 to CLUSTERS-1 loop
-						if wren_reg(k) = '1' and wraddr_reg(k) = memop_reg(i).rdaddrA then
-							memop_out(i).address <= wrdata_reg(k)(ADDR_WIDTH+1 downto 0);
-						end if;
-					end loop;  -- k
-				end if; 
+				end loop;  -- k
 			end if;
-			if memop_reg(i).fwdD = '1' then
-				if memop_reg(i).rdaddrD(REG_BITS-1) = '1' then
-					if wren_reg(i) = '1' and wraddr_reg(i) = memop_reg(i).rdaddrD then
-						memop_out(i).wrdata <= wrdata_reg(i);
+			if memop_reg(i).memD = '1' then
+				memop_out(i).wrdata <= memdata;
+			else
+				for k in 0 to CLUSTERS-1 loop
+					if memop_fwdD_reg(i)(k) = '1' then
+						memop_out(i).wrdata <= wrdata_reg(k);
 					end if;
-				else
-					for k in 0 to CLUSTERS-1 loop
-						if wren_reg(k) = '1' and wraddr_reg(k) = memop_reg(i).rdaddrD then
-							memop_out(i).wrdata <= wrdata_reg(k);
-						end if;
-					end loop;  -- k
-				end if; 
+				end loop;  -- k
 			end if;
-            if jmpop_reg(i).rdaddr(REG_BITS-1) = '1' then
-                if wren_reg(i) = '1' and wraddr_reg(i) = jmpop_reg(i).rdaddr then
-                    jmpop_out(i).rddata <= wrdata_reg(i)(PC_WIDTH-1 downto 0);
-                end if;
-            else
-                for k in 0 to CLUSTERS-1 loop
-                    if wren_reg(k) = '1' and wraddr_reg(k) = jmpop_reg(i).rdaddr then
-                        jmpop_out(i).rddata <= wrdata_reg(k)(PC_WIDTH-1 downto 0);
-                    end if;
-                end loop;  -- k
-            end if;
+			if jmpop_reg(i).rdmem = '1' then
+				jmpop_out(i).rddata <= memdata(PC_WIDTH-1 downto 0);
+			else
+				for k in 0 to CLUSTERS-1 loop
+					if jmpop_fwd_reg(i)(k) = '1' then
+						jmpop_out(i).rddata <= wrdata_reg(k)(PC_WIDTH-1 downto 0);
+					end if;
+				end loop;  -- k
+			end if;
 		end loop;  -- i
 		
-	end process async;
+	end process fwd;
 	
 end behavior;

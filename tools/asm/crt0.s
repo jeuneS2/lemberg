@@ -1,14 +1,14 @@
 __crt0:
 		.funsz __crt0_end-__crt0
 		#0: ldiu 0 -> r15
-		#1: ldx $ro -> r1.31
-		#2: ldx $rb -> r2.31
+		#1: ldx $ro -> r1.30
+		#2: ldx $rb -> r2.30
 		;; 
 		#0: ldim 1023 -> r15
 		;;
-		#1: stm.s r1.31, r15, 0
+		#1: stm.s r1.30, r15, 0
 		;; 
-		#2: stm.s r2.31, r15, 1
+		#2: stm.s r2.30, r15, 1
 		;; 
 		#0: callg _main
 		#1: ldga __crt0_sp -> r1.16
@@ -23,12 +23,9 @@ __crt0_return:
 		#0: ldm.s r15, 0
 		;; 
 		#0: ldm.s r15, 4
-		#1: ldx $mem, 0 -> r1.31
-		;;
-		#1: stx r1.31 -> $ro
-		#2: ldx $mem, 0 -> r2.31		
-		;;
-		#2: stx r2.31 -> $rb
+		#1: stx r31 -> $ro
+		;; 
+		#0: stx r31 -> $rb
 		;;
 		#0: jop ret
 		;; 
@@ -45,17 +42,14 @@ __crt0_exit:
 		.funsz __crt0_exit_end-__crt0_exit
 		#0: ldmg.d __crt0_sp
 		;;
-		#0: ldx $mem -> r15
+		#0: or r31, 0 -> r15
 		;;
 		#0: ldm.s r15, 0
 		;; 
 		#0: ldm.s r15, 4
-		#1: ldx $mem, 0 -> r1.31
+		#1: stx r31 -> $ro
 		;;
-		#1: stx r1.31 -> $ro
-		#2: ldx $mem, 0 -> r2.31		
-		;;
-		#2: stx r2.31 -> $rb
+		#0: stx r31 -> $rb
 		;;
 		#0: jop ret
 		;; 

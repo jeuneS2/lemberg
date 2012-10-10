@@ -63,10 +63,10 @@ def LembergMul: SDNode<"LembergISD::Mul", SDTIntBinOp,
 def SDT_LembergWrapper : SDTypeProfile<1, 1, [SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 def LembergWrapper: SDNode<"LembergISD::Wrapper", SDT_LembergWrapper, []>;
 
-// WaitLoad
-def SDT_LembergWaitLoad : SDTypeProfile<1, 2, [SDTCisVT<0, i32>, SDTCisVT<1, i32>, SDTCisVT<2, i32>]>;
-def LembergWaitLoad : SDNode<"LembergISD::WaitLoad", SDT_LembergWaitLoad,
-							 [SDNPHasChain, SDNPOutGlue, SDNPInGlue, SDNPSideEffect]>;
+// MemExtend
+def SDT_LembergMemExtend : SDTypeProfile<1, 3, [SDTCisVT<0, i32>, SDTCisVT<1, i32>, SDTCisVT<2, i32>]>;
+def LembergMemExtend : SDNode<"LembergISD::MemExtend", SDT_LembergMemExtend,
+						  [SDNPHasChain, SDNPOutGlue, SDNPInGlue, SDNPSideEffect]>;
 
 // Load
 def SDT_LembergLoad : SDTypeProfile<0, 1, [SDTCisVT<0, i32>]>;
@@ -419,18 +419,44 @@ let neverHasSideEffects = 1 in {
     def MOVEax: F1<(outs X:$dst), (ins pred:$p, A:$src), "$p stx\t$src -> $$$dst", [], IIAlu>;
 }
 
-// Load special register, to be used when loading memory results to simplify scheduling
-def LDXa : F1<(outs A:$dst), (ins pred:$p, Mem:$src, A:$off),
-			  "$p ldx\t$$$src, $off -> $dst",
-			  [(set A:$dst, (LembergWaitLoad Mem:$src, A:$off))], 
-			  IIAlu>;
-def LDXi : F1<(outs A:$dst), (ins pred:$p, Mem:$src, i32imm:$off),
-			  "$p ldx\t$$$src, $off -> $dst",
-			  [(set A:$dst, (LembergWaitLoad Mem:$src, uimm5:$off))], 
-			  IIAlu>;
+// Extract sub-word memory load result and extend
+let Uses = [R31] in {
+  def MEMSEXT16a : F1<(outs A:$dst), (ins pred:$p, A:$off),
+					  "$p bbh\tmsext16 $off -> $dst",
+					  [(set A:$dst, (LembergMemExtend R31, A:$off, (i32 0)))],
+					  IIAlu>;
+  def MEMSEXT16i : F1<(outs A:$dst), (ins pred:$p, i32imm:$off),
+					  "$p bbh\tmsext16 $off -> $dst",
+					  [(set A:$dst, (LembergMemExtend R31, uimm5:$off, (i32 0)))],
+					  IIAlu>;
+  def MEMZEXT16a : F1<(outs A:$dst), (ins pred:$p, A:$off),
+					  "$p bbh\tmzext16 $off -> $dst",
+					  [(set A:$dst, (LembergMemExtend R31, A:$off, (i32 1)))],
+					  IIAlu>;
+  def MEMZEXT16i : F1<(outs A:$dst), (ins pred:$p, i32imm:$off),
+					  "$p bbh\tmzext16 $off -> $dst",
+					  [(set A:$dst, (LembergMemExtend R31, uimm5:$off, (i32 1)))],
+					  IIAlu>;
+  def MEMSEXT8a : F1<(outs A:$dst), (ins pred:$p, A:$off),
+					 "$p bbh\tmsext8 $off -> $dst",
+					 [(set A:$dst, (LembergMemExtend R31, A:$off, (i32 2)))],
+					 IIAlu>;
+  def MEMSEXT8i : F1<(outs A:$dst), (ins pred:$p, i32imm:$off),
+					 "$p bbh\tmsext8 $off -> $dst",
+					 [(set A:$dst, (LembergMemExtend R31, uimm5:$off, (i32 2)))],
+					 IIAlu>;
+  def MEMZEXT8a : F1<(outs A:$dst), (ins pred:$p, A:$off),
+					 "$p bbh\tmzext8 $off -> $dst",
+					 [(set A:$dst, (LembergMemExtend R31, A:$off, (i32 3)))],
+					 IIAlu>;
+  def MEMZEXT8i : F1<(outs A:$dst), (ins pred:$p, i32imm:$off),
+					 "$p bbh\tmzext8 $off -> $dst",
+					 [(set A:$dst, (LembergMemExtend R31, uimm5:$off, (i32 3)))],
+					 IIAlu>;
+}
 
 // Memory loads
-let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
+let Defs = [R31] in {
 
   // Normal loads
   def LOAD32fp: F1<(outs), (ins pred:$p, A:$ptr),
@@ -479,7 +505,7 @@ let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
 				    IIMem>;
 }
 
-let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
+let Defs = [R31] in {
     // Pseudo-load from stack, to be expanded
     def LOAD32s_pseudo: Pseudo<(outs A:$dst), (ins mem:$ptr),
 						       "${:comment} LDM.S $ptr; LDX $$mem -> $dst",
@@ -492,7 +518,7 @@ let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
 							    [(set D:$dst, (load addr:$ptr))]>;
 }
 
-let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
+let Defs = [R31] in {
   // Matching load from stack
   def LOAD32s_match: Pseudo<(outs), (ins mem:$ptr),
                             "${:comment} LDM.S $ptr",
@@ -511,7 +537,7 @@ let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
 
 // Memory stores
 
-let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
+let Defs = [R31] in {
 	// Matching stores via stack pointer
 	defm STORE32a: OPST_MATCH<LembergStore32, "STM.A">;
 	defm STORE16a: OPST_MATCH<LembergStore16, "STMH.A">;
@@ -523,7 +549,7 @@ let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
 	defm STORE8a: OPST1<LembergStore8, "stmb.a">;
 }
 
-let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
+let Defs = [R31] in {
 	// Pseudo stores to stack
 	def STORE32s_pseudo: Pseudo<(outs), (ins A:$val, mem:$ptr),
 	                            "${:comment} STM.S $val, $ptr",
@@ -539,7 +565,7 @@ let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
 							     [(store D:$val, addr:$ptr)]>;
 }
 
-let Defs = [MEM, MEMHU, MEMHS, MEMBU, MEMBS] in {
+let Defs = [R31] in {
 	// Matching stores to stack
 	defm STORE32s: OPST_MATCH<LembergStoreStack32, "STM.S">;
 	defm STORE16s: OPST_MATCH<LembergStoreStack16, "STMH.S">;
@@ -726,6 +752,11 @@ let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
                  [(set AImm:$dst, (LembergWrapper tglobaladdr:$addr))],
 			     IIAlu>,
 	  Requires<[SmallCode]>;
+  def LOADga_off: F1<(outs AImm:$dst), (ins i32imm:$addr, i32imm:$off),
+					 "       ldga\t$addr+$off -> $dst",
+					 [(set AImm:$dst, (add (LembergWrapper tglobaladdr:$addr), uimm19s2:$off))],
+					 IIAlu>,
+	Requires<[SmallCode]>;
 }
 
 // load the full 32 bits
@@ -1207,7 +1238,7 @@ def : Pat<(setge (f64 D:$src1), (f64 D:$src2)),
 // Jump
 let isBranch = 1, isTerminator = 1, hasDelaySlot=1 in {
 
-	let isBarrier=1 in {
+    let isBarrier=1 in {
 	  def JUMP : F1<(outs), (ins brtarget:$target),
                     "       br\t$target",
                     [(br bb:$target)],
@@ -1317,10 +1348,10 @@ let isCall=1, hasDelaySlot=1,
 			R0_20, R1_20, R2_20, R3_20,
 			R0_21, R1_21, R2_21, R3_21,
 			R0_22, R1_22, R2_22, R3_22,
+			R31,
 			C1, C2, C3,
 			MUL0_0, MUL1_0, MUL2_0, MUL3_0,
 			MUL0_1, MUL1_1, MUL2_1, MUL3_1,
-			MEM, MEMHU, MEMHS, MEMBU, MEMBS,
 			F0, F1, F2, F3,
 			F4, F5, F6, F7, F8, F9,
 			D0, D1,

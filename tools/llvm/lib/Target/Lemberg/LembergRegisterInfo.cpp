@@ -73,15 +73,11 @@ LembergRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
 	  Reserved.set(R14);
 
   Reserved.set(R15);
-  Reserved.set(R0_31);
-  Reserved.set(R1_31);
-  Reserved.set(R2_31);
-  Reserved.set(R3_31);
-  Reserved.set(MEM);
-  Reserved.set(MEMHU);
-  Reserved.set(MEMHS);
-  Reserved.set(MEMBU);
-  Reserved.set(MEMBS);
+  Reserved.set(R0_30);
+  Reserved.set(R1_30);
+  Reserved.set(R2_30);
+  Reserved.set(R3_30);
+  Reserved.set(R31);
   Reserved.set(RB);
   Reserved.set(RO);
   Reserved.set(BA);
@@ -94,9 +90,8 @@ saveScavengerRegister(MachineBasicBlock &MBB,
 					  MachineBasicBlock::iterator &UseMI,
 					  const TargetRegisterClass *RC, unsigned Reg) const {
 
-  // Adjust UseMI so we do not restore scavenger register between a load and a ldx
-  if ((UseMI->getDesc().getOpcode() == Lemberg::LDXa)
-	  || (UseMI->getDesc().getOpcode() == Lemberg::LDXi)) {
+  // Adjust UseMI so we do not restore scavenger register during a load
+  if (UseMI->readsRegister(Lemberg::R31)) {
 	  while (!UseMI->getDesc().mayLoad()) {
 		  --UseMI;
 	  }
@@ -455,29 +450,24 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 				  .addImm(-1).addReg(0)
 				  .addReg(getFrameRegister(MF))
 				  .addImm(Offset);
-			  MI.setDesc(TII.get(Lemberg::LDXi));
+			  MI.setDesc(TII.get(Lemberg::MOVEaa));
 			  MI.addOperand(MachineOperand::CreateImm(-1));
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
-			  MI.addOperand(MachineOperand::CreateReg(Lemberg::MEM, false));
-			  MI.addOperand(MachineOperand::CreateImm(0));
+			  MI.addOperand(MachineOperand::CreateReg(Lemberg::R31, false));
 			  while (MI.getNumOperands() > MI.getNumExplicitOperands()) {
 			   	MI.RemoveOperand(MI.getNumOperands()-1);
 			  }
 			  break;
 		  case Lemberg::LOAD32s_xpseudo:
-			  CopyReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			  LastLargeFrame->Register = 0;
 			  BuildMI(MBB, II, DL, TII.get(Lemberg::LOAD32spi))
 				  .addImm(-1).addReg(0)
 				  .addReg(getFrameRegister(MF))
 				  .addImm(Offset);
-			  BuildMI(MBB, II, DL, TII.get(Lemberg::LDXi), CopyReg)
-				  .addImm(-1).addReg(0)
-				  .addReg(Lemberg::MEM).addImm(0);
 			  MI.setDesc(TII.get(isFloat ? Lemberg::MOVEaf : Lemberg::MOVEax));
 			  MI.addOperand(MachineOperand::CreateImm(-1));
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
-			  MI.addOperand(MachineOperand::CreateReg(CopyReg, false, false, true));
+			  MI.addOperand(MachineOperand::CreateReg(Lemberg::R31, false));
 			  while (MI.getNumOperands() > MI.getNumExplicitOperands()) {
 			   	MI.RemoveOperand(MI.getNumOperands()-1);
 			  }
@@ -519,7 +509,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  int BaseOffset = Offset - ModOffset;
 
 		  unsigned ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseOffset);
-		  unsigned CopyReg = getEmergencyRegister();
+		  unsigned CopyReg;
 
 		  const TargetRegisterClass *RegClass = getMinimalPhysRegClass(MI.getOperand(0).getReg());
 		  bool isFloat = RegClass == Lemberg::FRegisterClass;
@@ -530,11 +520,10 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 				  .addImm(-1).addReg(0)
 				  .addReg(ScratchReg, RegState::Kill)
 				  .addImm(ModOffset);
-			  MI.setDesc(TII.get(Lemberg::LDXi));
+			  MI.setDesc(TII.get(Lemberg::MOVEaa));
 			  MI.addOperand(MachineOperand::CreateImm(-1));
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
-			  MI.addOperand(MachineOperand::CreateReg(Lemberg::MEM, false));
-			  MI.addOperand(MachineOperand::CreateImm(0));
+			  MI.addOperand(MachineOperand::CreateReg(Lemberg::R31, false));
 			  while (MI.getNumOperands() > MI.getNumExplicitOperands()) {
 			   	MI.RemoveOperand(MI.getNumOperands()-1);
 			  }
@@ -546,17 +535,14 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 				  .addImm(-1).addReg(0)
 				  .addReg(ScratchReg, RegState::Kill)
 				  .addImm(ModOffset);
-			  BuildMI(MBB, II, DL, TII.get(Lemberg::LDXi), CopyReg)
-				  .addImm(-1).addReg(0)
-				  .addReg(Lemberg::MEM).addImm(0);
 			  MI.setDesc(TII.get(isFloat ? Lemberg::MOVEaf : Lemberg::MOVEax));
 			  MI.addOperand(MachineOperand::CreateImm(-1));
 			  MI.addOperand(MachineOperand::CreateReg(0, false));
-			  MI.addOperand(MachineOperand::CreateReg(CopyReg, false, false, true));
+			  MI.addOperand(MachineOperand::CreateReg(Lemberg::R31, false));
 			  while (MI.getNumOperands() > MI.getNumExplicitOperands()) {
 			   	MI.RemoveOperand(MI.getNumOperands()-1);
 			  }
-			  LastLargeFrame->Killer = prior(II, 2);
+			  LastLargeFrame->Killer = prior(II);
 			  LastLargeFrame->Boundary = *II;
 			  break;
 		  case Lemberg::STORE32s_pseudo:
@@ -573,6 +559,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  LastLargeFrame->Boundary = *II;
 			  break;
 		  case Lemberg::STORE32s_xpseudo:
+			  CopyReg = getEmergencyRegister();
 			  BuildMI(MBB, II, DL, TII.get(isFloat ? Lemberg::MOVEfa : Lemberg::MOVExa), CopyReg)
 			   	  .addImm(-1).addReg(0)
 				  .addOperand(MI.getOperand(0));
@@ -606,8 +593,8 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 	  int BaseHiOffset = Offset+4 - ModHiOffset;
 
 	  unsigned ScratchReg;
-	  unsigned CopyRegA = getEmergencyRegister();
-	  unsigned CopyRegB = getEmergencyRegister();
+	  unsigned CopyRegA;
+	  unsigned CopyRegB;
 
 	  unsigned Reg = MI.getOperand(0).getReg();
 
@@ -618,14 +605,11 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  .addImm(-1).addReg(0)
 			  .addReg(ScratchReg, RegState::Kill)
 			  .addImm(ModLoOffset);
-		  BuildMI(MBB, II, DL, TII.get(Lemberg::LDXi), CopyRegA)
-			  .addImm(-1).addReg(0)
-			  .addReg(Lemberg::MEM).addImm(0);
 		  BuildMI(MBB, II, DL, TII.get(Lemberg::MOVEaf))
 			  .addReg(Reg, RegState::Define, Lemberg::sub_even)
 			  .addImm(-1).addReg(0)
-			  .addReg(CopyRegA, RegState::Kill);
-		  LastLargeFrame->Killer = prior(II, 3);
+			  .addReg(Lemberg::R31);
+		  LastLargeFrame->Killer = prior(II, 2);
 		  LastLargeFrame->Boundary = *II;
 
 		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseHiOffset);
@@ -633,9 +617,6 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  .addImm(-1).addReg(0)
 			  .addReg(ScratchReg, RegState::Kill)
 			  .addImm(ModHiOffset);
-		  BuildMI(MBB, II, DL, TII.get(Lemberg::LDXi), CopyRegB)
-			  .addImm(-1).addReg(0)
-			  .addReg(Lemberg::MEM).addImm(0);
 		  MI.setDesc(TII.get(Lemberg::MOVEaf));
 		  MI.RemoveOperand(0);
 		  MI.addOperand(MachineOperand::CreateReg(Reg, true, false, false,
@@ -643,14 +624,16 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 												  Lemberg::sub_odd));
 		  MI.addOperand(MachineOperand::CreateImm(-1));
 		  MI.addOperand(MachineOperand::CreateReg(0, false));
-		  MI.addOperand(MachineOperand::CreateReg(CopyRegB, false, false, true));
+		  MI.addOperand(MachineOperand::CreateReg(Lemberg::R31, false));
 		  while (MI.getNumOperands() > MI.getNumExplicitOperands()) {
 			MI.RemoveOperand(MI.getNumOperands()-1);
 		  }
-		  LastLargeFrame->Killer = prior(II, 2);
+		  LastLargeFrame->Killer = prior(II);
 		  LastLargeFrame->Boundary = *II;
 		  break;
 	  case Lemberg::STORE64s_xpseudo:
+		  CopyRegA = getEmergencyRegister();
+		  CopyRegB = getEmergencyRegister();
 		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseLoOffset);
 		  BuildMI(MBB, II, DL, TII.get(Lemberg::MOVEfa), CopyRegA)
 			  .addImm(-1).addReg(0)
@@ -709,7 +692,7 @@ unsigned LembergRegisterInfo::getRAOffRegister() const {
 
 unsigned LembergRegisterInfo::getEmergencyRegister() const {
 	static const unsigned EmergencyRegs [] =
-		{ Lemberg::R0_31, Lemberg::R1_31, Lemberg::R2_31, Lemberg::R3_31 };
+		{ Lemberg::R0_30, Lemberg::R1_30, Lemberg::R2_30, Lemberg::R3_30 };
 
 	static int EmergencyCounter = 0;
 	if (++EmergencyCounter >= 4) {
@@ -727,7 +710,7 @@ unsigned LembergRegisterInfo::getRegPressureLimit(const TargetRegisterClass *RC,
 	  return 0;
 
 	case Lemberg::ARegClassID:
-	    return (MF.getTarget().getFrameLowering()->hasFP(MF) ? 74 : 75) - 5;
+	    return (MF.getTarget().getFrameLowering()->hasFP(MF) ? 73 : 74) - 5;
 	case Lemberg::AImmRegClassID:
 		return 20-3;
 	case Lemberg::AImm_and_L0RegClassID:
@@ -754,7 +737,7 @@ unsigned LembergRegisterInfo::getRegPressureLimit(const TargetRegisterClass *RC,
 	case Lemberg::LG1RegClassID:
 	case Lemberg::LG2RegClassID:
 	case Lemberg::LG3RegClassID:
-  	    return (MF.getTarget().getFrameLowering()->hasFP(MF) ? 29 : 30) - 4;
+  	    return (MF.getTarget().getFrameLowering()->hasFP(MF) ? 28 : 29) - 4;
 	case Lemberg::LG0ImmRegClassID:
 	case Lemberg::LG1ImmRegClassID:
 	case Lemberg::LG2ImmRegClassID:

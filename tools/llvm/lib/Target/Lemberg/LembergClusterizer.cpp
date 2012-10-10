@@ -252,7 +252,6 @@ bool Clusterizer::runOnMachineFunction(MachineFunction &F)
 		if (MRI->getRegClass(regNo) == Lemberg::CRegisterClass ||
 			MRI->getRegClass(regNo) == Lemberg::FRegisterClass ||
 			MRI->getRegClass(regNo) == Lemberg::DRegisterClass ||
-			MRI->getRegClass(regNo) == Lemberg::MemRegisterClass ||
 			MRI->getRegClass(regNo) == Lemberg::CallRetRegisterClass) {
 			continue;
 		}

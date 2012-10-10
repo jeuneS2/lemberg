@@ -134,6 +134,10 @@ SYM [\._a-zA-Z0-9]+
 "ctz"      ACCEPT(CTZ,    BBHSUBOP);
 "pop"      ACCEPT(POP,    BBHSUBOP);
 "par"      ACCEPT(PAR,    BBHSUBOP);
+"msext8"   ACCEPT(MSEXT8,  BBHSUBOP);
+"msext16"  ACCEPT(MSEXT16, BBHSUBOP);
+"mzext8"   ACCEPT(MZEXT8,  BBHSUBOP);
+"mzext16"  ACCEPT(MZEXT16, BBHSUBOP);
 
 "eq"       ACCEPT(EQ,    CMPSUBOP);
 "ne"       ACCEPT(NE,    CMPSUBOP);
@@ -217,31 +221,6 @@ f[0-9]+ {
 d[0-9]+ {
 	yylval.intval = 2*strtoll(yytext+1, NULL, 10);
 	return DREG;
-  }
-
-$mem {
-	yylval.intval = 4;
-	return EXT;
-  }
-
-$memhu {
-	yylval.intval = 5;
-	return EXT;
-  }
-
-$memhs {
-	yylval.intval = 6;
-	return EXT;
-  }
-
-$membu {
-	yylval.intval = 7;
-	return EXT;
-  }
-
-$membs {
-	yylval.intval = 8;
-	return EXT;
   }
 
 $mul[0-9]\.0 {

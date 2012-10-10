@@ -147,9 +147,9 @@ BuildStackLoad(MachineFunction &MF,
 			.addReg(ScratchReg, RegState::Kill);
 	}
 
-	BuildMI(MBB, MBBI, DL, TII->get(Lemberg::LDXi), DestReg)
+	BuildMI(MBB, MBBI, DL, TII->get(Lemberg::MOVEaa), DestReg)
 		.addImm(-1).addReg(0)
-		.addReg(Lemberg::MEM).addImm(0);
+		.addReg(Lemberg::R31);
 }
 
 void LembergFrameLowering::

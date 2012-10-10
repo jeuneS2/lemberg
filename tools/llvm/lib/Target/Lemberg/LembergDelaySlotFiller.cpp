@@ -316,8 +316,7 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 
 				if (Opcode == Lemberg::CALLga || Opcode == Lemberg::RET) {
 					// call/return must not be moved across loads of memory results
-					if (J->getOpcode() == Lemberg::LDXa
-						|| J->getOpcode() == Lemberg::LDXi) {
+				    if (J->readsRegister(Lemberg::R31)) {
 						conflictsLate = true;
 					}
 					// call/return needs the memunit

@@ -35,8 +35,8 @@ namespace llvm {
       Call,
 	  // Return 
       Return,
-	  // Wait for memory
-	  WaitLoad,
+	  // Align and extend sub-word memory loads
+	  MemExtend,
 	  // Write back stack cache
 	  WriteBack,
 	  // Load

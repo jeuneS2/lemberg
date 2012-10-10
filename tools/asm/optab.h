@@ -83,6 +83,11 @@
 #define OP_POP       0x06
 #define OP_PAR       0x07
 
+#define OP_MSEXT8    0x08
+#define OP_MSEXT16   0x09
+#define OP_MZEXT8    0x0A
+#define OP_MZEXT16   0x0B
+
 /* branch compare zero sub-operations */
 #define OP_EQ        0x00
 #define OP_NE        0x01

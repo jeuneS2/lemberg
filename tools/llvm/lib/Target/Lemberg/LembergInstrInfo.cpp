@@ -169,33 +169,56 @@ LembergInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 									  bool isKill,
 									  int FI,
 									  const TargetRegisterClass *RC,
-									  const llvm::TargetRegisterInfo *RI) const {
+									  const llvm::TargetRegisterInfo *TRI) const {
 
   DebugLoc DL = I != MBB.end() ? I->getDebugLoc() : DebugLoc();
 
-  if (inClass(Lemberg::ARegClass, SrcReg, RC, RI)) {
-	  BuildMI(MBB, I, DL, get(Lemberg::STORE32s_pseudo))
-		  .addReg(SrcReg, getKillRegState(isKill))
-		  .addImm(0).addFrameIndex(FI);
-	  return;
+  bool inLoad = false;
+  for (MachineBasicBlock::iterator MI = I, E = MBB.end(); MI != E; ++MI) {
+	if (MI->readsRegister(Lemberg::R31)) {
+	  inLoad = true;
+	  break;
+	} else if (MI->mayLoad()) {
+	  break;
+	}
   }
 
-  if (inClass(Lemberg::XRegClass, SrcReg, RC, RI)) {
+  // R31 must appear to remain unchanged
+  if (inLoad) {
+	unsigned EmergencyReg = RI.getEmergencyRegister();
+	// __mem_emergency must be addressably with 11 bits
+	BuildMI(MBB, I, DL, get(Lemberg::LOADsym11lo), EmergencyReg)
+	  .addImm(-1).addReg(0)
+	  .addExternalSymbol("__mem_emergency");
+	BuildMI(MBB, I, DL, get(Lemberg::STORE32ap))
+	  .addImm(-1).addReg(0)
+	  .addReg(Lemberg::R31).addReg(EmergencyReg);
+  }
+
+  if (inClass(Lemberg::ARegClass, SrcReg, RC, TRI)) {
+	// A normal register
+	BuildMI(MBB, I, DL, get(Lemberg::STORE32s_pseudo))
+	  .addReg(SrcReg, getKillRegState(isKill))
+	  .addImm(0).addFrameIndex(FI);
+  } else if (inClass(Lemberg::XRegClass, SrcReg, RC, TRI)) {
+	// A special register
 	BuildMI(MBB, I, DL, get(Lemberg::STORE32s_xpseudo))
-		  .addReg(SrcReg, getKillRegState(isKill))
-		  .addImm(0).addFrameIndex(FI);
-	return;
+	  .addReg(SrcReg, getKillRegState(isKill))
+	  .addImm(0).addFrameIndex(FI);
+  } else if (inClass(Lemberg::DRegClass, SrcReg, RC, TRI)) {
+	// Split loads of doubles
+	BuildMI(MBB, I, DL, get(Lemberg::STORE64s_xpseudo))
+	  .addReg(SrcReg, getKillRegState(isKill))
+	  .addImm(0).addFrameIndex(FI);
+  } else {
+	llvm_unreachable((std::string("Cannot store regclass to stack slot: ")+
+					  RC->getName()).c_str());
   }
 
-  if (inClass(Lemberg::DRegClass, SrcReg, RC, RI)) {
-	  BuildMI(MBB, I, DL, get(Lemberg::STORE64s_xpseudo))
-		  .addReg(SrcReg, getKillRegState(isKill))
-		  .addImm(0).addFrameIndex(FI);
-	  return;
+  if (inLoad) {
+	BuildMI(MBB, I, DL, get(Lemberg::LOAD32d_ga))
+	  .addExternalSymbol("__mem_emergency");
   }
-
-  llvm_unreachable((std::string("Cannot store regclass to stack slot: ")+
-                    RC->getName()).c_str());
 }
 
 void
@@ -204,63 +227,53 @@ LembergInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 									   unsigned DestReg,
 									   int FI,
 									   const TargetRegisterClass *RC,
-									   const llvm::TargetRegisterInfo *RI) const {
+									   const llvm::TargetRegisterInfo *TRI) const {
 
   DebugLoc DL = I != MBB.end() ? I->getDebugLoc() : DebugLoc();
 
-  // A normal register
-  if (inClass(Lemberg::ARegClass, DestReg, RC, RI)) {
-	  if (I->getOpcode() != Lemberg::LDXa
-		  && I->getOpcode() != Lemberg::LDXi) {
-		  BuildMI(MBB, I, DL, get(Lemberg::LOAD32s_pseudo), DestReg)
-			  .addImm(0).addFrameIndex(FI);
-	  } else {
-		  // A fugly special case
-
-		  unsigned TmpReg = getRegisterInfo().getEmergencyRegister();
-		  if (inClass(Lemberg::L0RegClass, DestReg, RC, RI))
-			  TmpReg = Lemberg::R0_31;
-		  else if (inClass(Lemberg::L1RegClass, DestReg, RC, RI))
-			  TmpReg = Lemberg::R1_31;
-		  else if (inClass(Lemberg::L2RegClass, DestReg, RC, RI))
-			  TmpReg = Lemberg::R2_31;
-		  else if (inClass(Lemberg::L3RegClass, DestReg, RC, RI))
-			  TmpReg = Lemberg::R3_31;
-
-		  // __mem_emergency must be addressably with 11 bits
-		  BuildMI(MBB, I, DL, get(Lemberg::LOADsym11lo), DestReg)
-			  .addImm(-1).addReg(0)
-			  .addExternalSymbol("__mem_emergency");
-		  BuildMI(MBB, I, DL, get(Lemberg::LDXi), TmpReg)
-			  .addImm(-1).addReg(0)
-			  .addReg(Lemberg::MEM).addImm(0);
-		  BuildMI(MBB, I, DL, get(Lemberg::STORE32ap))
-			  .addImm(-1).addReg(0)
-			  .addReg(TmpReg, RegState::Kill).addReg(DestReg);
-		  BuildMI(MBB, I, DL, get(Lemberg::LOAD32s_pseudo), DestReg)
-			  .addImm(0).addFrameIndex(FI);
-		  BuildMI(MBB, I, DL, get(Lemberg::LOAD32d_ga))
-			  .addExternalSymbol("__mem_emergency");
-	  }
-	  return;
+  bool inLoad = false;
+  for (MachineBasicBlock::iterator MI = I, E = MBB.end(); MI != E; ++MI) {
+	if (MI->readsRegister(Lemberg::R31)) {
+	  inLoad = true;
+	  break;
+	} else if (MI->mayLoad()) {
+	  break;
+	}
   }
 
-  // A special register
-  if (inClass(Lemberg::XRegClass, DestReg, RC, RI)) {
-	  BuildMI(MBB, I, DL, get(Lemberg::LOAD32s_xpseudo), DestReg)
-		  .addImm(0).addFrameIndex(FI);
-	  return;
+  // R31 must appear to remain unchanged
+  if (inLoad) {
+	unsigned EmergencyReg = RI.getEmergencyRegister();
+	// __mem_emergency must be addressably with 11 bits
+	BuildMI(MBB, I, DL, get(Lemberg::LOADsym11lo), EmergencyReg)
+	  .addImm(-1).addReg(0)
+	  .addExternalSymbol("__mem_emergency");
+	BuildMI(MBB, I, DL, get(Lemberg::STORE32ap))
+	  .addImm(-1).addReg(0)
+	  .addReg(Lemberg::R31).addReg(EmergencyReg);
   }
 
-  // Split loads of doubles
-  if (inClass(Lemberg::DRegClass, DestReg, RC, RI)) {
-	  BuildMI(MBB, I, DL, get(Lemberg::LOAD64s_xpseudo), DestReg)
-		  .addImm(0).addFrameIndex(FI);
-	  return;
+  if (inClass(Lemberg::ARegClass, DestReg, RC, TRI)) {
+	// A normal register
+	BuildMI(MBB, I, DL, get(Lemberg::LOAD32s_pseudo), DestReg)
+	  .addImm(0).addFrameIndex(FI);
+  } else if (inClass(Lemberg::XRegClass, DestReg, RC, TRI)) {
+	// A special register
+	BuildMI(MBB, I, DL, get(Lemberg::LOAD32s_xpseudo), DestReg)
+	  .addImm(0).addFrameIndex(FI);
+  } else if (inClass(Lemberg::DRegClass, DestReg, RC, TRI)) {
+	// Split loads of doubles
+	BuildMI(MBB, I, DL, get(Lemberg::LOAD64s_xpseudo), DestReg)
+	  .addImm(0).addFrameIndex(FI);
+  } else {
+	llvm_unreachable((std::string("Cannot load regclass from stack slot: ")+
+					  RC->getName()).c_str());
   }
 
-  llvm_unreachable((std::string("Cannot load regclass from stack slot: ")+
-                    RC->getName()).c_str());
+  if (inLoad) {
+	BuildMI(MBB, I, DL, get(Lemberg::LOAD32d_ga))
+	  .addExternalSymbol("__mem_emergency");
+  }
 }
 
 

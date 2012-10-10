@@ -35,7 +35,6 @@ entity alu is
 		wrdata     : out std_logic_vector(DATA_WIDTH-1 downto 0);
 		zero       : out std_logic;
 		neg        : out std_logic;
-		memdata    : in  std_logic_vector(DATA_WIDTH-1 downto 0);
 		ba         : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
 		rb_in      : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
 		rb_wren    : out std_logic;
@@ -79,7 +78,7 @@ begin  -- behavior
 		end if;
 	end process sync;
 	
-	alu: process (op, fl_in, mul0_reg, mul1_reg, rb_in, ro_in, ba, memdata,
+	alu: process (op, fl_in, mul0_reg, mul1_reg, rb_in, ro_in, ba,
 				  add_tmp, sub_tmp, eq_tmp, lt_tmp, fpu_rddata)
 		variable valid : std_logic;
 		variable mul_tmp : std_logic_vector(2*DATA_WIDTH-1 downto 0);
@@ -182,54 +181,112 @@ begin  -- behavior
 				wren <= valid;
 				wrdata <= (others => '0');
 				wrdata(0) <= sub_tmp(DATA_WIDTH);
-			when ALU_BBH =>
+			when ALU_SEXT8 =>
 				wren <= valid;
-				case op.rddata1(4 downto 0) is
-					when "00000" =>  	-- SEXT8
-						wrdata <= std_logic_vector(
-							resize(signed(op.rddata0(BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
-					when "00001" =>  	-- SEXT16
-						wrdata <= std_logic_vector(
-							resize(signed(op.rddata0(2*BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
-					when "00010" =>  	-- ZEXT8
-						wrdata <= std_logic_vector(
-							resize(unsigned(op.rddata0(BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
-					when "00011" =>  	-- ZEXT16
-						wrdata <= std_logic_vector(
-							resize(unsigned(op.rddata0(2*BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
-					when "00100" =>  	-- CLZ
-						wrdata <= (others => '0');
-						for i in 1 to DATA_WIDTH loop
-							if op.rddata0(DATA_WIDTH-i) = '0' then
-								wrdata <= std_logic_vector(to_unsigned(i, DATA_WIDTH));
-							else
-								exit;
-							end if;
-						end loop;  -- i
-					when "00101" =>  	-- CTZ
-						wrdata <= (others => '0');
-						for i in 1 to DATA_WIDTH loop
-							if op.rddata0(i-1) = '0' then
-								wrdata <= std_logic_vector(to_unsigned(i, DATA_WIDTH));
-							else
-								exit;
-							end if;
-						end loop;  -- i
-					when "00110" | "00111" =>  	-- POP / PAR
-						popcnt := 0;						
-						for i in 0 to DATA_WIDTH-1 loop
-							if op.rddata0(i) = '1' then
-								popcnt := popcnt+1;
-							end if;
-						end loop;  -- i
-						if op.rddata1(4 downto 0) = "00110" then
-							wrdata <= std_logic_vector(to_unsigned(popcnt, DATA_WIDTH));
-						else
-							wrdata <= std_logic_vector(to_unsigned(popcnt mod 2, DATA_WIDTH));
-						end if;
-					when others =>
-						wrdata <= op.rddata0;
+                wrdata <= std_logic_vector(
+                    resize(signed(op.rddata1(BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
+            when ALU_SEXT16 =>
+				wren <= valid;
+                wrdata <= std_logic_vector(
+                    resize(signed(op.rddata1(2*BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
+            when ALU_ZEXT8 =>
+				wren <= valid;
+                wrdata <= std_logic_vector(
+                    resize(unsigned(op.rddata1(BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
+            when ALU_ZEXT16 =>
+				wren <= valid;
+                wrdata <= std_logic_vector(
+                    resize(unsigned(op.rddata1(2*BYTE_WIDTH-1 downto 0)), DATA_WIDTH));
+            when ALU_CLZ =>
+				wren <= valid;
+                wrdata <= (others => '0');
+                for i in 1 to DATA_WIDTH loop
+                    if op.rddata1(DATA_WIDTH-i) = '0' then
+                        wrdata <= std_logic_vector(to_unsigned(i, DATA_WIDTH));
+                    else
+                        exit;
+                    end if;
+                end loop;  -- i
+            when ALU_CTZ =>
+				wren <= valid;
+                wrdata <= (others => '0');
+                for i in 1 to DATA_WIDTH loop
+                    if op.rddata1(i-1) = '0' then
+                        wrdata <= std_logic_vector(to_unsigned(i, DATA_WIDTH));
+                    else
+                        exit;
+                    end if;
+                end loop;  -- i
+            when ALU_POP | ALU_PAR =>
+				wren <= valid;
+                popcnt := 0;						
+                for i in 0 to DATA_WIDTH-1 loop
+                    if op.rddata1(i) = '1' then
+                        popcnt := popcnt+1;
+                    end if;
+                end loop;  -- i
+                if op.op = ALU_POP then
+                    wrdata <= std_logic_vector(to_unsigned(popcnt, DATA_WIDTH));
+                else
+                    wrdata <= std_logic_vector(to_unsigned(popcnt mod 2, DATA_WIDTH));
+                end if;
+			when ALU_MSEXT8 =>
+				wren <= valid;
+				case op.rddata1(1 downto 0) is
+					when "00" =>
+						wrdata <= (others => op.rddata0(BYTE_WIDTH-1));
+						wrdata(BYTE_WIDTH-1 downto 0)
+							<= op.rddata0(BYTE_WIDTH-1 downto 0);
+					when "01" =>
+						wrdata <= (others => op.rddata0(2*BYTE_WIDTH-1));
+						wrdata(BYTE_WIDTH-1 downto 0)
+							<= op.rddata0(2*BYTE_WIDTH-1 downto BYTE_WIDTH);
+					when "10" =>
+						wrdata <= (others => op.rddata0(3*BYTE_WIDTH-1));
+						wrdata(BYTE_WIDTH-1 downto 0)
+							<= op.rddata0(3*BYTE_WIDTH-1 downto 2*BYTE_WIDTH);
+					when "11" =>
+						wrdata <= (others => op.rddata0(DATA_WIDTH-1));
+						wrdata(BYTE_WIDTH-1 downto 0)
+							<= op.rddata0(DATA_WIDTH-1 downto 3*BYTE_WIDTH);
+					when others => null;
 				end case;
+			when ALU_MSEXT16 =>
+				wren <= valid;
+				if op.rddata1(1) = '0' then
+					wrdata <= (others => op.rddata0(2*BYTE_WIDTH-1));
+					wrdata(2*BYTE_WIDTH-1 downto 0) <= op.rddata0(2*BYTE_WIDTH-1 downto 0);
+				else
+					wrdata <= (others => op.rddata0(DATA_WIDTH-1));
+					wrdata(2*BYTE_WIDTH-1 downto 0) <= op.rddata0(DATA_WIDTH-1 downto 2*BYTE_WIDTH);
+				end if;
+			when ALU_MZEXT8 =>
+				wren <= valid;
+				wrdata <= (others => '0');
+				case op.rddata1(1 downto 0) is
+					when "00" =>
+						wrdata(BYTE_WIDTH-1 downto 0)
+							<= op.rddata0(BYTE_WIDTH-1 downto 0);
+					when "01" =>
+						wrdata(BYTE_WIDTH-1 downto 0)
+							<= op.rddata0(2*BYTE_WIDTH-1 downto BYTE_WIDTH);
+					when "10" =>
+						wrdata(BYTE_WIDTH-1 downto 0)
+							<= op.rddata0(3*BYTE_WIDTH-1 downto 2*BYTE_WIDTH);
+					when "11" =>
+						wrdata(BYTE_WIDTH-1 downto 0)
+							<= op.rddata0(DATA_WIDTH-1 downto 3*BYTE_WIDTH);
+					when others => null;
+				end case;
+			when ALU_MZEXT16 =>
+				wren <= valid;
+				wrdata <= (others => '0');				
+				if op.rddata1(1) = '0' then
+					wrdata(2*BYTE_WIDTH-1 downto 0) <= op.rddata0(2*BYTE_WIDTH-1 downto 0);
+				else
+					wrdata(2*BYTE_WIDTH-1 downto 0) <= op.rddata0(DATA_WIDTH-1 downto 2*BYTE_WIDTH);
+				end if;
+
 			when ALU_LDI =>
 				wren <= valid;
 				wrdata <= op.rddata1;  -- beware: we're moving in the second operand!
@@ -324,65 +381,6 @@ begin  -- behavior
 				wren <= valid;
 				wrdata <= (others => '0');
 				wrdata(0) <= fl_in(to_integer(unsigned(op.rdaddr0(FLAG_BITS-1 downto 0))));
-			when ALU_LDMEM =>
-				wren <= valid;
-				wrdata <= memdata;
-			when ALU_LDMEMHU =>
-				wren <= valid;
-				wrdata <= (others => '0');				
-				if op.rddata1(1) = '0' then
-					wrdata(2*BYTE_WIDTH-1 downto 0) <= memdata(2*BYTE_WIDTH-1 downto 0);
-				else
-					wrdata(2*BYTE_WIDTH-1 downto 0) <= memdata(DATA_WIDTH-1 downto 2*BYTE_WIDTH);
-				end if;
-			when ALU_LDMEMHS =>
-				wren <= valid;
-				if op.rddata1(1) = '0' then
-					wrdata <= (others => memdata(2*BYTE_WIDTH-1));
-					wrdata(2*BYTE_WIDTH-1 downto 0) <= memdata(2*BYTE_WIDTH-1 downto 0);
-				else
-					wrdata <= (others => memdata(DATA_WIDTH-1));
-					wrdata(2*BYTE_WIDTH-1 downto 0) <= memdata(DATA_WIDTH-1 downto 2*BYTE_WIDTH);
-				end if;
-			when ALU_LDMEMBU =>
-				wren <= valid;
-				wrdata <= (others => '0');
-				case op.rddata1(1 downto 0) is
-					when "00" =>
-						wrdata(BYTE_WIDTH-1 downto 0)
-							<= memdata(BYTE_WIDTH-1 downto 0);
-					when "01" =>
-						wrdata(BYTE_WIDTH-1 downto 0)
-							<= memdata(2*BYTE_WIDTH-1 downto BYTE_WIDTH);
-					when "10" =>
-						wrdata(BYTE_WIDTH-1 downto 0)
-							<= memdata(3*BYTE_WIDTH-1 downto 2*BYTE_WIDTH);
-					when "11" =>
-						wrdata(BYTE_WIDTH-1 downto 0)
-							<= memdata(DATA_WIDTH-1 downto 3*BYTE_WIDTH);
-					when others => null;
-				end case;
-			when ALU_LDMEMBS =>
-				wren <= valid;
-				case op.rddata1(1 downto 0) is
-					when "00" =>
-						wrdata <= (others => memdata(BYTE_WIDTH-1));
-						wrdata(BYTE_WIDTH-1 downto 0)
-							<= memdata(BYTE_WIDTH-1 downto 0);
-					when "01" =>
-						wrdata <= (others => memdata(2*BYTE_WIDTH-1));
-						wrdata(BYTE_WIDTH-1 downto 0)
-							<= memdata(2*BYTE_WIDTH-1 downto BYTE_WIDTH);
-					when "10" =>
-						wrdata <= (others => memdata(3*BYTE_WIDTH-1));
-						wrdata(BYTE_WIDTH-1 downto 0)
-							<= memdata(3*BYTE_WIDTH-1 downto 2*BYTE_WIDTH);
-					when "11" =>
-						wrdata <= (others => memdata(DATA_WIDTH-1));
-						wrdata(BYTE_WIDTH-1 downto 0)
-							<= memdata(DATA_WIDTH-1 downto 3*BYTE_WIDTH);
-					when others => null;
-				end case;
 			when ALU_LDMUL =>
 				wren <= valid;
 				if op.rdaddr0(0) = '1' then

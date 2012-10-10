@@ -96,7 +96,7 @@ Input : Input Bundle
 	  {
 		  emit_bundle($2);
 	  }
-      | /* empty */
+      | LFOpt
 ;
 
 LFOpt : NewLine BSep | NewLine | /* empty */
@@ -520,14 +520,22 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.fmt.H.dest = $4;
 		  $$.fmt.H.address = $2;
       }
+      | Condition BBHOP BBHSUBOP Constant DEST REG
+	  {
+		  $$.op = $2;
+		  $$.fmt.B.src1 = $3;
+		  $$.fmt.B.src2.imm = $4;
+		  $$.fmt.B.dest = $6;
+		  $$.fmt.B.imm = 1;
+		  $$.fmt.B.cond = $1;
+	  }
       | Condition BBHOP BBHSUBOP REG DEST REG
 	  {
 		  $$.op = $2;
-		  $$.fmt.B.src1 = $4;
-		  $$.fmt.B.src2.imm.intval = $3;
-		  $$.fmt.B.src2.imm.strval = 0;
+		  $$.fmt.B.src1 = $3;
+		  $$.fmt.B.src2.reg = $4;
 		  $$.fmt.B.dest = $6;
-		  $$.fmt.B.imm = 1;
+		  $$.fmt.B.imm = 0;
 		  $$.fmt.B.cond = $1;
 	  }
       | Condition CCOP THREEOP NotOptFlag ',' NotOptFlag DEST FLAG

@@ -323,6 +323,8 @@ void Pinner::pinToCluster(MachineInstr &MI, int cluster) {
 	const MCInstrDesc &MID = MI.getDesc();
 	MCInstrDesc *NMID = new MCInstrDesc();
 	*NMID = MID;
+	NMID->Flags |= 1 << MCID::ExtraSrcRegAllocReq;
+	NMID->Flags |= 1 << MCID::ExtraDefRegAllocReq;
 	
 	if (compatibleSchedClass(SchedClass, AluSchedClasses[cluster])) {
 		NMID->SchedClass = AluSchedClasses[cluster];
@@ -423,6 +425,7 @@ bool PostPinner::runOnMachineFunction(MachineFunction &F)
 				UnPinned.push_back(&MI);
 			} else {
 				ScoreBoard |= 1 << cluster;
+				pinToCluster(MI, cluster);
 			}
 		}
 	}

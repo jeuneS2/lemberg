@@ -174,14 +174,13 @@ void ScheduleTDList::buildSchedGraph(AliasAnalysis *AA) {
 						continue;
 
 					// Latencies are just interesting for some combinations
-					if ((SU.getInstr()->getDesc().mayStore()
-						 && !(Succ->getInstr()->getDesc().mayLoad()
-							  || Succ->getInstr()->getDesc().mayStore()))
-						|| (SU.getInstr()->getDesc().mayLoad()
-							&& !(Succ->getInstr()->getDesc().mayLoad()
-								 || Succ->getInstr()->getDesc().mayStore()
-								 || Succ->getInstr()->getOpcode() == Lemberg::LDXa
-								 || Succ->getInstr()->getOpcode() == Lemberg::LDXi)))
+					if ((SU.getInstr()->mayStore()
+						 && !(Succ->getInstr()->mayLoad()
+							  || Succ->getInstr()->mayStore()))
+						|| (SU.getInstr()->mayLoad()
+							&& !(Succ->getInstr()->mayLoad()
+								 || Succ->getInstr()->mayStore()
+								 || Succ->getInstr()->readsRegister(Lemberg::R31))))
 						continue;
 					
 					// Set forward latency
@@ -340,10 +339,11 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
   MachineLoopInfo &MLI = getAnalysis<MachineLoopInfo>();
   MachineDominatorTree &MDT = getAnalysis<MachineDominatorTree>();
   AliasAnalysis *AA = &getAnalysis<AliasAnalysis>();
-  const RegisterClassInfo &RegClassInfo = RegisterClassInfo();
-  TargetSubtargetInfo::AntiDepBreakMode AntiDepMode = TargetSubtargetInfo::ANTIDEP_NONE;
+  RegisterClassInfo RegClassInfo;
+  TargetSubtargetInfo::AntiDepBreakMode AntiDepMode = TargetSubtargetInfo::ANTIDEP_ALL;
   SmallVector<const TargetRegisterClass*, 4> CriticalPathRCs;
-
+  CriticalPathRCs.clear();
+  CriticalPathRCs.push_back(&Lemberg::GRegClass);
 
   ScheduleTDList Scheduler(Fn, MLI, MDT, AA, RegClassInfo,
 						   AntiDepMode, CriticalPathRCs);
@@ -351,6 +351,8 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
   HR->setSched(&Scheduler);
 
   const TargetInstrInfo *TII = Fn.getTarget().getInstrInfo();
+
+  RegClassInfo.runOnMachineFunction(Fn);
 
   // Loop over all of the basic blocks
   for (MachineFunction::iterator MBB = Fn.begin(), MBBe = Fn.end();

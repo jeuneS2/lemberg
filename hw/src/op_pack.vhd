@@ -79,7 +79,18 @@ package op_pack is
 					  ALU_MUL,
 					  ALU_CARR,
 					  ALU_BORR,
-					  ALU_BBH,
+					  ALU_SEXT8,
+					  ALU_SEXT16,
+					  ALU_ZEXT8,
+					  ALU_ZEXT16,
+					  ALU_CLZ,
+					  ALU_CTZ,
+					  ALU_POP,
+					  ALU_PAR,
+					  ALU_MSEXT8,
+					  ALU_MSEXT16,
+					  ALU_MZEXT8,
+					  ALU_MZEXT16,
 					  ALU_CMPEQ,
 					  ALU_CMPNE,
 					  ALU_CMPLT,
@@ -96,11 +107,6 @@ package op_pack is
 					  ALU_CCXOR,
 					  ALU_LDI,
 					  ALU_LDCOND,
-					  ALU_LDMEM,
-					  ALU_LDMEMHU,
-					  ALU_LDMEMHS,
-					  ALU_LDMEMBU,
-					  ALU_LDMEMBS,
 					  ALU_LDMUL,
 					  ALU_LDRB,
 					  ALU_LDRO,
@@ -116,9 +122,11 @@ package op_pack is
 	record
 		rddata0 : std_logic_vector(DATA_WIDTH-1 downto 0);
 		rdaddr0 : std_logic_vector(REG_BITS-1 downto 0);
+		mem0    : std_logic;
 		rddata1 : std_logic_vector(DATA_WIDTH-1 downto 0);
 		rdaddr1 : std_logic_vector(REG_BITS-1 downto 0);
 		fwd1    : std_logic;
+		mem1    : std_logic;
 		op		: alu_type;
 		wraddr	: std_logic_vector(REG_BITS-1 downto 0);
 		cond    : std_logic;
@@ -126,8 +134,8 @@ package op_pack is
 	end record;
 
 	constant OP_NOP : op_type :=
-		((others => '0'), (others => '0'),
-		 (others => '0'), (others => '0'), '0',
+		((others => '0'), (others => '0'), '0',
+		 (others => '0'), (others => '0'), '0', '0',
 		 ALU_OR,
 		 (others => '0'),
 		 COND_FALSE, (others => '0'));
@@ -156,20 +164,22 @@ package op_pack is
 		address : std_logic_vector(ADDR_WIDTH+1 downto 0);
 		rdaddrA : std_logic_vector(REG_BITS-1 downto 0);
 		fwdA    : std_logic;
+		memA    : std_logic;
 		index   : std_logic_vector(INDEX_WIDTH downto 0);
 		op	    : mem_type;
 		wrdata  : std_logic_vector(DATA_WIDTH-1 downto 0);
 		rdaddrD : std_logic_vector(REG_BITS-1 downto 0);
 		fwdD    : std_logic;
+		memD    : std_logic;
 		cond    : std_logic;
 		flag    : std_logic_vector(FLAG_COUNT-1 downto 0);		
 	end record;
 
 	constant MEMOP_NOP : memop_type :=
-		((others => '0'), (others => '0'), '0',
+		((others => '0'), (others => '0'), '0', '0',
 		 (others => '0'),
 		 MEM_NOP,
-		 (others => '0'), (others => '0'), '0',
+		 (others => '0'), (others => '0'), '0', '0',
 		 COND_FALSE, (others => '0'));
 	
 	type memop_arr_type is array (0 to CLUSTERS-1) of memop_type;
@@ -211,8 +221,9 @@ package op_pack is
 	record
 		target0 : std_logic_vector(PC_WIDTH-1 downto 0);
 		target1 : std_logic_vector(PC_WIDTH-1 downto 0);
-        rddata  : std_logic_vector(PC_WIDTH-1 downto 0);
+		rddata  : std_logic_vector(PC_WIDTH-1 downto 0);
 		rdaddr  : std_logic_vector(REG_BITS-1 downto 0);
+		rdmem   : std_logic;
 		op	    : jmp_type;
 		zop     : cmp_type;
 		delayed : std_logic;
@@ -221,7 +232,7 @@ package op_pack is
 	end record;
 
 	constant JMPOP_NOP : jmpop_type :=
-		((others => '0'), (others => '0'), (others => '0'), (others => '0'),
+		((others => '0'), (others => '0'), (others => '0'), (others => '0'), '0',
 		 JMP_NOP, CMP_EQ,
 		 '0', COND_FALSE, (others => '0'));
 
