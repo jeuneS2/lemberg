@@ -44,12 +44,6 @@
 
 using namespace llvm;
 
-// Selective floating point support
-static cl::opt<bool>
-SoftDouble("lemberg-soft-double",
-  cl::desc("Generate software floating point library calls for doubles only"),
-  cl::init(false));
-
 //===----------------------------------------------------------------------===//
 // Calling Convention Implementation
 //===----------------------------------------------------------------------===//
@@ -73,6 +67,8 @@ static bool CC_Lemberg_Custom_ByVal(unsigned &ValNo, MVT &ValVT, MVT &LocVT,
 LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
   : TargetLowering(TM, new TargetLoweringObjectFileELF()) {
 
+    const LembergSubtarget *Subtarget = &TM.getSubtarget<LembergSubtarget>();
+
 	// const LembergRegisterInfo *LRI = (const LembergRegisterInfo *)TM.getRegisterInfo();
 	// setStackPointerRegisterToSaveRestore(LRI->getStackRegister());
 	setStackPointerRegisterToSaveRestore(Lemberg::R15);
@@ -89,10 +85,12 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	addRegisterClass(MVT::i32,   Lemberg::ARegisterClass);
 	addRegisterClass(MVT::i1,    Lemberg::CRegisterClass);
 	if (!TM.Options.UseSoftFloat) {
+	  if (Subtarget->hasSingleFPU()) {
 		addRegisterClass(MVT::f32,   Lemberg::FRegisterClass);
-		if (!SoftDouble) {
-			addRegisterClass(MVT::f64,   Lemberg::DRegisterClass);
-		}
+	  }
+	  if (Subtarget->hasDoubleFPU()) {
+		addRegisterClass(MVT::f64,   Lemberg::DRegisterClass);
+	  }
 	}
 
 	computeRegisterProperties();
