@@ -97,9 +97,10 @@ begin  -- behavior
 		variable always_imm : std_logic;
 		variable imm		: std_logic_vector(DATA_WIDTH-1 downto 0);
 		variable imm_ldi	: std_logic_vector(2*REG_BITS downto 0);
-		variable idx_stm	: std_logic_vector(INDEX_WIDTH downto 0);
-		variable idx_ldm	: std_logic_vector(INDEX_WIDTH downto 0);
-		variable idx		: std_logic_vector(INDEX_WIDTH downto 0);
+		variable idx_stm	: std_logic_vector(ADDR_WIDTH+1 downto 0);
+		variable idx_ldm	: std_logic_vector(ADDR_WIDTH+1 downto 0);
+		variable idx		: std_logic_vector(ADDR_WIDTH+1 downto 0);
+		variable const_idx	: std_logic;
 		variable use_glob	: std_logic;
 		variable glob		: std_logic_vector(ADDR_WIDTH+1 downto 0);
 		variable target		: std_logic_vector(PC_WIDTH-1 downto 0);
@@ -147,6 +148,14 @@ begin  -- behavior
 			else
 				memop(i).memD <= '0';
 			end if;
+			memop(i).rdaddrI <= bundle_reg(i).src2;
+			memop(i).fwdI <= '0';
+			if bundle_reg(i).src2 = "11111" then
+				memop(i).memI <= '1';
+			else
+				memop(i).memI <= '0';
+			end if;
+			memop(i).shamt <= (others => '0');
 
 			stallop(i).op <= STALL_NOP;
 			stallop(i).cond <= COND_FALSE;
@@ -177,11 +186,12 @@ begin  -- behavior
 			imm := std_logic_vector(resize(unsigned(bundle_reg(i).src2), DATA_WIDTH));
 			imm_ldi := bundle_reg(i).src2 & bundle_reg(i).dest & bundle_reg(i).imm;
 			
-			idx_stm := std_logic_vector(resize(unsigned(bundle_reg(i).dest), INDEX_WIDTH+1));
+			idx_stm := std_logic_vector(resize(unsigned(bundle_reg(i).dest), ADDR_WIDTH+2));
 			idx_ldm := std_logic_vector(resize(signed(bundle_reg(i).src2
 													  & bundle_reg(i).dest
-													  & bundle_reg(i).imm), INDEX_WIDTH+1));
+													  & bundle_reg(i).imm), ADDR_WIDTH+2));
 			idx := (others => '0');
+			const_idx := '1';
 			
 			use_glob := '0';
 			glob := std_logic_vector(resize(unsigned(bundle_reg(i).src1
@@ -212,7 +222,7 @@ begin  -- behavior
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					if bundle_reg(i).src1 = "11111"
 						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).cond <= bundle_reg(i).cond;				
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
@@ -223,23 +233,42 @@ begin  -- behavior
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					if bundle_reg(i).src1 = "11111"
 						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).cond <= bundle_reg(i).cond;				
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
 					end if;
 				when "000010" =>
+					op(i).op <= ALU_ADD;
+					op(i).cond <= bundle_reg(i).cond;
+					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					always_imm := '1';
+					imm := std_logic_vector(resize(signed(imm_ldi), DATA_WIDTH));
+					-- destination and source are the same
+					op(i).wraddr <= bundle_reg(i).src1;
+				when "000011" =>
+					op(i).op <= ALU_S1ADD;
+					op(i).cond <= bundle_reg(i).cond;
+					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
+				when "000100" =>
 					op(i).op <= ALU_S2ADD;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					if bundle_reg(i).src1 = "11111"
 						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).cond <= bundle_reg(i).cond;				
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
 					end if;
-				when "000011" =>
+				when "000101" =>
 					op(i).op <= ALU_AND;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
@@ -250,7 +279,7 @@ begin  -- behavior
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
 					end if;
-				when "000100" =>
+				when "000110" =>
 					op(i).op <= ALU_OR;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
@@ -261,7 +290,7 @@ begin  -- behavior
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
 					end if;
-				when "000101" =>
+				when "000111" =>
 					op(i).op <= ALU_XOR;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
@@ -273,85 +302,85 @@ begin  -- behavior
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
 					end if;
-				when "000110" =>
+				when "001000" =>
 					op(i).op <= ALU_SL;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					if bundle_reg(i).src1 = "11111"
 						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
-						stallop(i).cond <= bundle_reg(i).cond;				
-						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-						stallop(i).value <= (others => '0');
-					end if;
-				when "000111" =>
-					op(i).op <= ALU_SR;
-					op(i).cond <= bundle_reg(i).cond;
-					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					if bundle_reg(i).src1 = "11111"
-						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
-						stallop(i).cond <= bundle_reg(i).cond;				
-						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-						stallop(i).value <= (others => '0');
-					end if;
-				when "001000" =>
-					op(i).op <= ALU_SAR;
-					op(i).cond <= bundle_reg(i).cond;
-					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					if bundle_reg(i).src1 = "11111"
-						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).cond <= bundle_reg(i).cond;				
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
 					end if;
 				when "001001" =>
-					op(i).op <= ALU_RL;
+					op(i).op <= ALU_SR;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					if bundle_reg(i).src1 = "11111"
 						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).cond <= bundle_reg(i).cond;				
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
 					end if;
 				when "001010" =>
+					op(i).op <= ALU_SAR;
+					op(i).cond <= bundle_reg(i).cond;
+					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
+				when "001011" =>
+					op(i).op <= ALU_RL;
+					op(i).cond <= bundle_reg(i).cond;
+					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
+				when "001100" =>
 					op(i).op <= ALU_MUL;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
 					if bundle_reg(i).src1 = "11111"
 						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
-						stallop(i).cond <= bundle_reg(i).cond;				
-						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-						stallop(i).value <= (others => '0');
-					end if;
-				when "001011" =>
-					op(i).op <= ALU_CARR;
-					op(i).cond <= bundle_reg(i).cond;
-					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					if bundle_reg(i).src1 = "11111"
-						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
-						stallop(i).cond <= bundle_reg(i).cond;				
-						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-						stallop(i).value <= (others => '0');
-					end if;
-				when "001100" =>
-					op(i).op <= ALU_BORR;
-					op(i).cond <= bundle_reg(i).cond;
-					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					if bundle_reg(i).src1 = "11111"
-						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).cond <= bundle_reg(i).cond;				
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
 					end if;
 				when "001101" =>
+					op(i).op <= ALU_CARR;
+					op(i).cond <= bundle_reg(i).cond;
+					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
+				when "001110" =>
+					op(i).op <= ALU_BORR;
+					op(i).cond <= bundle_reg(i).cond;
+					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					if bundle_reg(i).src1 = "11111"
+						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).cond <= bundle_reg(i).cond;				
+						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						stallop(i).value <= (others => '0');
+					end if;
+				when "001111" =>
 					case bundle_reg(i).src1 is
 						when "00000" => op(i).op <= ALU_SEXT8;
 						when "00001" => op(i).op <= ALU_SEXT16;
@@ -374,10 +403,19 @@ begin  -- behavior
 					end case;
 					op(i).cond <= bundle_reg(i).cond;
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					if (bundle_reg(i).src1 = "01000" or bundle_reg(i).src1 = "01001"
-						or bundle_reg(i).src1 = "01010" or bundle_reg(i).src1 = "01011")
+					if (bundle_reg(i).src1 = "01000"
+						or bundle_reg(i).src1 = "01001"
+						or bundle_reg(i).src1 = "01010"
+						or bundle_reg(i).src1 = "01011")
 						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
+						if bundle_reg(i).src1 = "00100"
+							or bundle_reg(i).src1 = "00101"
+							or bundle_reg(i).src1 = "00110"
+							or bundle_reg(i).src1 = "00111" then
+							stallop(i).op <= STALL_FULLWAIT;
+						else
+							stallop(i).op <= STALL_WAIT;
+						end if;
 						stallop(i).cond <= bundle_reg(i).cond;				
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
@@ -399,7 +437,7 @@ begin  -- behavior
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
 					if bundle_reg(i).src1 = "11111"
 						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).cond <= bundle_reg(i).cond;				
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
@@ -420,7 +458,7 @@ begin  -- behavior
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					if bundle_reg(i).src1 = "11111"
 						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).cond <= bundle_reg(i).cond;				
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
@@ -431,7 +469,7 @@ begin  -- behavior
 					op(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					if bundle_reg(i).src1 = "11111"
 						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).cond <= bundle_reg(i).cond;				
 						stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						stallop(i).value <= (others => '0');
@@ -512,7 +550,7 @@ begin  -- behavior
 					jmpop(i).target1 <= std_logic_vector(unsigned(ztarget)
 														 +FETCH_WIDTH/BYTE_WIDTH);
 					if bundle_reg(i).src1 = "11111" then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).cond <= '1';
 						stallop(i).flag(0) <= '1';
 						stallop(i).value <= (others => '0');
@@ -524,7 +562,7 @@ begin  -- behavior
 						when "00000" =>
 							jmpop(i).op <= JMP_BRIND;
 							if bundle_reg(i).src1 = "11111" then
-								stallop(i).op <= STALL_WAIT;
+								stallop(i).op <= STALL_FULLWAIT;
 								stallop(i).cond <= bundle_reg(i).cond;				
 								stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 								stallop(i).value <= (others => '0');
@@ -534,7 +572,7 @@ begin  -- behavior
 								jmpop(i).op <= JMP_CALL;
 								memop(i).op <= MEM_CALL;
 								if bundle_reg(i).src1 = "11111" then
-									stallop(i).op <= STALL_WAIT;
+									stallop(i).op <= STALL_FULLWAIT;
 									stallop(i).value <= (others => '0');
 								else
 									stallop(i).op <= STALL_SOFTWAIT;
@@ -572,11 +610,13 @@ begin  -- behavior
 					memop(i).op <= MEM_STM_A;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					idx(INDEX_WIDTH downto 2) := idx_stm(INDEX_WIDTH-2 downto 0);
-					idx(1 downto 0) := "00";
+					memop(i).shamt <= "00010";
+					idx := idx_stm;
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					if bundle_reg(i).src1 = "11111"
-						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).value <= (others => '0');
+					elsif bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111" then
 						stallop(i).op <= STALL_WAIT;
 						stallop(i).value <= (others => '0');
 					else
@@ -590,11 +630,13 @@ begin  -- behavior
 					memop(i).op <= MEM_STMH_A;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					idx(INDEX_WIDTH downto 1) := idx_stm(INDEX_WIDTH-1 downto 0);
-					idx(0) := '0';
+					memop(i).shamt <= "00001";
+					idx := idx_stm;
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					if bundle_reg(i).src1 = "11111"
-						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).value <= (others => '0');
+					elsif bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111" then
 						stallop(i).op <= STALL_WAIT;
 						stallop(i).value <= (others => '0');
 					else
@@ -610,8 +652,10 @@ begin  -- behavior
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_stm;
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					if bundle_reg(i).src1 = "11111"
-						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).value <= (others => '0');
+					elsif bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111" then
 						stallop(i).op <= STALL_WAIT;
 						stallop(i).value <= (others => '0');
 					else
@@ -625,11 +669,13 @@ begin  -- behavior
 					memop(i).op <= MEM_STM_S;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					idx(INDEX_WIDTH downto 2) := idx_stm(INDEX_WIDTH-2 downto 0);
-					idx(1 downto 0) := "00";
+					memop(i).shamt <= "00010";
+					idx := idx_stm;
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					if bundle_reg(i).src1 = "11111"
-						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).value <= (others => '0');
+					elsif bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111" then
 						stallop(i).op <= STALL_WAIT;
 						stallop(i).value <= (others => '0');
 					else
@@ -643,11 +689,13 @@ begin  -- behavior
 					memop(i).op <= MEM_STMH_S;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					idx(INDEX_WIDTH downto 1) := idx_stm(INDEX_WIDTH-1 downto 0);
-					idx(0) := '0';
+					memop(i).shamt <= "00001";
+					idx := idx_stm;
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					if bundle_reg(i).src1 = "11111"
-						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).value <= (others => '0');
+					elsif bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111" then
 						stallop(i).op <= STALL_WAIT;
 						stallop(i).value <= (others => '0');
 					else
@@ -663,8 +711,10 @@ begin  -- behavior
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_stm;
 					imm := std_logic_vector(resize(signed(bundle_reg(i).src2), DATA_WIDTH));
-					if bundle_reg(i).src1 = "11111"
-						or (bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111") then
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).value <= (others => '0');
+					elsif bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111" then
 						stallop(i).op <= STALL_WAIT;
 						stallop(i).value <= (others => '0');
 					else
@@ -675,12 +725,12 @@ begin  -- behavior
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "100110" =>
-					memop(i).op <= MEM_WB_S;
+					memop(i).op <= MEM_LDM_B;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_ldm;
 					if bundle_reg(i).src1 = "11111" then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).value <= (others => '0');
 					else
 						stallop(i).op <= STALL_SOFTWAIT;
@@ -690,12 +740,12 @@ begin  -- behavior
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "100111" =>
-					memop(i).op <= MEM_LDM_B;
+					memop(i).op <= MEM_LDM_D;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_ldm;
 					if bundle_reg(i).src1 = "11111" then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).value <= (others => '0');
 					else
 						stallop(i).op <= STALL_SOFTWAIT;
@@ -705,12 +755,12 @@ begin  -- behavior
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "101000" =>
-					memop(i).op <= MEM_LDM_D;
+					memop(i).op <= MEM_LDM_F;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_ldm;
 					if bundle_reg(i).src1 = "11111" then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).value <= (others => '0');
 					else
 						stallop(i).op <= STALL_SOFTWAIT;
@@ -720,12 +770,12 @@ begin  -- behavior
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "101001" =>
-					memop(i).op <= MEM_LDM_F;
+					memop(i).op <= MEM_LDM_S;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 					idx := idx_ldm;
 					if bundle_reg(i).src1 = "11111" then
-						stallop(i).op <= STALL_WAIT;
+						stallop(i).op <= STALL_FULLWAIT;
 						stallop(i).value <= (others => '0');
 					else
 						stallop(i).op <= STALL_SOFTWAIT;
@@ -735,21 +785,6 @@ begin  -- behavior
 					stallop(i).cond <= bundle_reg(i).cond;				
 					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "101010" =>
-					memop(i).op <= MEM_LDM_S;
-					memop(i).cond <= bundle_reg(i).cond;
-					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					idx := idx_ldm;
-					if bundle_reg(i).src1 = "11111" then
-						stallop(i).op <= STALL_WAIT;
-						stallop(i).value <= (others => '0');
-					else
-						stallop(i).op <= STALL_SOFTWAIT;
-						stallop(i).value <= (others => '0');
-						stallop(i).value(0) <= '1';
-					end if;
-					stallop(i).cond <= bundle_reg(i).cond;				
-					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-				when "101011" =>
 					memop(i).op <= MEM_LDM_D;
 					memop(i).cond <= '1';
 					memop(i).flag(0) <= '1';
@@ -760,21 +795,38 @@ begin  -- behavior
 					stallop(i).flag(0) <= '1';
 					stallop(i).value <= (others => '0');
 					stallop(i).value(0) <= '1';
+				when "101011" =>
+					memop(i).op <= MEM_LDMR_F;
+					memop(i).cond <= bundle_reg(i).cond;
+					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					memop(i).shamt <= bundle_reg(i).dest;
+					const_idx := '0';
+					if bundle_reg(i).src1 = "11111"
+						or bundle_reg(i).src2 = "11111" then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
+					stallop(i).cond <= bundle_reg(i).cond;				
+					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "101100" =>
 					-- decode LDX
 					case bundle_reg(i).src1 is
 						when "00000" | "00001" | "00010" | "00011" => op(i).op <= ALU_LDCOND;
-						when "01001" | "01010" =>
+						when "00100" | "00101" =>
 							op(i).op <= ALU_LDMUL;
 							if bundle_reg(i).imm = '0' and bundle_reg(i).src2 = "11111" then
-								stallop(i).op <= STALL_WAIT;
+								stallop(i).op <= STALL_FULLWAIT;
 								stallop(i).value <= (others => '0');
 								stallop(i).cond <= bundle_reg(i).cond;				
 								stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 							end if;
-						when "01011" => op(i).op <= ALU_LDRB;
-						when "01100" => op(i).op <= ALU_LDRO;
-						when "01101" => op(i).op <= ALU_LDBA;
+						when "00110" => op(i).op <= ALU_LDRB;
+						when "00111" => op(i).op <= ALU_LDRO;
+						when "01000" => op(i).op <= ALU_LDBA;
 						when "10000" | "10001" | "10010" | "10011" |
 							 "10100" | "10101" | "10110" | "10111" |
 							 "11000" | "11001" | "11010" | "11011" |
@@ -796,9 +848,9 @@ begin  -- behavior
 				when "101101" =>		-- STX
 					case bundle_reg(i).dest is
 						when "00000" | "00001" | "00010" | "00011" => op(i).op <= ALU_STCOND;
-						when "01001" | "01010" => op(i).op <= ALU_STMUL;
-						when "01011" => op(i).op <= ALU_STRB;
-						when "01100" => op(i).op <= ALU_STRO;
+						when "00100" | "00101" => op(i).op <= ALU_STMUL;
+						when "00110" => op(i).op <= ALU_STRB;
+						when "00111" => op(i).op <= ALU_STRO;
 						when "10000" | "10001" | "10010" | "10011" |
 							 "10100" | "10101" | "10110" | "10111" |
 							 "11000" | "11001" | "11010" | "11011" |
@@ -899,6 +951,21 @@ begin  -- behavior
 					-- TODO: assert correct decoding
 					fpop(i).cond <= bundle_reg(i).cond;
 					fpop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+				when "101111" =>
+					memop(i).op <= MEM_WB_S;
+					memop(i).cond <= bundle_reg(i).cond;
+					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+					idx := idx_ldm;
+					if bundle_reg(i).src1 = "11111" then
+						stallop(i).op <= STALL_FULLWAIT;
+						stallop(i).value <= (others => '0');
+					else
+						stallop(i).op <= STALL_SOFTWAIT;
+						stallop(i).value <= (others => '0');
+						stallop(i).value(0) <= '1';
+					end if;
+					stallop(i).cond <= bundle_reg(i).cond;				
+					stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 				when "110000" | "110001" | "110010" | "110011" |
 					 "110100" | "110101" | "110110" | "110111" =>
 					op(i).op <= ALU_LDI;
@@ -915,12 +982,15 @@ begin  -- behavior
 			end case;
 			
 			op(i).rddata0 <= rddata(2*i);
+			op(i).rdmemd0 <= rddata(2*i);
 			if bundle_reg(i).imm = '1' or always_imm = '1' then
 				op(i).rddata1 <= imm;
+				op(i).rdmemd1 <= imm;
 				op(i).fwd1 <= '0';
 				op(i).mem1 <= '0';
 			else
 				op(i).rddata1 <= rddata(2*i+1);
+				op(i).rdmemd1 <= rddata(2*i+1);
 			end if;
 
 			if use_glob = '1' then
@@ -930,7 +1000,13 @@ begin  -- behavior
 			else
 				memop(i).address <= rddata(2*i)(ADDR_WIDTH+1 downto 0);				
 			end if;
-			memop(i).index <= idx;
+			if const_idx = '1' then
+				memop(i).index <= idx;
+				memop(i).memI <= '0';
+			else
+				memop(i).fwdI <= '1';
+				memop(i).index <= rddata(2*i+1)(ADDR_WIDTH+1 downto 0);
+			end if;
 			if bundle_reg(i).imm = '1' then
 				memop(i).wrdata <= imm;				
 			else

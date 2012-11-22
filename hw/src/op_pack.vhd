@@ -45,7 +45,7 @@ package op_pack is
 	constant COND_FALSE : std_logic := '0';
 
 	constant SYLLABLE_NOP : syllable_type :=
-		( "000100", (others => '1'), (others => '1'), (others => '1'),
+		( "000110", (others => '1'), (others => '1'), (others => '1'),
 		  '0', COND_FALSE, (others => '0'));
 
 	function to_syllable (
@@ -55,7 +55,7 @@ package op_pack is
 	function to_raw_op (syllable : syllable_type)
 		return std_logic_vector;	
 
-	type bundle_type is array (0 to CLUSTERS-1) of syllable_type;
+	type bundle_type is array (0 to MAX_CLUSTERS-1) of syllable_type;
 
 	-- TODO: define constants for ISA-level operation encoding
 	
@@ -68,6 +68,7 @@ package op_pack is
 	
 	type alu_type is (ALU_ADD,
 					  ALU_SUB,
+					  ALU_S1ADD,
 					  ALU_S2ADD,
 					  ALU_AND,
 					  ALU_OR,
@@ -121,21 +122,23 @@ package op_pack is
 	type op_type is
 	record
 		rddata0 : std_logic_vector(DATA_WIDTH-1 downto 0);
+		rdmemd0 : std_logic_vector(DATA_WIDTH-1 downto 0);
 		rdaddr0 : std_logic_vector(REG_BITS-1 downto 0);
-		mem0    : std_logic;
+		mem0	: std_logic;
 		rddata1 : std_logic_vector(DATA_WIDTH-1 downto 0);
+		rdmemd1 : std_logic_vector(DATA_WIDTH-1 downto 0);
 		rdaddr1 : std_logic_vector(REG_BITS-1 downto 0);
-		fwd1    : std_logic;
-		mem1    : std_logic;
+		fwd1	: std_logic;
+		mem1	: std_logic;
 		op		: alu_type;
 		wraddr	: std_logic_vector(REG_BITS-1 downto 0);
-		cond    : std_logic;
-		flag    : std_logic_vector(FLAG_COUNT-1 downto 0);
+		cond	: std_logic;
+		flag	: std_logic_vector(FLAG_COUNT-1 downto 0);
 	end record;
 
 	constant OP_NOP : op_type :=
-		((others => '0'), (others => '0'), '0',
-		 (others => '0'), (others => '0'), '0', '0',
+		((others => '0'), (others => '0'), (others => '0'), '0',
+		 (others => '0'), (others => '0'), (others => '0'), '0', '0',
 		 ALU_OR,
 		 (others => '0'),
 		 COND_FALSE, (others => '0'));
@@ -153,31 +156,34 @@ package op_pack is
 					  MEM_LDM_D,
 					  MEM_LDM_F,
 					  MEM_LDM_S,
+					  MEM_LDMR_F,
 					  MEM_WB_S,
 					  MEM_CALL,
 					  MEM_RET);
-
-	constant INDEX_WIDTH      : integer := 2*REG_BITS+1;
 
 	type memop_type is
 	record
 		address : std_logic_vector(ADDR_WIDTH+1 downto 0);
 		rdaddrA : std_logic_vector(REG_BITS-1 downto 0);
-		fwdA    : std_logic;
-		memA    : std_logic;
-		index   : std_logic_vector(INDEX_WIDTH downto 0);
-		op	    : mem_type;
-		wrdata  : std_logic_vector(DATA_WIDTH-1 downto 0);
+		fwdA	: std_logic;
+		memA	: std_logic;
+		index	: std_logic_vector(ADDR_WIDTH+1 downto 0);
+		rdaddrI : std_logic_vector(REG_BITS-1 downto 0);
+		fwdI	: std_logic;
+		memI	: std_logic;
+		shamt	: std_logic_vector(REG_BITS-1 downto 0);
+		op      : mem_type;
+		wrdata	: std_logic_vector(DATA_WIDTH-1 downto 0);
 		rdaddrD : std_logic_vector(REG_BITS-1 downto 0);
-		fwdD    : std_logic;
-		memD    : std_logic;
-		cond    : std_logic;
-		flag    : std_logic_vector(FLAG_COUNT-1 downto 0);		
+		fwdD	: std_logic;
+		memD	: std_logic;
+		cond	: std_logic;
+		flag	: std_logic_vector(FLAG_COUNT-1 downto 0);		
 	end record;
 
 	constant MEMOP_NOP : memop_type :=
 		((others => '0'), (others => '0'), '0', '0',
-		 (others => '0'),
+		 (others => '0'), (others => '0'), '0', '0', (others => '0'),
 		 MEM_NOP,
 		 (others => '0'), (others => '0'), '0', '0',
 		 COND_FALSE, (others => '0'));
@@ -186,14 +192,15 @@ package op_pack is
 
 	type stall_type is (STALL_NOP,
 						STALL_SOFTWAIT,
-						STALL_WAIT);
+						STALL_WAIT,
+						STALL_FULLWAIT);
 	
 	type stallop_type is
 	record
-		value   : std_logic_vector(RDY_CNT_WIDTH-1 downto 0);
-		op	    : stall_type;
-		cond    : std_logic;
-		flag    : std_logic_vector(FLAG_COUNT-1 downto 0);		
+		value	: std_logic_vector(RDY_CNT_WIDTH-1 downto 0);
+		op      : stall_type;
+		cond	: std_logic;
+		flag	: std_logic_vector(FLAG_COUNT-1 downto 0);		
 	end record;
 
 	constant STALLOP_NOP : stallop_type :=
@@ -221,14 +228,14 @@ package op_pack is
 	record
 		target0 : std_logic_vector(PC_WIDTH-1 downto 0);
 		target1 : std_logic_vector(PC_WIDTH-1 downto 0);
-		rddata  : std_logic_vector(PC_WIDTH-1 downto 0);
-		rdaddr  : std_logic_vector(REG_BITS-1 downto 0);
-		rdmem   : std_logic;
-		op	    : jmp_type;
+		rddata	: std_logic_vector(PC_WIDTH-1 downto 0);
+		rdaddr	: std_logic_vector(REG_BITS-1 downto 0);
+		rdmem	: std_logic;
+		op      : jmp_type;
 		zop     : cmp_type;
 		delayed : std_logic;
-		cond    : std_logic;
-		flag    : std_logic_vector(FLAG_COUNT-1 downto 0);		
+		cond	: std_logic;
+		flag	: std_logic_vector(FLAG_COUNT-1 downto 0);		
 	end record;
 
 	constant JMPOP_NOP : jmpop_type :=

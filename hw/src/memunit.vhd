@@ -75,7 +75,7 @@ architecture behavior of memunit is
 	signal wrdata    : std_logic_vector(DATA_WIDTH-1 downto 0);
 
 	signal stalloperation : STALL_TYPE;
-	signal ready          : std_logic;
+	signal ready, ready_reg : std_logic;
 
 	type addrvec_type is array (CLUSTERS-1 downto 0) of std_logic_vector(ADDR_WIDTH+1 downto 0);
 
@@ -119,7 +119,9 @@ begin  -- behavior
 			ba_reg <= (others => '0');
 			rb_reg <= (others => '0');
 			
-		elsif clk'event and clk = '1' then  -- rising clock edge
+			ready_reg <= '0';
+			
+		elsif clk'event and clk = '1' then	-- rising clock edge
 			imem_state_reg <= imem_state_next;
 			imem_addr_reg <= imem_addr_next;
 			imem_idx_reg <= imem_idx_next;
@@ -127,6 +129,8 @@ begin  -- behavior
 
 			ba_reg <= ba_next;
 			rb_reg <= rb_next;
+			
+			ready_reg <= ready;
 
 			assert imem_state_reg /= SIZE_RD
 				or unsigned(mem_in.rd_data(DATA_WIDTH-1 downto PC_WIDTH)) = 0
@@ -164,7 +168,8 @@ begin  -- behavior
 			end case;
 
 			addrvec(i) := std_logic_vector(signed(op(i).address)
-										   +signed(op(i).index));
+										   +SHIFT_LEFT(signed(op(i).index),
+													   to_integer(unsigned(op(i).shamt(1 downto 0)))));
 
 			-- addr+index must not cross memory area
 			-- addrvec(i)(ADDR_WIDTH-1+2 downto ADDR_WIDTH-AREAMUX_BITS+2) :=
@@ -292,6 +297,9 @@ begin  -- behavior
 			when MEM_LDM_F =>
 				mem_out.rd <= valid and ena_int;
 				mem_out.cache <= FULLASSOC;
+			when MEM_LDMR_F =>
+				mem_out.rd <= valid and ena_int;
+				mem_out.cache <= FULLASSOC;
 			when MEM_LDM_S =>
 				mem_out.rd <= valid and ena_int;
 				mem_out.cache <= STACK;
@@ -381,7 +389,7 @@ begin  -- behavior
 	end process async;
 
 	stall: process (stallop, fl_in, mem_in,
-					stalloperation, ready,
+					stalloperation, ready, ready_reg,
 					imem_state_reg)
 
 		variable idx : integer range 0 to CLUSTERS-1;
@@ -416,7 +424,7 @@ begin  -- behavior
 			end if;
 		end loop;  -- i
 
-		-- STALL_WAIT may override STALL_SOFT_WAIT
+		-- STALL_WAIT may override STALL_SOFTWAIT
 		for i in 0 to CLUSTERS-1 loop
 			case stallop(i).cond is
 				when COND_TRUE =>
@@ -435,6 +443,25 @@ begin  -- behavior
 			end case;
 		end loop;  -- i
 
+		-- STALL_FULLWAIT may override STALL_WAIT
+		for i in 0 to CLUSTERS-1 loop
+			case stallop(i).cond is
+				when COND_TRUE =>
+					if unsigned(stallop(i).flag and fl_in) /= 0 then
+						if stallop(i).op = STALL_FULLWAIT then
+							idx := i;
+						end if;
+					end if;
+				when COND_FALSE =>
+					if unsigned(stallop(i).flag and not fl_in) /= 0 then
+						if stallop(i).op = STALL_FULLWAIT then
+							idx := i;
+						end if;
+					end if;
+				when others => null;
+			end case;
+		end loop;  -- i
+
 		stalloperation <= stallop(idx).op;
 		ready <= readyvec(idx);
 
@@ -445,6 +472,10 @@ begin  -- behavior
 			when STALL_SOFTWAIT | STALL_WAIT =>
 				if valid = '1' then
 					ena_int <= ready;
+				end if;
+			when STALL_FULLWAIT =>
+				if valid = '1' then
+					ena_int <= ready and ready_reg;
 				end if;
 			when others =>
 				assert false report "Invalid STALLUNIT operation" severity error;

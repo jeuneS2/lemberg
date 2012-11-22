@@ -46,7 +46,7 @@ architecture behavior of inflate is
 	--pragma synthesis off
 	signal nop_cnt : integer := 0;
 	signal ena_cnt : integer := 0;
-    type bundle_cnt_type is array (0 to CLUSTERS) of integer;
+    type bundle_cnt_type is array (0 to MAX_CLUSTERS) of integer;
     signal bundle_cnt : bundle_cnt_type := (others => 0);    
 	--pragma synthesis on
 	
@@ -82,15 +82,15 @@ begin  -- behavior
 		bundle <= BUNDLE_NOP;
 
 		for i in 0 to CLUSTERS-1 loop
-			syll(i) := to_syllable(raw_reg(CLUSTERS+i*SYLLABLE_WIDTH
-										   to CLUSTERS+(i+1)*SYLLABLE_WIDTH-1));
+			syll(i) := to_syllable(raw_reg(MAX_CLUSTERS+i*SYLLABLE_WIDTH
+										   to MAX_CLUSTERS+(i+1)*SYLLABLE_WIDTH-1));
 		end loop;  -- i
 		
 		if ENABLE_XNOP and nop_cnt_reg /= 0 then
 			nop_cnt_next <= nop_cnt_reg-1;
 		else
 			nop_cnt_next <= (others => '0');
-			case raw_reg(0 to CLUSTERS-1) is
+			case raw_reg(0 to MAX_CLUSTERS-1) is
 				when "0000" =>
 					nop_cnt_next <= unsigned(raw_reg(CLUSTERS to 8-1));
 				when "0001" =>
@@ -161,11 +161,11 @@ begin  -- behavior
 		if clk'event and clk = '1' then  -- rising clock edge
 			if ena = '1' then
 				if flush = '0' then
-					if raw(0 to CLUSTERS-1) = "0000" or
+					if raw(0 to MAX_CLUSTERS-1) = "0000" or
 						(ENABLE_XNOP and nop_cnt_reg /= 0) then
 						nop_cnt <= nop_cnt + 1;
 					end if;
-                    case raw_reg(0 to CLUSTERS-1) is
+                    case raw(0 to MAX_CLUSTERS-1) is
                         when "0000" =>
                             bundle_cnt(0) <= bundle_cnt(0)+1;
                         when "0001" | "0010" | "0100" | "1000" =>

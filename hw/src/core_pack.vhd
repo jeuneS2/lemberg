@@ -22,7 +22,7 @@ use ieee.std_logic_1164.all;
 package core_pack is
 
 	-- version number
-	constant VERSION : std_logic_vector(31 downto 0) := X"20120312";
+	constant VERSION : std_logic_vector(31 downto 0) := X"20121122";
 	-- speed
 	constant CLOCK_FREQ : integer := 66666667;
 
@@ -34,10 +34,11 @@ package core_pack is
 	constant DATA_WIDTH       : integer := 2**DATA_WIDTH_BITS;
 
 	constant BYTE_WIDTH       : integer := 8;
-	constant BYTES_PER_WORD : integer := (DATA_WIDTH+BYTE_WIDTH-1)/BYTE_WIDTH;
+	constant BYTES_PER_WORD   : integer := (DATA_WIDTH+BYTE_WIDTH-1)/BYTE_WIDTH;
 		
 	-- number of clusters
-	constant CLUSTERS         : integer := 4;
+	constant MAX_CLUSTERS     : integer := 4;
+	constant CLUSTERS         : integer := 2;
 
 	-- regfile properties
 	constant REG_BITS         : integer := 5;

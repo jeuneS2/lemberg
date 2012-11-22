@@ -25,18 +25,18 @@ use work.op_pack.all;
 entity fetch is
 	
 	port (
-		clk	     : in  std_logic;
-		reset    : in  std_logic;
-		raw_in   : in  std_logic_vector(0 to FETCHBUF_WIDTH-1);
-		ena      : in  std_logic;
-		xnop     : in  std_logic;
-		raw_out  : out std_logic_vector(0 to FETCH_WIDTH-1);
-		pc_out   : out std_logic_vector(PC_WIDTH-1 downto 0);
+		clk		 : in  std_logic;
+		reset	 : in  std_logic;
+		raw_in	 : in  std_logic_vector(0 to FETCHBUF_WIDTH-1);
+		ena		 : in  std_logic;
+		xnop	 : in  std_logic;
+		raw_out	 : out std_logic_vector(0 to FETCH_WIDTH-1);
+		pc_out	 : out std_logic_vector(PC_WIDTH-1 downto 0);
 		vpc0_out : out std_logic_vector(PC_WIDTH-1 downto 0);
 		vpc1_out : out std_logic_vector(PC_WIDTH-1 downto 0);
-		pc_wr    : in  std_logic;
-		pc0_in   : in  std_logic_vector(PC_WIDTH-1 downto 0);
-		pc1_in   : in  std_logic_vector(PC_WIDTH-1 downto 0));
+		pc_wr	 : in  std_logic;
+		pc0_in	 : in  std_logic_vector(PC_WIDTH-1 downto 0);
+		pc1_in	 : in  std_logic_vector(PC_WIDTH-1 downto 0));
 
 end fetch;
 
@@ -55,25 +55,26 @@ architecture behavior of fetch is
 	
 	signal raw_reg, raw_next : std_logic_vector(0 to FETCHBUF_WIDTH-1);
 
-	type maskvec_type is array (0 to FETCHBUF_BYTES-1) of std_logic_vector(CLUSTERS-1 downto 0);
-	type opcntvec_type is array (0 to FETCHBUF_BYTES-1) of integer range 0 to CLUSTERS;
+	type maskvec_type is array (0 to FETCHBUF_BYTES-1) of std_logic_vector(MAX_CLUSTERS-1 downto 0);
+	type opcntvec_type is array (0 to FETCHBUF_BYTES-1) of integer range 0 to MAX_CLUSTERS;
 	
-	type startvec_type is array (0 to CLUSTERS) of unsigned(FETCHBUF_BITS-1 downto 0);
-	type pcvec_type is array (0 to CLUSTERS) of unsigned(PC_WIDTH-1 downto 0);
+	type startvec_type is array (0 to MAX_CLUSTERS) of unsigned(FETCHBUF_BITS-1 downto 0);
+	type pcvec_type is array (0 to MAX_CLUSTERS) of unsigned(PC_WIDTH-1 downto 0);
 
 	-- precomputed values for next PC value
-	signal vpc0_inc, vpc1_inc : unsigned(PC_WIDTH-1 downto 0);
+	signal vpc0_inc, vpc0_inc_next : unsigned(PC_WIDTH-1 downto 0);
+	signal vpc1_inc, vpc1_inc_next : unsigned(PC_WIDTH-1 downto 0);
 	signal vpc0_stall, vpc1_stall : unsigned(PC_WIDTH-1 downto 0);
 
 begin  -- behavior
 
-	assert (CLUSTERS+CLUSTERS*SYLLABLE_WIDTH <= FETCH_WIDTH)
+	assert (MAX_CLUSTERS+CLUSTERS*SYLLABLE_WIDTH <= FETCH_WIDTH)
 		report "Fetch width too small for length of bundles"
 		severity error;
 	
 	sync: process (clk, reset)
 	begin  -- process sync
-		if reset = '0' then  			-- asynchronous reset (active low)
+		if reset = '0' then				-- asynchronous reset (active low)
 
 			vpc0_reg <= to_unsigned(0, PC_WIDTH);
 			vpc1_reg <= to_unsigned(FETCHBUF_BYTES/2, PC_WIDTH);
@@ -88,7 +89,7 @@ begin  -- behavior
 			vpc0_stall <= (others => '0');
 			vpc1_stall <= (others => '0');
 			
-		elsif clk'event and clk = '1' then  -- rising clock edge
+		elsif clk'event and clk = '1' then	-- rising clock edge
 
 			vpc0_reg <= vpc0_next;
 			vpc1_reg <= vpc1_next;
@@ -99,8 +100,8 @@ begin  -- behavior
 			raw_reg <= raw_next;
 
 			-- precompute values
-			vpc0_inc <= vpc0_next+start_next;
-			vpc1_inc <= vpc1_next+start_next;
+			vpc0_inc <= vpc0_inc_next;
+			vpc1_inc <= vpc1_inc_next;
 			vpc0_stall <= vpc0_next+fetch_next;
 			vpc1_stall <= vpc1_next+fetch_next;
 			
@@ -115,19 +116,19 @@ begin  -- behavior
 					vpc0_stall, vpc1_stall)
 		variable maskvec : maskvec_type;
 		variable opcntvec : opcntvec_type;
-		variable opcnt : integer range 0 to CLUSTERS;
+		variable opcnt : integer range 0 to MAX_CLUSTERS;
 		variable startvec : startvec_type;
 		variable pcvec : pcvec_type;
 
 	begin  -- process width
 
 		for i in 0 to CLUSTERS loop			
-			startvec(i) := start_pos + to_unsigned((CLUSTERS+i*SYLLABLE_WIDTH+BYTE_WIDTH-1)/BYTE_WIDTH, FETCHBUF_BITS);
-			pcvec(i) := pc_reg + to_unsigned((CLUSTERS+i*SYLLABLE_WIDTH+BYTE_WIDTH-1)/BYTE_WIDTH, FETCHBUF_BITS);
+			startvec(i) := start_pos + to_unsigned((MAX_CLUSTERS+i*SYLLABLE_WIDTH+BYTE_WIDTH-1)/BYTE_WIDTH, FETCHBUF_BITS);
+			pcvec(i) := pc_reg + to_unsigned((MAX_CLUSTERS+i*SYLLABLE_WIDTH+BYTE_WIDTH-1)/BYTE_WIDTH, FETCHBUF_BITS);
 		end loop;  -- i
 
 		for i in 0 to FETCHBUF_BYTES-1 loop
-			maskvec(i) := raw_next(i*BYTE_WIDTH to i*BYTE_WIDTH+CLUSTERS-1);
+			maskvec(i) := raw_next(i*BYTE_WIDTH to i*BYTE_WIDTH+MAX_CLUSTERS-1);
 			opcntvec(i) := count_bits(maskvec(i));			
 		end loop;  -- i
 		opcnt := opcntvec(to_integer(start_pos));
@@ -145,6 +146,8 @@ begin  -- behavior
 			fetch_next <= fetch_pos;
 			vpc0_next <= vpc0_reg+FETCHBUF_BYTES;
 			vpc1_next <= vpc1_reg+FETCHBUF_BYTES;
+			vpc0_inc_next <= vpc0_reg+FETCHBUF_BYTES+startvec(opcnt);
+			vpc1_inc_next <= vpc1_reg+FETCHBUF_BYTES+startvec(opcnt);
 			vpc0_out <= std_logic_vector(vpc0_inc+FETCHBUF_BYTES);
 			vpc1_out <= std_logic_vector(vpc1_inc+FETCHBUF_BYTES);
 		elsif fetch_pos > start_pos then
@@ -155,6 +158,8 @@ begin  -- behavior
 			end loop;  -- i
 			vpc0_next <= vpc0_reg+FETCHBUF_BYTES;
 			vpc1_next <= vpc1_reg+FETCHBUF_BYTES;
+			vpc0_inc_next <= vpc0_reg+FETCHBUF_BYTES+startvec(opcnt);
+			vpc1_inc_next <= vpc1_reg+FETCHBUF_BYTES+startvec(opcnt);
 			vpc0_out <= std_logic_vector(vpc0_inc+FETCHBUF_BYTES);
 			vpc1_out <= std_logic_vector(vpc1_inc+FETCHBUF_BYTES);
 		else
@@ -165,6 +170,8 @@ begin  -- behavior
 			end loop;  -- i
 			vpc0_next <= vpc0_reg;
 			vpc1_next <= vpc1_reg;
+			vpc0_inc_next <= vpc0_reg+startvec(opcnt);
+			vpc1_inc_next <= vpc1_reg+startvec(opcnt);
 			vpc0_out <= std_logic_vector(vpc0_inc);
 			vpc1_out <= std_logic_vector(vpc1_inc);
 		end if;
@@ -181,6 +188,9 @@ begin  -- behavior
 			pc_next <= unsigned(pc0_in);
 			vpc0_next <= unsigned(pc0_in(PC_WIDTH-1 downto FETCHBUF_BITS)) & to_unsigned(0, FETCHBUF_BITS);
 			vpc1_next <= unsigned(pc0_in(PC_WIDTH-1 downto FETCHBUF_BITS)) & to_unsigned(FETCHBUF_BYTES/2, FETCHBUF_BITS);
+			vpc0_inc_next <= unsigned(pc0_in);
+			vpc1_inc_next <= unsigned(pc0_in)+FETCHBUF_BYTES/2;
+			
 			vpc0_out <= pc0_in;
 			vpc1_out <= pc1_in;
 		end if;
@@ -196,6 +206,8 @@ begin  -- behavior
 			pc_next <= pc_reg;
 			vpc0_next <= vpc0_reg;
 			vpc1_next <= vpc1_reg;
+			vpc0_inc_next <= vpc0_reg+start_pos;
+			vpc1_inc_next <= vpc1_reg+start_pos;
 			vpc0_out <= std_logic_vector(vpc0_stall);
 			vpc1_out <= std_logic_vector(vpc1_stall);
 		end if;
@@ -204,14 +216,14 @@ begin  -- behavior
 
 	mux: process (raw_next, start_pos)
 	begin  -- process mux
-        for i in 0 to FETCH_WIDTH-1 loop
-            -- wrap around
-            if to_integer(start_pos*BYTE_WIDTH)+i < FETCHBUF_WIDTH then
-                raw_out(i) <= raw_next(to_integer(start_pos*BYTE_WIDTH)+i);
-            else
-                raw_out(i) <= raw_next(to_integer(start_pos*BYTE_WIDTH)+i-FETCHBUF_WIDTH);
-            end if;
-        end loop;  -- i
+		for i in 0 to FETCH_WIDTH-1 loop
+			-- wrap around
+			if to_integer(start_pos*BYTE_WIDTH)+i < FETCHBUF_WIDTH then
+				raw_out(i) <= raw_next(to_integer(start_pos*BYTE_WIDTH)+i);
+			else
+				raw_out(i) <= raw_next(to_integer(start_pos*BYTE_WIDTH)+i-FETCHBUF_WIDTH);
+			end if;
+		end loop;  -- i
 	end process mux;
 	
 end behavior;

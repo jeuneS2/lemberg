@@ -49,6 +49,7 @@ end forward;
 
 architecture behavior of forward is
 
+	signal memdata_reg : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal wrdata_reg : reg_wrdata_type;
 	signal op_reg : op_arr_type;
 	signal memop_reg : memop_arr_type;
@@ -60,6 +61,7 @@ architecture behavior of forward is
 	signal op_fwd1_reg, op_fwd1_next : fwd_mux_type;
 	signal memop_fwdA_reg, memop_fwdA_next : fwd_mux_type;
 	signal memop_fwdD_reg, memop_fwdD_next : fwd_mux_type;
+	signal memop_fwdI_reg, memop_fwdI_next : fwd_mux_type;
 	signal jmpop_fwd_reg, jmpop_fwd_next : fwd_mux_type;
 	
 begin  -- behavior
@@ -67,12 +69,14 @@ begin  -- behavior
 	sync: process (clk, reset)
 	begin  -- process sync
 		if reset = '0' then				-- asynchronous reset (active low)
+			memdata_reg <= (others => '0');
 			wrdata_reg <= (others => (others => '0'));
 
 			op_fwd0_reg <= (others => (others => '0'));
 			op_fwd1_reg <= (others => (others => '0'));
 			memop_fwdA_reg <= (others => (others => '0'));
 			memop_fwdD_reg <= (others => (others => '0'));
+			memop_fwdI_reg <= (others => (others => '0'));
 			jmpop_fwd_reg <= (others => (others => '0'));
 			
 			for i in 0 to CLUSTERS-1 loop
@@ -92,6 +96,8 @@ begin  -- behavior
 			memop_reg(0).address(ADDR_WIDTH-1+2 downto ADDR_WIDTH-AREAMUX_BITS+2) <= IO_SELECT;
 
 		elsif clk'event and clk = '1' then	-- rising clock edge
+			
+			memdata_reg <= memdata;
 
 			if ena = '1' then				 
 				wrdata_reg <= wrdata;
@@ -100,6 +106,7 @@ begin  -- behavior
 				op_fwd1_reg <= op_fwd1_next;
 				memop_fwdA_reg <= memop_fwdA_next;
 				memop_fwdD_reg <= memop_fwdD_next;
+				memop_fwdI_reg <= memop_fwdI_next;
 				jmpop_fwd_reg <= jmpop_fwd_next;
 				
 				op_reg <= op_in;
@@ -126,6 +133,7 @@ begin  -- behavior
 		op_fwd1_next <= (others => (others => '0'));		
 		memop_fwdA_next <= (others => (others => '0'));
 		memop_fwdD_next <= (others => (others => '0'));		   
+		memop_fwdI_next <= (others => (others => '0'));		   
 		jmpop_fwd_next <= (others => (others => '0'));
 		
 		for i in 0 to CLUSTERS-1 loop
@@ -179,6 +187,19 @@ begin  -- behavior
 					end loop;  -- k
 				end if; 
 			end if;
+			if memop_in(i).fwdI = '1' then
+                if memop_in(i).rdaddrI(REG_BITS-1) = '1' then
+                    if wren(i) = '1' and wraddr(i) = memop_in(i).rdaddrI then
+                        memop_fwdI_next(i)(i) <= '1';
+                    end if;
+                else
+                    for k in 0 to CLUSTERS-1 loop
+                        if wren(k) = '1' and wraddr(k) = memop_in(i).rdaddrI then
+                            memop_fwdI_next(i)(k) <= '1';
+                        end if;
+                    end loop;  -- k
+                end if;
+            end if;
 			if jmpop_in(i).rdaddr(REG_BITS-1) = '1' then
 				if wren(i) = '1' and wraddr(i) = jmpop_in(i).rdaddr then
 					jmpop_fwd_next(i)(i) <= '1';
@@ -192,8 +213,10 @@ begin  -- behavior
 			end if;		   end loop;  -- i
 	end process comp;
 	
-	fwd: process (wrdata_reg, memdata,
-				  op_fwd0_reg, op_fwd1_reg, memop_fwdA_reg, memop_fwdD_reg, jmpop_fwd_reg,
+	fwd: process (wrdata_reg, memdata_reg, memdata,
+				  op_fwd0_reg, op_fwd1_reg,
+                  memop_fwdA_reg, memop_fwdD_reg, memop_fwdI_reg,
+                  jmpop_fwd_reg,
 				  op_reg, memop_reg, stallop_reg, jmpop_reg)
 	begin  -- process fwd
 		op_out <= op_reg;
@@ -203,25 +226,29 @@ begin  -- behavior
 
 		for i in 0 to CLUSTERS-1 loop
 			if op_reg(i).mem0 = '1' then
-				op_out(i).rddata0 <= memdata;
+				op_out(i).rddata0 <= memdata_reg;
+				op_out(i).rdmemd0 <= memdata;
 			else
 				for k in 0 to CLUSTERS-1 loop
 					if op_fwd0_reg(i)(k) = '1' then
 						op_out(i).rddata0 <= wrdata_reg(k);
+						op_out(i).rdmemd0 <= wrdata_reg(k);
 					end if;
 				end loop;  -- k
 			end if; 
 			if op_reg(i).mem1 = '1' then
-				op_out(i).rddata1 <= memdata;
+				op_out(i).rddata1 <= memdata_reg;
+				op_out(i).rdmemd1 <= memdata;
 			else
 				for k in 0 to CLUSTERS-1 loop
 					if op_fwd1_reg(i)(k) = '1' then
 						op_out(i).rddata1 <= wrdata_reg(k);
+						op_out(i).rdmemd1 <= wrdata_reg(k);
 					end if;
 				end loop;  -- k
 			end if; 
 			if memop_reg(i).memA = '1' then
-				memop_out(i).address <= memdata(ADDR_WIDTH+1 downto 0);
+				memop_out(i).address <= memdata_reg(ADDR_WIDTH+1 downto 0);
 			else
 				for k in 0 to CLUSTERS-1 loop
 					if memop_fwdA_reg(i)(k) = '1' then
@@ -238,8 +265,17 @@ begin  -- behavior
 					end if;
 				end loop;  -- k
 			end if;
+			if memop_reg(i).memI = '1' then
+				memop_out(i).index <= memdata_reg(ADDR_WIDTH+1 downto 0);
+			else
+				for k in 0 to CLUSTERS-1 loop
+					if memop_fwdI_reg(i)(k) = '1' then
+						memop_out(i).index <= wrdata_reg(k)(ADDR_WIDTH+1 downto 0);
+					end if;
+				end loop;  -- k
+			end if;
 			if jmpop_reg(i).rdmem = '1' then
-				jmpop_out(i).rddata <= memdata(PC_WIDTH-1 downto 0);
+				jmpop_out(i).rddata <= memdata_reg(PC_WIDTH-1 downto 0);
 			else
 				for k in 0 to CLUSTERS-1 loop
 					if jmpop_fwd_reg(i)(k) = '1' then
