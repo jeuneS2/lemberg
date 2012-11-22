@@ -431,9 +431,23 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 		unsigned ExtOp = (LD->getMemoryVT() == MVT::i16
 						  ? (ExtType == ISD::SEXTLOAD ? 0 : 1)
 						  : (ExtType == ISD::SEXTLOAD ? 2 : 3));
-		SDValue AlignOff = (LD->getAlignment() < 4
-							? LD->getBasePtr()
-							: DAG.getConstant(0, MVT::i32));
+		SDValue AlignOff = LD->getBasePtr();
+		// Simplify address for alignment/extension
+		if (LD->getAlignment() > 4) {
+		  AlignOff = DAG.getConstant(0, MVT::i32);
+		} else if (DAG.isBaseWithConstantOffset(LD->getBasePtr())) {
+		  ConstantSDNode *OffNode = dyn_cast<ConstantSDNode>
+			(LD->getBasePtr().getOperand(1).getNode());
+		  int64_t Off = OffNode->getSExtValue();
+		  if ((Off % 4) == 0) {
+			AlignOff = LD->getBasePtr().getOperand(0);
+		  } else if (isInt<11>(Off)) {
+			AlignOff = DAG.getNode(ISD::ADD, DL, MVT::i32,
+								   LD->getBasePtr().getOperand(0),
+								   DAG.getConstant(Off % 4, MVT::i32));
+		  }
+		}
+
 		SDVTList MemExtTys = DAG.getVTList(MVT::i32, MVT::Other, MVT::Glue);
 		Chain = DAG.getNode(LembergISD::MemExtend, DL, MemExtTys,
 							Chain, DAG.getRegister(Lemberg::R31, MVT::i32),
