@@ -68,6 +68,27 @@ namespace llvm {
 
     virtual SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const;
 
+	virtual bool isLegalAddressingMode(const AddrMode &AM, Type *Ty) const {
+	  if (!isInt<11>(AM.BaseOffs)) return false;
+	  if (AM.BaseGV) return false;
+	  switch (AM.Scale) {
+	  case 0: return true;
+	  case 1: case 2: case 4: case 8:
+		if (AM.BaseOffs) return false;
+		return true;
+	  default: return false;
+	  }
+	  return true;
+	}
+
+	virtual bool isLegalICmpImmediate(int64_t val) const {
+	  return isInt<5>(val);
+	}
+
+	virtual bool isLegalIAddImmediate(int64_t val) const {
+	  return isInt<6>(val);
+	}
+
   private:
     SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
 	SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
