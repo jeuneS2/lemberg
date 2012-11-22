@@ -38,7 +38,7 @@ package core_pack is
 		
 	-- number of clusters
 	constant MAX_CLUSTERS     : integer := 4;
-	constant CLUSTERS         : integer := 2;
+	constant CLUSTERS         : integer := 4;
 
 	-- regfile properties
 	constant REG_BITS         : integer := 5;
