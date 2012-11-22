@@ -56,7 +56,6 @@ LembergRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
 	  R0_27, R1_27, R2_27, R3_27,
 	  R0_28, R1_28, R2_28, R3_28,
 	  R0_29, R1_29, R2_29, R3_29,
-	  R0_30, R1_30, R2_30, R3_30,
 	  F10, F11, F12, F13, F14, F15,
 	  RB, RO,
 	  0 };
@@ -459,7 +458,6 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  }
 			  break;
 		  case Lemberg::LOAD32s_xpseudo:
-			  LastLargeFrame->Register = 0;
 			  BuildMI(MBB, II, DL, TII.get(Lemberg::LOAD32spi))
 				  .addImm(-1).addReg(0)
 				  .addReg(getFrameRegister(MF))
@@ -694,8 +692,8 @@ unsigned LembergRegisterInfo::getEmergencyRegister() const {
 	static const unsigned EmergencyRegs [] =
 		{ Lemberg::R0_30, Lemberg::R1_30, Lemberg::R2_30, Lemberg::R3_30 };
 
-	static int EmergencyCounter = 0;
-	if (++EmergencyCounter >= 4) {
+	static unsigned EmergencyCounter = 0;
+	if (++EmergencyCounter >= Subtarget.getClusters()) {
 		EmergencyCounter = 0;
 	}
 

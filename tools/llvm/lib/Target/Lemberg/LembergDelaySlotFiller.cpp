@@ -30,8 +30,6 @@ STATISTIC(NowSlots, "Number of non-delayed branches");
 
 namespace {
 
-  static const unsigned ClusterCount = 4;
-
   struct Filler : public MachineFunctionPass {
 
     TargetMachine &TM;
@@ -74,13 +72,15 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 
 	MachineBasicBlock::iterator insertII = next(II);
 
+	unsigned ClusterCount = TM.getSubtarget<LembergSubtarget>().getClusters();
+
 	unsigned Opcode = II->getOpcode();
 
-	unsigned maxSlots = 2;
+	unsigned maxSlots = LembergSubtarget::DelaySlots;
 	if (Opcode == Lemberg::CALL
 		|| Opcode == Lemberg::CALLga
 		|| Opcode == Lemberg::RET) {
-		maxSlots = 3;
+		maxSlots = LembergSubtarget::DelaySlots+1;
 	}
 	if (Opcode == Lemberg::JUMPp) {
 		maxSlots = 0;

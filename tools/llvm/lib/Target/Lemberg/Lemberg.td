@@ -30,8 +30,20 @@ def LembergInstrInfo : InstrInfo { }
 // Lemberg Subtarget features
 //===----------------------------------------------------------------------===//
 
-def DUMMY_FEATURE : SubtargetFeature<"dummy", "dummy_feature", "true",
-									 "Dummy subtarget feature">;
+def FeatureSingle : SubtargetFeature<"fpu-single", "HasSingleFPU", "true",
+									 "Enable single-precision FPU">;
+def FeatureDouble : SubtargetFeature<"fpu-double", "HasDoubleFPU", "true",
+									 "Enable double-precision FPU",
+									 [FeatureSingle]>;
+
+def Feature1Way : SubtargetFeature<"1way", "Clusters", "1",
+								   "Enable 1 cluster">;
+def Feature2Way : SubtargetFeature<"2way", "Clusters", "2",
+								   "Enable 2 clusters">;
+def Feature3Way : SubtargetFeature<"3way", "Clusters", "3",
+								   "Enable 3 clusters">;
+def Feature4Way : SubtargetFeature<"4way", "Clusters", "4",
+								   "Enable 4 clusters">;
 
 //===----------------------------------------------------------------------===//
 // Lemberg processors supported.
@@ -40,7 +52,9 @@ def DUMMY_FEATURE : SubtargetFeature<"dummy", "dummy_feature", "true",
 class Proc<string Name, list<SubtargetFeature> Features>
  : Processor<Name, LembergItineraries, Features>;
 
-def : Proc<"lemberg", []>;
+def : Proc<"lemberg", [FeatureSingle,FeatureDouble,Feature4Way]>;
+
+def : Proc<"lemberg-minimal", [Feature1Way]>;
 
 def Lemberg : Target {
   let InstructionSet = LembergInstrInfo;

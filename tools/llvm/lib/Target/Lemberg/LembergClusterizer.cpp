@@ -33,15 +33,13 @@ STATISTIC(NumGlobal, "Number of global virtual registers");
 
 namespace {
 
-	static const unsigned ClusterCount = 4;
-
-	static const TargetRegisterClass *Clusters [ClusterCount] =
+	static const TargetRegisterClass *Clusters [LembergSubtarget::MaxClusters] =
 		{ Lemberg::LG0RegisterClass, Lemberg::LG1RegisterClass,
 		  Lemberg::LG2RegisterClass, Lemberg::LG3RegisterClass };
-	static const TargetRegisterClass *ImmClusters [ClusterCount] =
+	static const TargetRegisterClass *ImmClusters [LembergSubtarget::MaxClusters] =
 		{ Lemberg::LG0ImmRegisterClass, Lemberg::LG1ImmRegisterClass,
 		  Lemberg::LG2ImmRegisterClass, Lemberg::LG3ImmRegisterClass };
-	static const TargetRegisterClass *MulClusters [ClusterCount] =
+	static const TargetRegisterClass *MulClusters [LembergSubtarget::MaxClusters] =
 		{ Lemberg::M0RegisterClass, Lemberg::M1RegisterClass,
 		  Lemberg::M2RegisterClass, Lemberg::M3RegisterClass };
 
@@ -86,6 +84,11 @@ namespace {
 				if (classes[lhs] != Lemberg::MulRegisterClass
 					&& classes[rhs] == Lemberg::MulRegisterClass) {
 					return true;
+				}
+				// sort multiplication results by register number
+				if (classes[lhs] == Lemberg::MulRegisterClass
+					&& classes[rhs] == Lemberg::MulRegisterClass) {
+				    return lhs > rhs;
 				}
 				// big immediates come next
 				if (classes[lhs] == Lemberg::AImmRegisterClass
@@ -162,7 +165,7 @@ static bool compatibleClass(const TargetRegisterClass *A, const TargetRegisterCl
 
 	// general purpose clusters are compatible with mul clusters
 	int ClusterA = -1, ClusterB = -1;
-	for (unsigned i = 0; i < ClusterCount; i++) {
+	for (unsigned i = 0; i < LembergSubtarget::MaxClusters; i++) {
 		if (A == Clusters[i] || A == ImmClusters[i] || A == MulClusters[i]) {
 			ClusterA = i;
 		}
@@ -240,6 +243,7 @@ bool Clusterizer::runOnMachineFunction(MachineFunction &F)
 	
 	buildNeighborhood(F, MRI);
 
+	unsigned ClusterCount = TM.getSubtarget<LembergSubtarget>().getClusters();
 	unsigned tryCluster = 0;
 
 	// traverse regs sorted by neighborhood size

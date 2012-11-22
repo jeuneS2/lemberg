@@ -36,8 +36,10 @@ namespace llvm {
   }
 
   class LembergSubtarget : public LembergGenSubtargetInfo {
-	bool dummy_feature;
     InstrItineraryData InstrItins;
+	unsigned Clusters;
+	bool HasSingleFPU;
+	bool HasDoubleFPU;
   public:
     LembergSubtarget(const std::string &TT,
 					 const std::string &CPU,
@@ -59,6 +61,13 @@ namespace llvm {
 							   RegClassVector& CriticalPathRCs) const {
 		return false;
 	}
+
+	static const unsigned DelaySlots = 2;
+	static const unsigned MaxClusters = 4;
+
+	unsigned getClusters() const { return Clusters; }
+	bool hasSingleFPU() const { return HasSingleFPU; }
+	bool hasDoubleFPU() const { return HasDoubleFPU; }
 
 	// TODO: this is a dirty hack that should go away in the future
     unsigned getFuncUnit(LembergFU::FuncUnit FU) const;

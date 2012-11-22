@@ -25,8 +25,11 @@ using namespace llvm;
 
 LembergSubtarget::LembergSubtarget(const std::string &TT,
 								   const std::string &CPU,
-								   const std::string &FS) : 
-  LembergGenSubtargetInfo(TT, CPU, FS) {
+								   const std::string &FS)
+  : LembergGenSubtargetInfo(TT, CPU, FS)
+  , Clusters(0)
+  , HasSingleFPU(false)
+  , HasDoubleFPU(false) {
 
   std::string CPUName = CPU;
   if (CPUName.empty()) {
@@ -38,4 +41,5 @@ LembergSubtarget::LembergSubtarget(const std::string &TT,
 
   // Initialize scheduling itinerary for the specified CPU.
   InstrItins = getInstrItineraryForCPU(CPUName);
+  InstrItins.IssueWidth = Clusters;
 }

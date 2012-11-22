@@ -29,37 +29,35 @@ STATISTIC(NumUnpinned, "Number of unpinned instructions");
 
 namespace {
 
-	static const unsigned ClusterCount = 4;
-
-	static LembergFU::FuncUnit AluItins [ClusterCount][2] = {
+	static LembergFU::FuncUnit AluItins [LembergSubtarget::MaxClusters][2] = {
 		{LembergFU::SLOT0, LembergFU::ALU0},
 		{LembergFU::SLOT1, LembergFU::ALU1},
 		{LembergFU::SLOT2, LembergFU::ALU2},
 		{LembergFU::SLOT3, LembergFU::ALU3}
 	};
 
-	static LembergFU::FuncUnit MemItins [ClusterCount][2] = {
+	static LembergFU::FuncUnit MemItins [LembergSubtarget::MaxClusters][2] = {
 		{LembergFU::SLOT0, LembergFU::MEMU},
 		{LembergFU::SLOT1, LembergFU::MEMU},
 		{LembergFU::SLOT2, LembergFU::MEMU},
 		{LembergFU::SLOT3, LembergFU::MEMU}
 	};
 
-	static LembergFU::FuncUnit JmpItins [ClusterCount][2] = {
+	static LembergFU::FuncUnit JmpItins [LembergSubtarget::MaxClusters][2] = {
 		{LembergFU::SLOT0, LembergFU::JMPU},
 		{LembergFU::SLOT1, LembergFU::JMPU},
 		{LembergFU::SLOT2, LembergFU::JMPU},
 		{LembergFU::SLOT3, LembergFU::JMPU}
 	};
 
-	static LembergFU::FuncUnit Fpu0Itins [ClusterCount][3] = {
+	static LembergFU::FuncUnit Fpu0Itins [LembergSubtarget::MaxClusters][3] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_WB},
 		{LembergFU::SLOT1, LembergFU::FPU_DEC, LembergFU::FPU_WB},
 		{LembergFU::SLOT2, LembergFU::FPU_DEC, LembergFU::FPU_WB},
 		{LembergFU::SLOT3, LembergFU::FPU_DEC, LembergFU::FPU_WB}
 	};
 
-	static LembergFU::FuncUnit Fpu1Itins [ClusterCount][4] = {
+	static LembergFU::FuncUnit Fpu1Itins [LembergSubtarget::MaxClusters][4] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
 		 LembergFU::FPU_WB},
 		{LembergFU::SLOT1, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
@@ -70,7 +68,7 @@ namespace {
 		 LembergFU::FPU_WB}
 	};
 
-	static LembergFU::FuncUnit Fpu2Itins [ClusterCount][5] = {
+	static LembergFU::FuncUnit Fpu2Itins [LembergSubtarget::MaxClusters][5] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
 		 LembergFU::FPU_EX2, LembergFU::FPU_WB},
 		{LembergFU::SLOT1, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
@@ -81,7 +79,7 @@ namespace {
 		 LembergFU::FPU_EX2, LembergFU::FPU_WB}
 	};
 
-	static LembergFU::FuncUnit Fpu3Itins [ClusterCount][6] = {
+	static LembergFU::FuncUnit Fpu3Itins [LembergSubtarget::MaxClusters][6] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
 		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_WB},
 		{LembergFU::SLOT1, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
@@ -92,7 +90,7 @@ namespace {
 		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_WB}
 	};
 
-	static LembergFU::FuncUnit Fpu4Itins [ClusterCount][7] = {
+	static LembergFU::FuncUnit Fpu4Itins [LembergSubtarget::MaxClusters][7] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
 		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4, 
 		 LembergFU::FPU_WB},
@@ -107,7 +105,7 @@ namespace {
 		 LembergFU::FPU_WB}
 	};
 
-	static LembergFU::FuncUnit Fpu6Itins [ClusterCount][9] = {
+	static LembergFU::FuncUnit Fpu6Itins [LembergSubtarget::MaxClusters][9] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
 		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4,
 		 LembergFU::FPU_EX5, LembergFU::FPU_EX6, LembergFU::FPU_WB},
@@ -122,7 +120,7 @@ namespace {
 		 LembergFU::FPU_EX5, LembergFU::FPU_EX6, LembergFU::FPU_WB}
 	};
 
-	static LembergFU::FuncUnit Fpu7Itins [ClusterCount][10] = {
+	static LembergFU::FuncUnit Fpu7Itins [LembergSubtarget::MaxClusters][10] = {
 		{LembergFU::SLOT0, LembergFU::FPU_DEC, LembergFU::FPU_EX1,
 		 LembergFU::FPU_EX2, LembergFU::FPU_EX3, LembergFU::FPU_EX4,
 		 LembergFU::FPU_EX5, LembergFU::FPU_EX6, LembergFU::FPU_EX7, 
@@ -141,25 +139,25 @@ namespace {
 		 LembergFU::FPU_WB}
 	};
 
-	static const TargetRegisterClass *Clusters [ClusterCount] =
+	static const TargetRegisterClass *Clusters [LembergSubtarget::MaxClusters] =
 		{ Lemberg::L0RegisterClass, Lemberg::L1RegisterClass,
 		  Lemberg::L2RegisterClass, Lemberg::L3RegisterClass };
-	static const TargetRegisterClass *MulClusters [ClusterCount] =
+	static const TargetRegisterClass *MulClusters [LembergSubtarget::MaxClusters] =
 		{ Lemberg::M0RegisterClass, Lemberg::M1RegisterClass,
 		  Lemberg::M2RegisterClass, Lemberg::M3RegisterClass };
 
 	struct Pinner : public MachineFunctionPass {
 	private:
-		unsigned AluSchedClasses [ClusterCount];
-		unsigned MemSchedClasses [ClusterCount];
-		unsigned JmpSchedClasses [ClusterCount];
-		unsigned Fpu0SchedClasses [ClusterCount];
-		unsigned Fpu1SchedClasses [ClusterCount];
-		unsigned Fpu2SchedClasses [ClusterCount];
-		unsigned Fpu3SchedClasses [ClusterCount];
-		unsigned Fpu4SchedClasses [ClusterCount];
-		unsigned Fpu6SchedClasses [ClusterCount];
-		unsigned Fpu7SchedClasses [ClusterCount];
+		unsigned AluSchedClasses [LembergSubtarget::MaxClusters];
+		unsigned MemSchedClasses [LembergSubtarget::MaxClusters];
+		unsigned JmpSchedClasses [LembergSubtarget::MaxClusters];
+		unsigned Fpu0SchedClasses [LembergSubtarget::MaxClusters];
+		unsigned Fpu1SchedClasses [LembergSubtarget::MaxClusters];
+		unsigned Fpu2SchedClasses [LembergSubtarget::MaxClusters];
+		unsigned Fpu3SchedClasses [LembergSubtarget::MaxClusters];
+		unsigned Fpu4SchedClasses [LembergSubtarget::MaxClusters];
+		unsigned Fpu6SchedClasses [LembergSubtarget::MaxClusters];
+		unsigned Fpu7SchedClasses [LembergSubtarget::MaxClusters];
 
 	public:
 		TargetMachine &TM;
@@ -169,7 +167,7 @@ namespace {
 		Pinner(TargetMachine &tm) 
 			: MachineFunctionPass(ID), TM(tm), TII(tm.getInstrInfo()) { 
 
-			for (unsigned i = 0; i < ClusterCount; ++i) {
+			for (unsigned i = 0; i < LembergSubtarget::MaxClusters; ++i) {
 				AluSchedClasses[i] = getClassForPattern(AluItins[i], 2);
 				MemSchedClasses[i] = getClassForPattern(MemItins[i], 2);
 				JmpSchedClasses[i] = getClassForPattern(JmpItins[i], 2);
@@ -229,8 +227,8 @@ FunctionPass *llvm::createLembergPostPinnerPass(LembergTargetMachine &TM,
 
 unsigned Pinner::getClassForPattern(LembergFU::FuncUnit P [], unsigned L) {
 
-	const LembergSubtarget *LST = ((LembergTargetMachine &)TM).getSubtargetImpl();
-	const InstrItineraryData &IID = LST->getInstrItins();
+	const LembergSubtarget &LST = TM.getSubtarget<LembergSubtarget>();
+	const InstrItineraryData &IID = LST.getInstrItins();
 	const InstrItinerary *IITab = IID.Itineraries;
 	const InstrStage *IIStages = IID.Stages;
 
@@ -242,7 +240,7 @@ unsigned Pinner::getClassForPattern(LembergFU::FuncUnit P [], unsigned L) {
 		unsigned i, s;
 		for (i = 0, s = IITab[c].FirstStage; i < L; ++i, ++s) {
 			// Units are not equal
-			if (IIStages[s].getUnits() != LST->getFuncUnit(P[i]))
+			if (IIStages[s].getUnits() != LST.getFuncUnit(P[i]))
 				break;
 		}
 		// All units are the same
@@ -254,8 +252,8 @@ unsigned Pinner::getClassForPattern(LembergFU::FuncUnit P [], unsigned L) {
 }
 
 bool Pinner::compatibleSchedClass(unsigned A, unsigned B) {
-	const LembergSubtarget *LST = ((LembergTargetMachine &)TM).getSubtargetImpl();
-	const InstrItineraryData &IID = LST->getInstrItins();
+	const LembergSubtarget &LST = TM.getSubtarget<LembergSubtarget>();
+	const InstrItineraryData &IID = LST.getInstrItins();
 	const InstrItinerary *IITab = IID.Itineraries;
 	const InstrStage *IIStages = IID.Stages;
 
@@ -286,7 +284,7 @@ int Pinner::getCluster(MachineRegisterInfo *MRI, MachineInstr &MI) {
 	// Only call target operand is relevant
 	if (MI.getOpcode() == Lemberg::CALL) {
 		unsigned regNo = MI.getOperand(2).getReg();
-		for (unsigned k = 0; k < ClusterCount; k++) {
+		for (unsigned k = 0; k < LembergSubtarget::MaxClusters; k++) {
 			if (Clusters[k]->contains(regNo)) {
 				return k;
 			}
@@ -300,7 +298,7 @@ int Pinner::getCluster(MachineRegisterInfo *MRI, MachineInstr &MI) {
 		if (!MO.isReg())
 			continue;
 		unsigned regNo = MO.getReg();
-		for (unsigned k = 0; k < ClusterCount; k++) {
+		for (unsigned k = 0; k < LembergSubtarget::MaxClusters; k++) {
 			if (Clusters[k]->contains(regNo)
 				|| MulClusters[k]->contains(regNo)) {
 				return k;
@@ -385,7 +383,8 @@ bool PostPinner::runOnMachineFunction(MachineFunction &F)
 
 	MachineRegisterInfo *MRI = &F.getRegInfo();
 
-	SmallVector<MachineInstr *, ClusterCount> UnPinned;
+	unsigned ClusterCount = TM.getSubtarget<LembergSubtarget>().getClusters();
+	SmallVector<MachineInstr *, LembergSubtarget::MaxClusters> UnPinned;
 	unsigned ScoreBoard = 0;
 
 	for (MachineFunction::iterator FI = F.begin(), FE = F.end(); FI != FE; ++FI) {
@@ -401,7 +400,7 @@ bool PostPinner::runOnMachineFunction(MachineFunction &F)
 			if (MI.getOpcode() == Lemberg::SEP) {
 				// Handle unpinned insns
 				unsigned cluster = 0;
-				for (SmallVector<MachineInstr *, ClusterCount>::iterator
+				for (SmallVector<MachineInstr *, LembergSubtarget::MaxClusters>::iterator
 						 I = UnPinned.begin(), E = UnPinned.end(); I != E; ++I) {
 					MachineInstr *P = *I;
 					for ( ; cluster < ClusterCount; cluster++) {
