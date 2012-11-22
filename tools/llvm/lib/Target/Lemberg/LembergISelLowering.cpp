@@ -325,15 +325,22 @@ SDValue LembergTargetLowering::LowerADDE(SDValue Op, SelectionDAG &DAG) const {
   unsigned CarryOp = Op.getOpcode()==ISD::ADDE ?
 	  LembergISD::Carry : LembergISD::Borrow;
 
+  // Make sure we see an already converted ADDC/SUBC
+  SDValue AddIn = Op.getOperand(2);
+  if (AddIn.getOpcode() == ISD::ADDC || AddIn.getOpcode() == ISD::SUBC) {
+	AddIn = LowerADDC(Op.getOperand(2), DAG);
+  }
+
   // ADDE produces two results
   SDValue Add = DAG.getNode(Opcode, DL, MVT::i32,
 							Op.getOperand(0), Op.getOperand(1));
 
   SDValue AddC = DAG.getNode(Opcode, DL, MVT::i32,
-							 Add, Op.getOperand(2).getValue(0));
+							 Add, AddIn.getValue(1));
 
   SDValue Carry = DAG.getNode(CarryOp, DL, MVT::i32,
 							  Op.getOperand(0), Op.getOperand(1));
+
   SDValue Ops[2] = { AddC, Carry };
   return DAG.getMergeValues(Ops, 2, DL);
 }
