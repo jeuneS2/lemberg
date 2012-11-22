@@ -349,21 +349,29 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.fmt.C.imm = 0;
 		  $$.fmt.C.cond = $1;
       }
-      | Condition BTESTOP REG ',' Constant DEST FLAG
+      | Condition BTESTOP REG ',' Constant DEST NotOptFlag
       {
 		  $$.op = $2;
 		  $$.fmt.B.src1 = $3;
 		  $$.fmt.B.src2.imm = $5;
-		  $$.fmt.B.dest = $7;
+		  if ($7 < 0) {
+			$$.fmt.B.dest = (1 << 2) | ~$7;
+		  } else {
+			$$.fmt.B.dest = $7;
+		  }
 		  $$.fmt.B.imm = 1;
 		  $$.fmt.B.cond = $1;
       }
-      | Condition BTESTOP REG ',' REG DEST FLAG
+      | Condition BTESTOP REG ',' REG DEST NotOptFlag
       {
 		  $$.op = $2;
 		  $$.fmt.B.src1 = $3;
 		  $$.fmt.B.src2.reg = $5;
-		  $$.fmt.B.dest = $7;
+		  if ($7 < 0) {
+			$$.fmt.B.dest = (1 << 2) | ~$7;
+		  } else {
+			$$.fmt.B.dest = $7;
+		  }
 		  $$.fmt.B.imm = 0;
 		  $$.fmt.B.cond = $1;
       }

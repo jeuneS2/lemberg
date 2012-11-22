@@ -23,18 +23,20 @@
 
 #define OP_ADD       0x00
 #define OP_SUB       0x01
-#define OP_S2ADD     0x02
-#define OP_AND       0x03
-#define OP_OR        0x04
-#define OP_XOR       0x05
-#define OP_SL        0x06
-#define OP_SR        0x07
-#define OP_SRA       0x08
-#define OP_RL        0x09
-#define OP_MUL       0x0A
-#define OP_CARR      0x0B
-#define OP_BORR      0x0C
-#define OP_BBH       0x0D
+#define OP_ADDI      0x02
+#define OP_S1ADD     0x03
+#define OP_S2ADD     0x04
+#define OP_AND       0x05
+#define OP_OR        0x06
+#define OP_XOR       0x07
+#define OP_SL        0x08
+#define OP_SR        0x09
+#define OP_SRA       0x0A
+#define OP_RL        0x0B
+#define OP_MUL       0x0C
+#define OP_CARR      0x0D
+#define OP_BORR      0x0E
+#define OP_BBH       0x0F
 
 #define OP_CMP       0x14
 #define OP_CMPU      0x15
@@ -58,17 +60,17 @@
 #define OP_STMH_S    0x24
 #define OP_STMB_S    0x25
 
-#define OP_WB_S      0x26
-
-#define OP_LDM_B     0x27
-#define OP_LDM_D     0x28
-#define OP_LDM_F     0x29
-#define OP_LDM_S     0x2A
-#define OP_LDMG_D    0x2B
+#define OP_LDM_B     0x26
+#define OP_LDM_D     0x27
+#define OP_LDM_F     0x28
+#define OP_LDM_S     0x29
+#define OP_LDMG_D    0x2A
+#define OP_LDMR_F    0x2B
 
 #define OP_LDX       0x2C
 #define OP_STX       0x2D
 #define OP_FOP       0x2E
+#define OP_WB_S      0x2F
 
 #define OP_LDGA      0x30
 

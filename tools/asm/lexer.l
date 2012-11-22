@@ -73,6 +73,8 @@ SYM [\._a-zA-Z0-9]+
 
 "add"      ACCEPT(ADD,   THREEOP);
 "sub"      ACCEPT(SUB,   THREEOP);
+"addi"     ACCEPT(ADDI,  LDIOP);
+"s1add"    ACCEPT(S1ADD, THREEOP);
 "s2add"    ACCEPT(S2ADD, THREEOP);
 "and"      ACCEPT(AND,   THREEOP);
 "or"       ACCEPT(OR,    THREEOP);
@@ -119,6 +121,7 @@ SYM [\._a-zA-Z0-9]+
 "ldm.f"    ACCEPT(LDM_F, LOADOP);
 "ldm.s"    ACCEPT(LDM_S, LOADOP);
 "ldmg.d"   ACCEPT(LDMG_D, GLOBOP);
+"ldmr.f"   ACCEPT(LDMR_F, STOREOP);
 
 "ldx"      ACCEPT(LDX,  LDXOP);
 "stx"      ACCEPT(STX,  STXOP);
@@ -224,27 +227,27 @@ d[0-9]+ {
   }
 
 $mul[0-9]\.0 {
-	yylval.intval = 9;
+	yylval.intval = 4;
 	return EXT;
   }
 
 $mul[0-9]\.1 {
-	yylval.intval = 10;
+	yylval.intval = 5;
 	return EXT;
   }
 
 $rb {
-	yylval.intval = 11;
+	yylval.intval = 6;
 	return EXT;
   }
 
 $ro {
-	yylval.intval = 12;
+	yylval.intval = 7;
 	return EXT;
   }
 
 $ba {
-	yylval.intval = 13;
+	yylval.intval = 8;
 	return EXT;
   }
 

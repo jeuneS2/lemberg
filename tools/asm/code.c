@@ -36,9 +36,10 @@ static void check_bits(int val, unsigned int bits) {
 static int is_format_B(unsigned int opcode)
 {
 	switch (opcode) {
-	case OP_ADD: case OP_SUB: case OP_S2ADD: case OP_AND:
-	case OP_OR: case OP_XOR: case OP_SL: case OP_SR:
-	case OP_SRA: case OP_RL: case OP_MUL: case OP_BBH:
+	case OP_ADD: case OP_SUB: case OP_S1ADD: case OP_S2ADD:
+	case OP_AND: case OP_OR: case OP_XOR:
+	case OP_SL: case OP_SR: case OP_SRA: case OP_RL:
+	case OP_MUL: case OP_BBH:
 	case OP_CARR: case OP_BORR:
 	case OP_BTEST:
 	case OP_JOP:
@@ -60,6 +61,7 @@ static int is_format_C(unsigned int opcode)
 static int is_format_I(unsigned int opcode)
 {
 	switch (opcode) {
+	case OP_ADDI:
 	case OP_LDI: case OP_LDIU: case OP_LDIM: case OP_LDIH:
 		return 1;
 	default: return 0;
@@ -99,6 +101,7 @@ static int is_format_S(unsigned int opcode)
 	switch (opcode) {
 	case OP_STM_A: case OP_STMH_A: case OP_STMB_A:
 	case OP_STM_S: case OP_STMH_S: case OP_STMB_S:
+	case OP_LDMR_F:
 		return 1;
 	default: return 0;
 	}
