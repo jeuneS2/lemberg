@@ -54,18 +54,12 @@ BuildStackAdd (MachineFunction &MF,
 	bool isAdd = Offset >= 0;
 	Offset = Offset < 0 ? -Offset : Offset;
 
-	if (isUInt<5>(Offset)) {
+	if (isInt<11>(Offset)) {
 		BuildMI(MBB, MBBI, DL,
-				TII->get(isAdd ? Lemberg::ADDaia : Lemberg::SUBaia), TRI->getStackRegister())
+				TII->get(Lemberg::ADDI), TRI->getStackRegister())
 			.addImm(-1).addReg(0)
 			.addReg(TRI->getStackRegister())
-			.addImm(Offset);
-	} else if (isAdd && (Offset & 0x03) == 0 && isUInt<5>(Offset >> 2)) {
-		BuildMI(MBB, MBBI, DL,
-				TII->get(Lemberg::S2ADDaia), TRI->getStackRegister())
-			.addImm(-1).addReg(0)
-			.addReg(TRI->getStackRegister())
-			.addImm(Offset >> 2);
+		  .addImm(isAdd ? Offset : -Offset);
 	} else {
 		unsigned ScratchReg = 0;
 
@@ -234,6 +228,11 @@ void LembergFrameLowering::emitPrologue(MachineFunction &MF) const {
   MachineBasicBlock::iterator MBBI = MBB.begin();
   DebugLoc DL = MBB.findDebugLoc(MBBI);
 
+  // Nothing on the stack, so we do not need a prologue
+  if (!MFI->hasStackObjects()) {
+	return;
+  }
+
   long NumBytes = MFI->getStackSize();
   long CallFrameBytes = 0;
 
@@ -255,11 +254,9 @@ void LembergFrameLowering::emitPrologue(MachineFunction &MF) const {
 	  NumBytes += CallFrameBytes;
   }
 
-  if (NumBytes != 0) {
-	  // Update stack pointer for current frame
-	  BuildStackWriteBack(MF, MBB, MBBI, NumBytes);
-	  BuildStackAdd(MF, MBB, MBBI, -NumBytes);
-  }
+  // Update stack pointer for current frame
+  BuildStackWriteBack(MF, MBB, MBBI, NumBytes);
+  BuildStackAdd(MF, MBB, MBBI, -NumBytes);
 
   if (hasFP(MF)) {
 	  // Save old frame pointer
@@ -280,6 +277,11 @@ void LembergFrameLowering::emitEpilogue(MachineFunction &MF, MachineBasicBlock &
   MachineBasicBlock::iterator MBBI = prior(MBB.end());
   MachineFrameInfo *MFI = MF.getFrameInfo();
   DebugLoc DL = MBB.findDebugLoc(MBBI);
+
+  // Nothing on the stack, so we do not need a prologue
+  if (!MFI->hasStackObjects()) {
+	return;
+  }
 
   long NumBytes = MFI->getStackSize();
   long CallFrameBytes = 0;
@@ -302,10 +304,8 @@ void LembergFrameLowering::emitEpilogue(MachineFunction &MF, MachineBasicBlock &
 	  BuildStackLoad(MF, MBB, MBBI, TRI->getFrameRegister(MF), CallFrameBytes);
   }
 
-  if (NumBytes != 0) {
-	  // Restore stack pointer
-	  BuildStackAdd(MF, MBB, MBBI, NumBytes);
-  }
+  // Restore stack pointer
+  BuildStackAdd(MF, MBB, MBBI, NumBytes);
 }
 
 void LembergFrameLowering::
@@ -315,8 +315,9 @@ processFunctionBeforeCalleeSavedScan(MachineFunction &MF,
   const TargetRegisterClass *RC = Lemberg::GRegisterClass;
 
   // Reserve a slot close to SP/FP
-  RS->setScavengingFrameIndex(MFI->CreateStackObject(RC->getSize(),
-													 RC->getAlignment(),
-													 false));
+  if (MFI->hasStackObjects()) {
+	RS->setScavengingFrameIndex(MFI->CreateStackObject(RC->getSize(),
+													   RC->getAlignment(),
+													   false));
+  }
 }
-
