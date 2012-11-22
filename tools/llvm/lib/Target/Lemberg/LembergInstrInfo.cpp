@@ -184,7 +184,7 @@ LembergInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   }
 
   // R31 must appear to remain unchanged
-  if (inLoad) {
+  if (inLoad && SrcReg != Lemberg::R31) {
 	unsigned EmergencyReg = RI.getEmergencyRegister();
 	// __mem_emergency must be addressably with 11 bits
 	BuildMI(MBB, I, DL, get(Lemberg::LOADsym11lo), EmergencyReg)
@@ -215,7 +215,7 @@ LembergInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 					  RC->getName()).c_str());
   }
 
-  if (inLoad) {
+  if (inLoad && SrcReg != Lemberg::R31) {
 	BuildMI(MBB, I, DL, get(Lemberg::LOAD32d_ga))
 	  .addExternalSymbol("__mem_emergency");
   }
