@@ -218,7 +218,8 @@ def uimm11   : PatLeaf<(imm), [{return isUInt<11>(N->getZExtValue());}]>;
 def imm22    : PatLeaf<(imm), [{return isInt<22>(N->getSExtValue());}]>;
 def uimm19s2 : PatLeaf<(imm), [{return ((N->getSExtValue() & 0x03) == 0)
 								   && isInt<19>(N->getZExtValue() >> 2);}]>;
-def imm32s2  : PatLeaf<(imm), [{return (N->getZExtValue() & 0x03) == 0;}]>;
+def imm32s2   : PatLeaf<(imm), [{return (N->getZExtValue() & 0x03) == 0;}]>;
+def imm32m10z : PatLeaf<(imm), [{return (N->getZExtValue() & 0x001ff800) == 0;}]>;
 
 def fpimm0    : PatLeaf<(fpimm), [{return N->isExactlyValue(+0.0);}]>;
 def fpimm0neg : PatLeaf<(fpimm), [{return N->isExactlyValue(-0.0);}]>;
@@ -293,7 +294,7 @@ multiclass OP3<SDNode opnode, string opstr, PatLeaf immtype> {
         [(set A:$dst, (select (not C:$cond), (opnode A:$src1, A:$src2), A:$src3))],
 		IIAlu>;
 	def aaanf: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
-		!strconcat("if $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aaanf")),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aaanf")),
         [(set A:$dst, (select (not C:$cond), A:$src3, (opnode A:$src1, A:$src2)))],
 		IIAlu>;
 	def aiant: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
@@ -301,7 +302,7 @@ multiclass OP3<SDNode opnode, string opstr, PatLeaf immtype> {
         [(set A:$dst, (select (not C:$cond), (opnode A:$src1, (i32 immtype:$src2)), A:$src3))],
 		IIAlu>;
 	def aianf: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
-		!strconcat("if $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aianf")),
+		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aianf")),
         [(set A:$dst, (select (not C:$cond), A:$src3, (opnode A:$src1, (i32 immtype:$src2))))],
 		IIAlu>;
 	}
@@ -469,6 +470,23 @@ let Defs = [R31] in {
 				    [(LembergLoadCached (add A:$ptr, (i32 imm11:$off)))],
 				    IIMem>;
 
+  def LOAD32fpr: F1<(outs), (ins pred:$p, A:$ptr, A:$offr),
+					"$p ldmr.f\t$offr, $ptr, 0",
+					[(LembergLoadCached (add A:$ptr, A:$offr))],
+					IIMem>;
+  def LOAD32fprs1: F1<(outs), (ins pred:$p, A:$ptr, A:$offr),
+					  "$p ldmr.f\t$offr, $ptr, 1",
+					  [(LembergLoadCached (add A:$ptr, (shl A:$offr, (i32 1))))],
+					  IIMem>;
+  def LOAD32fprs2: F1<(outs), (ins pred:$p, A:$ptr, A:$offr),
+					  "$p ldmr.f\t$offr, $ptr, 2",
+					  [(LembergLoadCached (add A:$ptr, (shl A:$offr, (i32 2))))],
+					  IIMem>;
+  def LOAD32fprs3: F1<(outs), (ins pred:$p, A:$ptr, A:$offr),
+					  "$p ldmr.f\t$offr, $ptr, 3",
+					  [(LembergLoadCached (add A:$ptr, (shl A:$offr, (i32 3))))],
+					  IIMem>;
+
   // Matching load via stack pointer
   def LOAD32a_match: Pseudo<(outs), (ins mem:$ptr),
                             "${:comment} LDM.A $ptr",
@@ -611,6 +629,23 @@ def S2ADDaia: F1<(outs A:$dst), (ins pred:$p, A:$src1, i32imm:$src2),
 				 [(set A:$dst, (add A:$src1, (i32 uimm5s2:$src2)))],
 				 IIAlu>;
 
+def S1ADDaaa: F1<(outs A:$dst), (ins pred:$p, A:$src1, A:$src2),
+ 			     "$p s1add\t$src1, $src2 -> $dst",
+ 			     [(set A:$dst, (add A:$src1, (shl A:$src2, (i32 1))))],
+ 				 IIAlu>;
+def S1ADDaia: F1<(outs A:$dst), (ins pred:$p, A:$src1, i32imm:$src2),
+ 				 "$p s1add\t$src1, $src2 -> $dst",
+ 				 [(set A:$dst, (add A:$src1, (i32 uimm5s1:$src2)))],
+ 				 IIAlu>;
+
+// Add large immediate
+let Constraints = "$src1 = $dst" in {
+  def ADDI: F1<(outs A:$dst), (ins pred:$p, A:$src1, i32imm:$src2),
+			   "$p addi\t$src2 -> $dst",
+			   [(set A:$dst, (add A:$src1, (i32 imm11:$src2)))],
+			   IIAlu>;
+}
+
 // Multiplication is a little special
 def MULaa: F1<(outs Mul:$dst), (ins pred:$p, A:$src1, A:$src2),
               "$p mul\t$src1, $src2 -> $$$dst",
@@ -675,6 +710,10 @@ def BTEST: F1<(outs C:$dst), (ins pred:$p, A:$src1, uimm5mask:$src2),
               "$p btest\t$src1, $src2 -> $dst",
               [(set C:$dst, (setne (and A:$src1, uimm5mask:$src2), (i32 0)))],
 			  IIAlu>;
+def BTESTnot: F1<(outs C:$dst), (ins pred:$p, A:$src1, uimm5mask:$src2),
+				 "$p btest\t$src1, $src2 -> !$dst",
+				 [(set C:$dst, (seteq (and A:$src1, uimm5mask:$src2), (i32 0)))],
+				 IIAlu>;
 
 // Immediate constant loads
 let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
@@ -709,8 +748,14 @@ let Constraints = "$src1 = $dst" in {
 // load 22-bit constants
 def : Pat<(i32 imm22:$imm),
 		  (LOADimm11mi (LOADuimm11
-						(low11 imm:$imm)),
-		   (mid11 imm:$imm))>;
+						(low11 imm22:$imm)),
+		   (mid11 imm22:$imm))>;
+
+// load 32 bits constants with middle 10 bits cleared
+def : Pat<(i32 imm32m10z:$imm),
+		  (LOADimm11hi (LOADuimm11
+						(low11  imm32m10z:$imm)),
+		   (high11 imm32m10z:$imm))>;
 
 // load 32 bits constants with low two bits cleared
 def : Pat<(i32 imm32s2:$imm),
@@ -754,7 +799,8 @@ let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
 	  Requires<[SmallCode]>;
   def LOADga_off: F1<(outs AImm:$dst), (ins i32imm:$addr, i32imm:$off),
 					 "       ldga\t$addr+$off -> $dst",
-					 [(set AImm:$dst, (add (LembergWrapper tglobaladdr:$addr), uimm19s2:$off))],
+					 [(set AImm:$dst, (add (LembergWrapper tglobaladdr:$addr),
+									   uimm19s2:$off))],
 					 IIAlu>,
 	Requires<[SmallCode]>;
 }
@@ -913,14 +959,16 @@ def : Pat<(notcc (setne C:$src1, C:$src2)),
 		  (NXORCC C:$src1, C:$src2)>;
 
 // Boolean constants
-def TRUECC: F1<(outs C:$dst), (ins pred:$p),
-				"$p comb\tor $dst, !$dst -> $dst",
-				[(set C:$dst, (i1 -1))],
-				IIAlu>;
-def FALSECC: F1<(outs C:$dst), (ins pred:$p),
-				"$p comb\tand $dst, !$dst -> $dst",
-				[(set C:$dst, (i1 0))],
-				IIAlu>;
+let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
+  def TRUECC: F1<(outs C:$dst), (ins pred:$p),
+				 "$p comb\tor $dst, !$dst -> $dst",
+				 [(set C:$dst, (i1 -1))],
+				 IIAlu>;
+  def FALSECC: F1<(outs C:$dst), (ins pred:$p),
+				  "$p comb\tand $dst, !$dst -> $dst",
+				  [(set C:$dst, (i1 0))],
+				  IIAlu>;
+}
 
 // Conversion from a flag to a register
 def EXTCC: F1<(outs A:$dst), (ins pred:$p, C:$src),
@@ -930,8 +978,6 @@ def EXTCC: F1<(outs A:$dst), (ins pred:$p, C:$src),
 
 def : Pat<(i32 (anyext C:$src)),
 		  (EXTCC C:$src)>;
-
-
 
 // Conversion from a register to a flag
 def TRNCC: F1<(outs C:$dst), (ins pred:$p, A:$src),
@@ -1321,11 +1367,11 @@ let isBranch = 1, isTerminator = 1, hasDelaySlot=1 in {
 def : Pat<(brcond (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), bb:$target),
 		  (JUMPtrue (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), bb:$target)>;
 def : Pat<(brcond (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), bb:$target),
-		  (JUMPfalse (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), bb:$target)>;
+		  (JUMPtrue (BTESTnot A:$src1, (trailingZeros uimm5mask:$src2)), bb:$target)>;
 def : Pat<(select (i1 (setne (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src3, A:$src4),
 		  (MOVEtrue (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4)>;
 def : Pat<(select (i1 (seteq (and A:$src1, uimm5mask:$src2), (i32 0))), A:$src3, A:$src4),
-		  (MOVEfalse (BTEST A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4)>;
+		  (MOVEtrue (BTESTnot A:$src1, (trailingZeros uimm5mask:$src2)), A:$src3, A:$src4)>;
 
 // Pseudo instructions for calls
 let Defs = [R15], Uses = [R15] in {
