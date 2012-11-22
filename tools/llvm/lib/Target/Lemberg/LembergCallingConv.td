@@ -17,8 +17,8 @@ def CC_Lemberg : CallingConv<[
   // Handle ByVal arguments
   CCIfByVal<CCCustom<"CC_Lemberg_Custom_ByVal">>,
 
-  // Promote i8/i16 arguments to i32
-  CCIfType<[i8, i16], CCPromoteToType<i32>>,
+  // Promote i1/i8/i16 arguments to i32
+  CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
   // Convert f32 to i32
   CCIfType<[f32], CCBitConvertToType<i32>>,
   // Pass args in R0 to R3
@@ -43,8 +43,8 @@ def RetCC_Lemberg : CallingConv<[
   // Return single floats in F0 and F1
   CCIfType<[f32], CCAssignToReg<[F0, F1]>>,
 
-  // Promote i8/i16 arguments to i32
-  CCIfType<[i8, i16], CCPromoteToType<i32>>,
+  // Promote i1/i8/i16 arguments to i32
+  CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
   // Return in R0 and R1
   CCIfType<[i32], CCAssignToReg<[R0, R1]>>
 ]>;
