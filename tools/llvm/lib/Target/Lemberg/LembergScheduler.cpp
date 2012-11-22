@@ -68,14 +68,17 @@ namespace {
 	char Scheduler::ID = 0;
 
 	class ScheduleTDList : public SchedulePostRATDList {
+		TargetMachine &TM;
 	public:
-		ScheduleTDList(MachineFunction &MF,
+		ScheduleTDList(TargetMachine &TM,
+					   MachineFunction &MF,
 					   MachineLoopInfo &MLI,
 					   MachineDominatorTree &MDT,
 					   AliasAnalysis *AA, const RegisterClassInfo &RCI,
 					   TargetSubtargetInfo::AntiDepBreakMode AntiDepMode,
 					   SmallVectorImpl<const TargetRegisterClass*> &CriticalPathRCs)
-		  : SchedulePostRATDList(MF, MLI, MDT, AA, RCI, AntiDepMode, CriticalPathRCs) {}
+		  : SchedulePostRATDList(MF, MLI, MDT, AA, RCI, AntiDepMode, CriticalPathRCs)
+		  , TM(TM) {}
 
 		~ScheduleTDList() {
 		}
@@ -131,7 +134,7 @@ LembergInstrInfo::CreateTargetPostRAHazardRecognizer(const InstrItineraryData *I
 }
 
 static bool isStackAccess(const MachineInstr *MI) {
-	unsigned Opcode = MI->getDesc().getOpcode();
+	unsigned Opcode = MI->getOpcode();
 	return Opcode == Lemberg::LOAD32sp || Opcode == Lemberg::LOAD32spi
 		|| Opcode == Lemberg::STORE32sp || Opcode == Lemberg::STORE32sp_imm
 		|| Opcode == Lemberg::STORE32spi || Opcode == Lemberg::STORE32spi_imm
@@ -143,6 +146,8 @@ static bool isStackAccess(const MachineInstr *MI) {
 
 void ScheduleTDList::buildSchedGraph(AliasAnalysis *AA) {
 
+    const LembergSubtarget *Subtarget = &TM.getSubtarget<LembergSubtarget>();
+
 	// Create normal scheduling graph
 	SchedulePostRATDList::buildSchedGraph(AA);
 	
@@ -151,21 +156,21 @@ void ScheduleTDList::buildSchedGraph(AliasAnalysis *AA) {
 		SUnit &SU = SUnits[i];
 		// Make sure that stuff that is chained to memory accesses is
 		// scheduled in suitable cycles
-		if (SU.getInstr()->getDesc().mayStore()
-			|| SU.getInstr()->getDesc().mayLoad()) {
+		if (SU.getInstr()->mayStore()
+			|| SU.getInstr()->mayLoad()) {
 
 			// Pick a suitable latency
 			unsigned MemLatency = 1;
 			if (!isStackAccess(SU.getInstr())) {
-				MemLatency = SU.getInstr()->getDesc().mayStore() ? 1 : 2;
+				MemLatency = SU.getInstr()->mayStore() ? 1 : 2;
 			} else {
-			 	MemLatency = SU.getInstr()->getDesc().mayStore() ? 1 : 2;
+			 	MemLatency = SU.getInstr()->mayStore() ? 1 : 2;
 			}
 
 			// Insert appropriate latencies
 			for (SUnit::succ_iterator I = SU.Succs.begin(), E = SU.Succs.end();
 				 I != E; ++I) {
-				if (I->getKind() == SDep::Order) {
+				if (I->getKind() == SDep::Order || I->getKind() == SDep::Data) {
 
 					SUnit *Succ = I->getSUnit();
 
@@ -188,7 +193,7 @@ void ScheduleTDList::buildSchedGraph(AliasAnalysis *AA) {
 
 					// Also set latencies in reverse direction
 					for (SUnit::succ_iterator K = Succ->Preds.begin(), F = Succ->Preds.end();
-						 K != F; ++K) {
+						K != F; ++K) {
 						if (K->getSUnit() == &SU) {
 							K->setLatency(MemLatency);
 						}
@@ -197,17 +202,23 @@ void ScheduleTDList::buildSchedGraph(AliasAnalysis *AA) {
 			}
 		}
 
-		// Make sure that conditions are computed early to allow for
-		// filling of delay slots.
-		if (SU.getInstr()->definesRegister(Lemberg::C1)
-			|| SU.getInstr()->definesRegister(Lemberg::C2)
-			|| SU.getInstr()->definesRegister(Lemberg::C3)) {
+		// Make sure that results used for branching are computed early
+		if (SU.Succs.size() == 0 && SU.getInstr()->getDesc().getNumDefs() > 0) {
+		  const unsigned BranchLatency = Subtarget->DelaySlots+1;
+		  SU.setHeightToAtLeast(BranchLatency+1);
+		}
 
-			const unsigned BranchLatency = 3;
-
-			// We always assume that the condition is used by an
-			// instruction with a branch delay
-			SU.setHeightToAtLeast(BranchLatency+1);
+		// Set the isScheduleHigh flag for pinned instructions		
+		unsigned idx = SU.getInstr()->getDesc().getSchedClass();
+		unsigned units = InstrItins->beginStage(idx)->getUnits();
+		unsigned unitCount = 0;
+		while (units) {
+		  if (units & 1)
+			unitCount++;
+		  units >>= 1;
+		}
+		if (unitCount < Subtarget->MaxClusters) {
+		   SU.isScheduleHigh = true;
 		}
 	}
 }
@@ -343,9 +354,12 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
   TargetSubtargetInfo::AntiDepBreakMode AntiDepMode = TargetSubtargetInfo::ANTIDEP_ALL;
   SmallVector<const TargetRegisterClass*, 4> CriticalPathRCs;
   CriticalPathRCs.clear();
-  CriticalPathRCs.push_back(&Lemberg::GRegClass);
+  CriticalPathRCs.push_back(&Lemberg::ARegClass);
+  CriticalPathRCs.push_back(&Lemberg::CRegClass);
+  CriticalPathRCs.push_back(&Lemberg::FRegClass);
+  CriticalPathRCs.push_back(&Lemberg::DRegClass);
 
-  ScheduleTDList Scheduler(Fn, MLI, MDT, AA, RegClassInfo,
+  ScheduleTDList Scheduler(TM, Fn, MLI, MDT, AA, RegClassInfo,
 						   AntiDepMode, CriticalPathRCs);
   HazardRecognizer *HR = (HazardRecognizer *)Scheduler.HazardRec;
   HR->setSched(&Scheduler);
