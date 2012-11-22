@@ -1,8 +1,8 @@
 include /usr/local/lemberg/etc/Makefile.rules
 
 CFLAGS=-Os -ansi -pedantic -Wall
-OPTFLAGS=-O2
-LLCFLAGS=-O2 -disable-machine-licm -code-model=small
+OPTFLAGS=-O2 -unroll-threshold=0
+LLCFLAGS=-mcpu=lemberg-minimal -O2 -disable-machine-licm -code-model=small
 
 all: bootrom.vhd sim_bootrom.vhd
 
