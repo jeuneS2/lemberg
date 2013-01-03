@@ -23,6 +23,14 @@
 
 namespace llvm {
 
+  namespace LembergCC {
+	enum CondCode {
+	  FALSE = 0,
+	  TRUE = 1,
+	  EQZ, NEZ, LTZ, GEZ, GTZ, LEZ
+	};
+  }
+
   class LembergInstrInfo : public LembergGenInstrInfo {
     const LembergRegisterInfo RI;
     const LembergSubtarget& Subtarget;
@@ -86,12 +94,18 @@ namespace llvm {
 
 	virtual bool DefinesPredicate(MachineInstr *MI, std::vector<MachineOperand> &Pred) const;
 
+	bool ComplexPredecessorPredicates(MachineBasicBlock &MBB) const;
+
     virtual bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumCycles,
 									 unsigned ExtraPredCycles,
 									 const BranchProbability &Probability) const {
+	  if (ComplexPredecessorPredicates(MBB)) {
+		return false;
+	  }
 	  const MCInstrDesc &MID = prior(MBB.end())->getDesc();
 	  if (MID.isCall() || MID.isReturn())
 		  return false;
+
       return NumCycles <= 8;
     }
 
@@ -100,6 +114,10 @@ namespace llvm {
 									 MachineBasicBlock &FMBB,
 									 unsigned NumF, unsigned ExtraFCycles,
 									 const BranchProbability &Probability) const {
+	  if (ComplexPredecessorPredicates(TMBB)
+		  || ComplexPredecessorPredicates(FMBB)) {
+		return false;
+	  }
 	  const MCInstrDesc &TMID = prior(TMBB.end())->getDesc();
 	  if (TMID.isCall() || TMID.isReturn())
 		  return false;
@@ -109,8 +127,11 @@ namespace llvm {
       return (NumT + NumF) <= 16;
 	}
 
-	  virtual bool isProfitableToDupForIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs,
-											 const BranchProbability &Probability) const {
+	virtual bool isProfitableToDupForIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs,
+										   const BranchProbability &Probability) const {
+	  if (ComplexPredecessorPredicates(MBB)) {
+		return false;
+	  }
 	  const MCInstrDesc &MID = prior(MBB.end())->getDesc();
 	  if (MID.isCall() || MID.isReturn())
 		  return false;

@@ -173,28 +173,6 @@ LembergInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
   DebugLoc DL = I != MBB.end() ? I->getDebugLoc() : DebugLoc();
 
-  bool inLoad = false;
-  for (MachineBasicBlock::iterator MI = I, E = MBB.end(); MI != E; ++MI) {
-	if (MI->readsRegister(Lemberg::R31)) {
-	  inLoad = true;
-	  break;
-	} else if (MI->mayLoad()) {
-	  break;
-	}
-  }
-
-  // R31 must appear to remain unchanged
-  if (inLoad && SrcReg != Lemberg::R31) {
-	unsigned EmergencyReg = RI.getEmergencyRegister();
-	// __mem_emergency must be addressably with 11 bits
-	BuildMI(MBB, I, DL, get(Lemberg::LOADsym11lo), EmergencyReg)
-	  .addImm(-1).addReg(0)
-	  .addExternalSymbol("__mem_emergency");
-	BuildMI(MBB, I, DL, get(Lemberg::STORE32ap))
-	  .addImm(-1).addReg(0)
-	  .addReg(Lemberg::R31).addReg(EmergencyReg);
-  }
-
   if (inClass(Lemberg::ARegClass, SrcReg, RC, TRI)) {
 	// A normal register
 	BuildMI(MBB, I, DL, get(Lemberg::STORE32s_pseudo))
@@ -213,11 +191,6 @@ LembergInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   } else {
 	llvm_unreachable((std::string("Cannot store regclass to stack slot: ")+
 					  RC->getName()).c_str());
-  }
-
-  if (inLoad && SrcReg != Lemberg::R31) {
-	BuildMI(MBB, I, DL, get(Lemberg::LOAD32d_ga))
-	  .addExternalSymbol("__mem_emergency");
   }
 }
 
@@ -326,13 +299,13 @@ LembergInstrInfo::AnalyzeBranch(MachineBasicBlock &MBB,
 		if (LastOpc == Lemberg::JUMPtrue) {
 			TBB = LastInst->getOperand(1).getMBB();
 			Cond.push_back(LastInst->getOperand(0));
-			Cond.push_back(MachineOperand::CreateImm(1));
+			Cond.push_back(MachineOperand::CreateImm(LembergCC::TRUE));
 			return false;
 		}
 		if (LastOpc == Lemberg::JUMPfalse) {
 			TBB = LastInst->getOperand(1).getMBB();
 			Cond.push_back(LastInst->getOperand(0));
-			Cond.push_back(MachineOperand::CreateImm(0));
+			Cond.push_back(MachineOperand::CreateImm(LembergCC::FALSE));
 			return false;
 		}
 		if (LastOpc == Lemberg::JUMPpred) {
@@ -340,6 +313,26 @@ LembergInstrInfo::AnalyzeBranch(MachineBasicBlock &MBB,
 			Cond.push_back(LastInst->getOperand(1));
 			Cond.push_back(LastInst->getOperand(0));
 			return false;
+		}
+		if (LastOpc == Lemberg::JUMPeqz
+			|| LastOpc == Lemberg::JUMPnez
+			|| LastOpc == Lemberg::JUMPltz
+			|| LastOpc == Lemberg::JUMPgez
+			|| LastOpc == Lemberg::JUMPgtz
+			|| LastOpc == Lemberg::JUMPlez) {
+		  TBB = LastInst->getOperand(1).getMBB();
+		  LembergCC::CondCode Code;
+		  switch (LastOpc) {
+		  case Lemberg::JUMPeqz: Code = LembergCC::EQZ; break;
+		  case Lemberg::JUMPnez: Code = LembergCC::NEZ; break;
+		  case Lemberg::JUMPltz: Code = LembergCC::LTZ; break;
+		  case Lemberg::JUMPgez: Code = LembergCC::GEZ; break;
+		  case Lemberg::JUMPgtz: Code = LembergCC::GTZ; break;
+		  case Lemberg::JUMPlez: Code = LembergCC::LEZ; break;
+		  }
+		  Cond.push_back(LastInst->getOperand(0));
+		  Cond.push_back(MachineOperand::CreateImm(Code));
+		  return false;
 		}
 
 		return true;  // Can't handle indirect branch.
@@ -353,20 +346,20 @@ LembergInstrInfo::AnalyzeBranch(MachineBasicBlock &MBB,
 		isUnpredicatedTerminator(--I)) {
 		return true;
 	}
-  
+
 	// If the block ends with JUMP, JUMPtrue, JUMPfalse, or JUMPpred, handle it.
 	if (LastInst->getOpcode() == Lemberg::JUMP) {
 		if (SecondLastInst->getOpcode() == Lemberg::JUMPtrue) {
 			TBB =  SecondLastInst->getOperand(1).getMBB();
 			Cond.push_back(SecondLastInst->getOperand(0));
-			Cond.push_back(MachineOperand::CreateImm(1));
+			Cond.push_back(MachineOperand::CreateImm(LembergCC::TRUE));
 			FBB = LastInst->getOperand(0).getMBB();
 			return false;
 		}
 		if (SecondLastInst->getOpcode() == Lemberg::JUMPfalse) {
 			TBB =  SecondLastInst->getOperand(1).getMBB();
 			Cond.push_back(SecondLastInst->getOperand(0));
-			Cond.push_back(MachineOperand::CreateImm(0));
+			Cond.push_back(MachineOperand::CreateImm(LembergCC::FALSE));
 			FBB = LastInst->getOperand(0).getMBB();
 			return false;
 		}
@@ -377,51 +370,27 @@ LembergInstrInfo::AnalyzeBranch(MachineBasicBlock &MBB,
 			FBB = LastInst->getOperand(0).getMBB();
 			return false;
 		}
-	}
-
-	// Replace an unconditional jump with a fall-through after JUMPxxz
-	// We pretend we cannot analyze them, because we cannot use xxz as predicates
-	if ((SecondLastInst->getOpcode() == Lemberg::JUMPeqz ||
-		 SecondLastInst->getOpcode() == Lemberg::JUMPnez ||
-		 SecondLastInst->getOpcode() == Lemberg::JUMPltz ||
-		 SecondLastInst->getOpcode() == Lemberg::JUMPgez ||
-		 SecondLastInst->getOpcode() == Lemberg::JUMPgtz ||
-		 SecondLastInst->getOpcode() == Lemberg::JUMPlez) &&
-		LastInst->getOpcode() == Lemberg::JUMP &&
-		AllowModify) {
-
-		MachineBasicBlock *Target = LastInst->getOperand(0).getMBB();
-		MachineBasicBlock *RevTarget = SecondLastInst->getOperand(1).getMBB();
-		if (MBB.isLayoutSuccessor(Target)) {
-			LastInst->eraseFromParent();
-		} else if (MBB.isLayoutSuccessor(RevTarget)) {			
-			unsigned ConvOpcode = 0;
-			switch (SecondLastInst->getOpcode()) {
-			case Lemberg::JUMPeqz:
-			  ConvOpcode = Lemberg::JUMPnez;
-			  break;
-			case Lemberg::JUMPnez:
-			  ConvOpcode = Lemberg::JUMPeqz;
-			  break;
-			case Lemberg::JUMPltz:
-			  ConvOpcode = Lemberg::JUMPgez;
-			  break;
-			case Lemberg::JUMPgez:
-			  ConvOpcode = Lemberg::JUMPltz;
-			  break;
-			case Lemberg::JUMPgtz:
-			  ConvOpcode = Lemberg::JUMPlez;
-			  break;
-			case Lemberg::JUMPlez:
-			  ConvOpcode = Lemberg::JUMPgtz;
-			  break;
-			}
- 		    LastInst->eraseFromParent();
-			SecondLastInst->setDesc(get(ConvOpcode));
-			SecondLastInst->getOperand(1).setMBB(Target);
+		if (SecondLastInst->getOpcode() == Lemberg::JUMPeqz
+			|| SecondLastInst->getOpcode() == Lemberg::JUMPnez
+			|| SecondLastInst->getOpcode() == Lemberg::JUMPltz
+			|| SecondLastInst->getOpcode() == Lemberg::JUMPgez
+			|| SecondLastInst->getOpcode() == Lemberg::JUMPgtz
+			|| SecondLastInst->getOpcode() == Lemberg::JUMPlez) {
+		  TBB = SecondLastInst->getOperand(1).getMBB();
+		  LembergCC::CondCode Code;
+		  switch (SecondLastInst->getOpcode()) {
+		  case Lemberg::JUMPeqz: Code = LembergCC::EQZ; break;
+		  case Lemberg::JUMPnez: Code = LembergCC::NEZ; break;
+		  case Lemberg::JUMPltz: Code = LembergCC::LTZ; break;
+		  case Lemberg::JUMPgez: Code = LembergCC::GEZ; break;
+		  case Lemberg::JUMPgtz: Code = LembergCC::GTZ; break;
+		  case Lemberg::JUMPlez: Code = LembergCC::LEZ; break;
+		  }
+		  Cond.push_back(SecondLastInst->getOperand(0));
+		  Cond.push_back(MachineOperand::CreateImm(Code));
+		  FBB = LastInst->getOperand(0).getMBB();
+		  return false;
 		}
-
-		return true;
 	}
 
 	// If the block ends with two JUMPs, handle it. The second one is
@@ -488,23 +457,53 @@ unsigned LembergInstrInfo::InsertBranch(MachineBasicBlock &MBB,
   // Shouldn't be a fall through.
   assert(TBB && "InsertBranch must not be told to insert a fallthrough");
   assert((Cond.size() == 2 || Cond.size() == 0) &&
-         "Lemberg branch conditions can two components!");
+         "Lemberg branch conditions can only have two components!");
 
   if (FBB == 0) { // One way branch.
     if (Cond.empty()) {
-		// Unconditional branch?
-		BuildMI(&MBB, DL, get(Lemberg::JUMP)).addMBB(TBB);
-    } else {
-		BuildMI(&MBB, DL, get(Lemberg::JUMPpred))
-			.addImm(Cond[1].getImm()).addReg(Cond[0].getReg()).addMBB(TBB);
+	  // Unconditional branch?
+	  BuildMI(&MBB, DL, get(Lemberg::JUMP)).addMBB(TBB);
+    } else if (Cond[1].getImm() == LembergCC::FALSE
+			   || Cond[1].getImm() == LembergCC::TRUE) {
+	  BuildMI(&MBB, DL, get(Lemberg::JUMPpred))
+		.addOperand(Cond[1]).addOperand(Cond[0]).addMBB(TBB);
+	} else {
+	  unsigned Opcode;
+	  switch (Cond[1].getImm()) {
+	  case LembergCC::EQZ: Opcode = Lemberg::JUMPeqz; break;
+	  case LembergCC::NEZ: Opcode = Lemberg::JUMPnez; break;
+	  case LembergCC::LTZ: Opcode = Lemberg::JUMPltz; break;
+	  case LembergCC::GEZ: Opcode = Lemberg::JUMPgez; break;
+	  case LembergCC::GTZ: Opcode = Lemberg::JUMPgtz; break;
+	  case LembergCC::LEZ: Opcode = Lemberg::JUMPlez; break;
+	  }
+	  MachineInstr *MI =
+		BuildMI(&MBB, DL, get(Opcode)).addOperand(Cond[0]).addMBB(TBB);
+	  MI->addRegisterDead(Lemberg::C3, &RI);
 	}
     return 1;
   } else {
 	  // Two-way conditional branch.
+	if (Cond[1].getImm() == LembergCC::FALSE
+		|| Cond[1].getImm() == LembergCC::TRUE) {
 	  BuildMI(&MBB, DL, get(Lemberg::JUMPpred))
-		  .addImm(Cond[1].getImm()).addReg(Cond[0].getReg()).addMBB(TBB);
-	  BuildMI(&MBB, DL, get(Lemberg::JUMP)).addMBB(FBB);
-	  return 2;
+		.addOperand(Cond[1]).addOperand(Cond[0]).addMBB(TBB);
+	} else {
+	  unsigned Opcode;
+	  switch (Cond[1].getImm()) {
+	  case LembergCC::EQZ: Opcode = Lemberg::JUMPeqz; break;
+	  case LembergCC::NEZ: Opcode = Lemberg::JUMPnez; break;
+	  case LembergCC::LTZ: Opcode = Lemberg::JUMPltz; break;
+	  case LembergCC::GEZ: Opcode = Lemberg::JUMPgez; break;
+	  case LembergCC::GTZ: Opcode = Lemberg::JUMPgtz; break;
+	  case LembergCC::LEZ: Opcode = Lemberg::JUMPlez; break;
+	  }
+	  MachineInstr *MI =
+		BuildMI(&MBB, DL, get(Opcode)).addOperand(Cond[0]).addMBB(TBB);
+	  MI->addRegisterDead(Lemberg::C3, &RI);
+	}
+	BuildMI(&MBB, DL, get(Lemberg::JUMP)).addMBB(FBB);
+	return 2;
   }
 }
 
@@ -514,8 +513,14 @@ ReverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const {
 
   unsigned Code = 0;
   switch (Cond[1].getImm()) {
-  case 0: Code = 1; break;
-  case 1: Code = 0; break;
+  case LembergCC::FALSE: Code = LembergCC::TRUE; break;
+  case LembergCC::TRUE: Code = LembergCC::FALSE; break;
+  case LembergCC::EQZ: Code = LembergCC::NEZ; break;
+  case LembergCC::NEZ: Code = LembergCC::EQZ; break;
+  case LembergCC::LTZ: Code = LembergCC::GEZ; break;
+  case LembergCC::GEZ: Code = LembergCC::LTZ; break;
+  case LembergCC::GTZ: Code = LembergCC::LEZ; break;
+  case LembergCC::LEZ: Code = LembergCC::GTZ; break;
   default: llvm_unreachable("Cannot reverse condition");
   }
 
@@ -528,7 +533,8 @@ bool LembergInstrInfo::
 PredicateInstruction(MachineInstr *MI,
                      const SmallVectorImpl<MachineOperand> &Pred) const {
 
-  if (Pred[1].getImm() == 0 || Pred[1].getImm() == 1) {
+  if (Pred[1].getImm() == LembergCC::TRUE
+   	  || Pred[1].getImm() == LembergCC::FALSE) {
 	  int PIdx = MI->findFirstPredOperandIdx();
 	  if (PIdx != -1) {
 		  MI->getOperand(PIdx).setImm(Pred[1].getImm());
@@ -574,3 +580,25 @@ DefinesPredicate(MachineInstr *MI, std::vector<MachineOperand> &Pred) const {
 
   return Found;
 }
+
+bool LembergInstrInfo::
+ComplexPredecessorPredicates(MachineBasicBlock &MBB) const {
+
+  for (MachineBasicBlock::pred_iterator PI = MBB.pred_begin(), PE = MBB.pred_end();
+	   PI != PE; ++PI) {
+
+	MachineBasicBlock *TBB = NULL, *FBB = NULL;
+	SmallVector<MachineOperand, 4> Cond;
+
+	AnalyzeBranch(**PI, TBB, FBB, Cond, false);
+
+	if (!Cond.empty() 
+		&& !(Cond[1].getImm() == LembergCC::FALSE
+			 || Cond[1].getImm() == LembergCC::TRUE)) {
+	  return true;
+	}
+  }
+
+  return false;
+}
+  
