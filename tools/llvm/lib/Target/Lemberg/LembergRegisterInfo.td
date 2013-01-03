@@ -26,6 +26,7 @@ class LembergGlobalReg<bits<5> num, string n> : LembergReg<n> {
 class LembergLocalReg<bits<5> num, int cluster, string n> : LembergReg<n> {
   let Num = num;
   int Cluster = cluster;
+  let CostPerUse = 1;
 }
 
 // Lemberg registers for doubles
