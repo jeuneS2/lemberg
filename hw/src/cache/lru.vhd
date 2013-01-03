@@ -26,9 +26,10 @@ use work.mem_pack.all;
 entity lru is
 generic (
 	index_bits : integer := 5;
+	line_bits : integer := 2;
 	cache_type : sc_cache_type);
 port (
-	clk, reset:	    in std_logic;
+	clk, reset:		in std_logic;
 
 	inval:			in std_logic;
 
@@ -42,11 +43,12 @@ end lru;
 architecture rtl of lru is
 
 	constant mem_bits : integer := ADDR_WIDTH;
+	constant line_width : integer := 2**line_bits;
 	constant line_cnt : integer := 2**index_bits;
 	
 	type cache_line_type is record
 		index	: std_logic_vector(index_bits-1 downto 0);
-		tag		: std_logic_vector(mem_bits-1 downto 0);
+		tag		: std_logic_vector(mem_bits-1 downto line_bits);
 		valid	: std_logic;
 	end record;
 
@@ -57,8 +59,8 @@ architecture rtl of lru is
 	
 	signal ram_data : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal ram_data_bytes : cache_data_type;
-	signal ram_wraddress: std_logic_vector(index_bits-1 downto 0);
-	signal ram_rdaddress: std_logic_vector(index_bits-1 downto 0);
+	signal ram_wraddress: std_logic_vector(index_bits+line_bits-1 downto 0);
+	signal ram_rdaddress: std_logic_vector(index_bits+line_bits-1 downto 0);
 	signal ram_wren : std_logic_vector(BYTES_PER_WORD-1 downto 0);
 	signal ram_dout : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal ram_dout_bytes : cache_data_type;
@@ -66,14 +68,14 @@ architecture rtl of lru is
 	signal int_reset : std_logic;
 	
 	-- what state we're in
-	type STATE_TYPE is (idle, rd0, rd1, rd2);
+	type STATE_TYPE is (idle, rd0, rd1, rd2, rd3, rd4);
 	signal state, next_state : state_type;
 	
 	-- enabling data shifting
 	signal enable :		std_logic_vector(0 to line_cnt-1);
 	-- connecting cache lines
 	signal data :		cache_line_array(-1 to line_cnt-1);
-    -- signaling hits
+	-- signaling hits
 	signal hit :		std_logic_vector(0 to line_cnt-1);
 
 	-- register data from CPU
@@ -82,6 +84,9 @@ architecture rtl of lru is
 	signal rd_data_reg, next_rd_data : std_logic_vector(DATA_WIDTH-1 downto 0);
 	
 	signal crd_reg, next_crd : std_logic;
+
+	signal rdoff, next_rdoff : std_logic_vector(line_bits-1 downto 0);
+	signal wroff, next_wroff : std_logic_vector(line_bits-1 downto 0);
 	
 begin
 
@@ -95,11 +100,11 @@ begin
 				index => to_unsigned(i, index_bits));
 			port (
 				clk, reset:	in std_logic;				
-				enable: 	in std_logic;
-				data_in: 	in cache_line_type;
+				enable:		in std_logic;
+				data_in:	in cache_line_type;
 				data_out:	out cache_line_type;
-				address: 	in std_logic_vector(mem_bits-1 downto 0);
-				hit: 		out std_logic
+				address:	in std_logic_vector(mem_bits-1 downto line_bits);
+				hit:		out std_logic
 				);
 			port map (
 				clk		 => clk,
@@ -107,7 +112,7 @@ begin
 				enable	 => enable(i),
 				data_in	 => data(i-1),
 				data_out => data(i),
-				address	 => cpu_out_reg.address(mem_bits-1 downto 0),
+				address	 => cpu_out_reg.address(mem_bits-1 downto line_bits),
 				hit		 => hit(i));			
 			signal data: cache_line_type;
 		begin
@@ -147,7 +152,7 @@ begin
 		cache_ram: entity work.sdpram
 		generic map (
 			width	   => BYTE_WIDTH,
-			addr_width => index_bits)
+			addr_width => index_bits+line_bits)
 		port map (
 			wrclk	   => clk,
 			data	   => ram_data_bytes(i),
@@ -162,16 +167,20 @@ begin
 
 	sync: process (clk, int_reset)
 	begin  -- process sync
-		if int_reset = '0' then  -- asynchronous reset (active low)
+		if int_reset = '0' then	 -- asynchronous reset (active low)
 			cpu_out_reg <= ((others => '0'), (others => '0'), '0', '0', "1111", bypass);
 			rd_data_reg <= (others => '0');
 			crd_reg <= '0';
+			rdoff <= (others => '0');
+			wroff <= (others => '0');
 			state <= idle;
 
-		elsif clk'event and clk = '1' then  -- rising clock edge
+		elsif clk'event and clk = '1' then	-- rising clock edge
 			cpu_out_reg <= next_cpu_out;				
 			rd_data_reg <= next_rd_data;
 			crd_reg <= next_crd;
+			rdoff <= next_rdoff;
+			wroff <= next_wroff;
 			state <= next_state;
 
 		end if;
@@ -179,7 +188,7 @@ begin
 	
 	async: process (cpu_out, cpu_out_reg, mem_in,
 					ram_dout, rd_data_reg, crd_reg,
-					state, data, hit)
+					rdoff, wroff, state, data, hit)
 
 		variable merged_index : std_logic_vector(index_bits-1 downto 0);
 		variable merged_hit : std_logic;
@@ -202,7 +211,7 @@ begin
 		end loop;  -- i
 		
 		-- hit data that goes to cache line 0
-		data(-1) <= (merged_index, cpu_out_reg.address(mem_bits-1 downto 0), '0');
+		data(-1) <= (merged_index, cpu_out_reg.address(mem_bits-1 downto line_bits), '0');
 		-- nothing is enabled by default
 		enable <= (others => '0');
 
@@ -225,7 +234,7 @@ begin
 		next_crd <= '0';
 		
 		-- default outputs to memory
-		mem_out.address <= cpu_out_reg.address;
+		mem_out.address <= cpu_out_reg.address(ADDR_WIDTH-1 downto line_bits) & rdoff;
 		mem_out.wr_data <= cpu_out_reg.wr_data;
 		mem_out.rd <= '0';
 		mem_out.wr <= '0';
@@ -234,43 +243,72 @@ begin
 		
 		-- signals for ram block
 		ram_data <= cpu_out_reg.wr_data;
-		ram_wraddress <= merged_index;
-		ram_rdaddress <= merged_index;
+		ram_wraddress <= merged_index & cpu_out_reg.address(line_bits-1 downto 0);
+		ram_rdaddress <= merged_index & cpu_out_reg.address(line_bits-1 downto 0);
 		ram_wren <= (others => '0');
-		
+
+		next_rdoff <= rdoff;
+		next_wroff <= wroff;
 		-- we're idle unless we know better
 		next_state <= state;
 
 		case state is
 
-			when idle => null; 			-- handled below
+			when idle => null;			-- handled below
 
 			-- memory read sequence, updating cache
 			when rd0 =>
 				cpu_in.rdy_cnt <= "11";
 				mem_out.rd <= '1';
+				-- shift cache lines
+				enable <= (others => '1');
+				data(-1) <= (data(line_cnt-1).index,
+							 cpu_out_reg.address(mem_bits-1 downto line_bits), '1');
+				next_rdoff <= std_logic_vector(unsigned(rdoff)+1);
 				next_state <= rd1;
-
-			when rd1 =>  				-- wait for memory
+				
+			when rd1 =>					-- wait for memory
 				cpu_in.rdy_cnt <= "11";
 				if mem_in.rdy_cnt <= 1 then
+					mem_out.rd <= '1';
 					next_state <= rd2;
 				else
 					next_state <= rd1;
 				end if;
 
-			when rd2 =>  				-- write back data to cache
-				-- shift in new data
-				enable <= (others => '1');
-
-				data(-1) <= (data(line_cnt-1).index, cpu_out_reg.address(mem_bits-1 downto 0), '1');				
-				ram_data <= mem_in.rd_data;
-				ram_wraddress <= data(line_cnt-1).index;
-				ram_wren <= (others => '1');
-				
-				next_rd_data <= mem_in.rd_data;
-
+			when rd2 =>					-- write back data to cache
 				cpu_in.rdy_cnt <= "11";
+				ram_data <= mem_in.rd_data;
+				ram_wraddress <= data(0).index & wroff;
+				ram_wren <= (others => '1');
+				if cpu_out_reg.address(line_bits-1 downto 0) = wroff then
+					next_rd_data <= mem_in.rd_data;
+				end if;
+				next_wroff <= rdoff;
+				next_rdoff <= std_logic_vector(unsigned(rdoff)+1);
+				if rdoff = std_logic_vector(to_unsigned(line_width-1, line_bits)) then
+					next_state <= rd3;
+				else
+					next_state <= rd1;
+				end if;
+
+			when rd3 =>					-- wait for memory
+				cpu_in.rdy_cnt <= "11";
+				if mem_in.rdy_cnt <= 1 then
+					next_state <= rd4;
+				else
+					next_state <= rd3;
+				end if;
+
+			when rd4 =>					-- write back data to cache
+				cpu_in.rdy_cnt <= "11";
+				ram_data <= mem_in.rd_data;
+				ram_wraddress <= data(0).index & wroff;
+				ram_wren <= (others => '1');
+				if cpu_out_reg.address(line_bits-1 downto 0) = wroff then
+					next_rd_data <= mem_in.rd_data;
+				end if;
+				next_wroff <= rdoff;
 				next_state <= idle;
 
 			when others => null;
@@ -287,7 +325,7 @@ begin
 			if merged_hit = '1' then
 				-- write new data on hit
 				ram_data <= cpu_out_reg.wr_data;
-				ram_wraddress <= merged_index;
+				ram_wraddress <= merged_index & cpu_out_reg.address(line_bits-1 downto 0);
 				ram_wren <= cpu_out_reg.byte_ena;
 			end if;
 
@@ -305,8 +343,8 @@ begin
 				if merged_hit = '1' then
 					
 					-- shift in new data
-					data(-1) <= (merged_index, cpu_out_reg.address(mem_bits-1 downto 0), '1');
-					ram_rdaddress <= merged_index;
+					data(-1) <= (merged_index, cpu_out_reg.address(mem_bits-1 downto line_bits), '1');
+					ram_rdaddress <= merged_index & cpu_out_reg.address(line_bits-1 downto 0);
 					-- read from cache
 					cpu_in.rdy_cnt <= "11";
 					next_crd <= '1';
