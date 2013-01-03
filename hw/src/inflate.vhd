@@ -26,57 +26,35 @@ use work.op_pack.all;
 entity inflate is
 	
 	port (
-		clk        : in  std_logic;
-		reset      : in  std_logic;
-		raw        : in  std_logic_vector(0 to FETCH_WIDTH-1);
-		pc_in      : in  std_logic_vector(PC_WIDTH-1 downto 0);
-		ena        : in  std_logic;
-		flush      : in  std_logic;
-		bundle     : out bundle_type;
-		pc_out     : out std_logic_vector(PC_WIDTH-1 downto 0);
-		xnop       : out std_logic);
+		clk		   : in	 std_logic;
+		reset	   : in	 std_logic;
+		raw		   : in	 std_logic_vector(0 to FETCH_WIDTH-1);
+		pc_in	   : in	 std_logic_vector(PC_WIDTH-1 downto 0);
+		ena		   : in	 std_logic;
+		flush	   : in	 std_logic;
+		bundle	   : out bundle_type;
+		pc_out	   : out std_logic_vector(PC_WIDTH-1 downto 0));
 
 end inflate;
 
 architecture behavior of inflate is
 
 	signal raw_reg : std_logic_vector(0 to FETCH_WIDTH-1);
-	signal nop_cnt_reg, nop_cnt_next : unsigned(8-CLUSTERS-1 downto 0);
 
 	--pragma synthesis off
 	signal nop_cnt : integer := 0;
 	signal ena_cnt : integer := 0;
-    type bundle_cnt_type is array (0 to MAX_CLUSTERS) of integer;
-    signal bundle_cnt : bundle_cnt_type := (others => 0);    
+	type bundle_cnt_type is array (0 to MAX_CLUSTERS) of integer;
+	signal bundle_cnt : bundle_cnt_type := (others => 0);	 
 	--pragma synthesis on
 	
 begin  -- behavior	
 		
-	sync: process (clk, reset, raw, pc_in)
-	begin  -- process sync
-		if ENABLE_XNOP then
-			if reset = '0' then  			-- asynchronous reset (active low)
-				raw_reg <= (others => '0');
-				pc_out <= (others => '0');
-				nop_cnt_reg <= (others => '0');
-			elsif clk'event and clk = '1' then  -- rising clock edge
-				if ena = '1' then
-					raw_reg <= raw;
-					pc_out <= pc_in;					
-					nop_cnt_reg <= nop_cnt_next;
-					if flush = '1' then
-						raw_reg <= (others => '0');
-					end if;
-				end if;
-			end if;
-		else
-			raw_reg <= raw;
-			pc_out <= pc_in;
-		end if;
-	end process sync;
+	raw_reg <= raw;
+	pc_out <= pc_in;
 
 	-- this needs to be adapted when changing the number of clusters
-	inflate: process (raw_reg, nop_cnt_reg, nop_cnt_next)
+	inflate: process (raw_reg)
 		variable syll : bundle_type;
 	begin  -- process inflate
 		bundle <= BUNDLE_NOP;
@@ -86,69 +64,57 @@ begin  -- behavior
 										   to MAX_CLUSTERS+(i+1)*SYLLABLE_WIDTH-1));
 		end loop;  -- i
 		
-		if ENABLE_XNOP and nop_cnt_reg /= 0 then
-			nop_cnt_next <= nop_cnt_reg-1;
-		else
-			nop_cnt_next <= (others => '0');
-			case raw_reg(0 to MAX_CLUSTERS-1) is
-				when "0000" =>
-					nop_cnt_next <= unsigned(raw_reg(CLUSTERS to 8-1));
-				when "0001" =>
-					bundle(0) <= syll(0);
-				when "0010" =>
-					bundle(1) <= syll(0);
-				when "0100" =>
-					bundle(2) <= syll(0);
-				when "1000" =>
-					bundle(3) <= syll(0);
-				when "0011" =>
-					bundle(0) <= syll(0);
-					bundle(1) <= syll(1);
-				when "0101" =>
-					bundle(0) <= syll(0);
-					bundle(2) <= syll(1);
-				when "1001" =>
-					bundle(0) <= syll(0);
-					bundle(3) <= syll(1);
-				when "0110" =>
-					bundle(1) <= syll(0);
-					bundle(2) <= syll(1);
-				when "1010" =>
-					bundle(1) <= syll(0);
-					bundle(3) <= syll(1);
-				when "1100" =>
-					bundle(2) <= syll(0);
-					bundle(3) <= syll(1);
-				when "0111" =>
-					bundle(0) <= syll(0);
-					bundle(1) <= syll(1);
-					bundle(2) <= syll(2);
-				when "1011" =>
-					bundle(0) <= syll(0);
-					bundle(1) <= syll(1);
-					bundle(3) <= syll(2);
-				when "1101" =>
-					bundle(0) <= syll(0);
-					bundle(2) <= syll(1);
-					bundle(3) <= syll(2);
-				when "1110" =>
-					bundle(1) <= syll(0);
-					bundle(2) <= syll(1);
-					bundle(3) <= syll(2);
-				when "1111" =>
-					bundle(0) <= syll(0);
-					bundle(1) <= syll(1);
-					bundle(2) <= syll(2);
-					bundle(3) <= syll(3);
-				when others => null;
-			end case;
-		end if;
-
-		if ENABLE_XNOP and nop_cnt_next /= 0 then
-			xnop <= '1';
-		else
-			xnop <= '0';
-		end if;
+		case raw_reg(0 to MAX_CLUSTERS-1) is
+			when "0000" => null;
+			when "0001" =>
+				bundle(0) <= syll(0);
+			when "0010" =>
+				bundle(1) <= syll(0);
+			when "0100" =>
+				bundle(2) <= syll(0);
+			when "1000" =>
+				bundle(3) <= syll(0);
+			when "0011" =>
+				bundle(0) <= syll(0);
+				bundle(1) <= syll(1);
+			when "0101" =>
+				bundle(0) <= syll(0);
+				bundle(2) <= syll(1);
+			when "1001" =>
+				bundle(0) <= syll(0);
+				bundle(3) <= syll(1);
+			when "0110" =>
+				bundle(1) <= syll(0);
+				bundle(2) <= syll(1);
+			when "1010" =>
+				bundle(1) <= syll(0);
+				bundle(3) <= syll(1);
+			when "1100" =>
+				bundle(2) <= syll(0);
+				bundle(3) <= syll(1);
+			when "0111" =>
+				bundle(0) <= syll(0);
+				bundle(1) <= syll(1);
+				bundle(2) <= syll(2);
+			when "1011" =>
+				bundle(0) <= syll(0);
+				bundle(1) <= syll(1);
+				bundle(3) <= syll(2);
+			when "1101" =>
+				bundle(0) <= syll(0);
+				bundle(2) <= syll(1);
+				bundle(3) <= syll(2);
+			when "1110" =>
+				bundle(1) <= syll(0);
+				bundle(2) <= syll(1);
+				bundle(3) <= syll(2);
+			when "1111" =>
+				bundle(0) <= syll(0);
+				bundle(1) <= syll(1);
+				bundle(2) <= syll(2);
+				bundle(3) <= syll(3);
+			when others => null;
+		end case;
 
 	end process inflate;
 
@@ -158,26 +124,25 @@ begin  -- behavior
 	--pragma synthesis off
 	stat: process (clk)
 	begin  -- process
-		if clk'event and clk = '1' then  -- rising clock edge
+		if clk'event and clk = '1' then	 -- rising clock edge
 			if ena = '1' then
 				if flush = '0' then
-					if raw(0 to MAX_CLUSTERS-1) = "0000" or
-						(ENABLE_XNOP and nop_cnt_reg /= 0) then
+					if raw(0 to MAX_CLUSTERS-1) = "0000" then
 						nop_cnt <= nop_cnt + 1;
 					end if;
-                    case raw(0 to MAX_CLUSTERS-1) is
-                        when "0000" =>
-                            bundle_cnt(0) <= bundle_cnt(0)+1;
-                        when "0001" | "0010" | "0100" | "1000" =>
-                            bundle_cnt(1) <= bundle_cnt(1)+1;
-                        when "0011" | "0101" | "1001" | "0110" | "1010" | "1100" =>
-                            bundle_cnt(2) <= bundle_cnt(2)+1;
-                        when "0111" | "1011" | "1101" | "1110" =>
-                            bundle_cnt(3) <= bundle_cnt(3)+1;
-                        when "1111" =>
-                            bundle_cnt(4) <= bundle_cnt(4)+1;
-                        when others => null;                            
-                    end case;
+					case raw(0 to MAX_CLUSTERS-1) is
+						when "0000" =>
+							bundle_cnt(0) <= bundle_cnt(0)+1;
+						when "0001" | "0010" | "0100" | "1000" =>
+							bundle_cnt(1) <= bundle_cnt(1)+1;
+						when "0011" | "0101" | "1001" | "0110" | "1010" | "1100" =>
+							bundle_cnt(2) <= bundle_cnt(2)+1;
+						when "0111" | "1011" | "1101" | "1110" =>
+							bundle_cnt(3) <= bundle_cnt(3)+1;
+						when "1111" =>
+							bundle_cnt(4) <= bundle_cnt(4)+1;
+						when others => null;							
+					end case;
 				end if;
 			else
 				ena_cnt <= ena_cnt + 1;

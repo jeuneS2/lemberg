@@ -22,12 +22,9 @@ use ieee.std_logic_1164.all;
 package core_pack is
 
 	-- version number
-	constant VERSION : std_logic_vector(31 downto 0) := X"20121122";
+	constant VERSION : std_logic_vector(31 downto 0) := X"20130103";
 	-- speed
 	constant CLOCK_FREQ : integer := 66666667;
-
-	-- inflate stage is required if xnops are enabled
-	constant ENABLE_XNOP : boolean := false;	
 
 	-- width of a word
 	constant DATA_WIDTH_BITS  : integer := 5;
@@ -67,6 +64,7 @@ package core_pack is
 	-- data cache sizes
 	constant DM_ADDR_WIDTH    : integer := 10;
 	constant FA_ADDR_WIDTH    : integer := 8;
+	constant FA_LINE_BITS     : integer := 2;
 	constant STACK_ADDR_WIDTH : integer := 12;
 	
 	-- bits for en-/decoding

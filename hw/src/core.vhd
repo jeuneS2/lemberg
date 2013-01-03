@@ -40,7 +40,6 @@ end core;
 architecture behavior of core is
 
 	signal ena		   : std_logic;
-	signal xnop        : std_logic;
 	signal flush       : std_logic;
 
 	signal fetch_raw   : std_logic_vector(0 to FETCH_WIDTH-1);
@@ -105,7 +104,6 @@ begin  -- behavior
 			reset    => reset,
 			raw_in   => imem_raw,
 			ena      => ena,
-			xnop     => xnop,
 			raw_out  => fetch_raw,
 			vpc0_out => fetch_vpc0,
 			vpc1_out => fetch_vpc1,
@@ -133,8 +131,7 @@ begin  -- behavior
 			ena		   => ena,
 			flush      => flush,
 			bundle     => infl_bundle,
-			pc_out	   => infl_pc,
-			xnop       => xnop);
+			pc_out	   => infl_pc);
 	
 	decode: entity work.decode
 		port map (
@@ -257,9 +254,10 @@ begin  -- behavior
 
 	datacache: entity work.datacache
 		generic map (
-			dm_bits	  => DM_ADDR_WIDTH,
-			fa_bits	  => FA_ADDR_WIDTH,
-			stack_bits => STACK_ADDR_WIDTH)
+			dm_bits      => DM_ADDR_WIDTH,
+			fa_bits      => FA_ADDR_WIDTH,
+			fa_line_bits => FA_LINE_BITS,
+			stack_bits   => STACK_ADDR_WIDTH)
 		port map (
 			clk		=> clk,
 			reset	=> reset,

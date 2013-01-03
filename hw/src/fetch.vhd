@@ -29,7 +29,6 @@ entity fetch is
 		reset	 : in  std_logic;
 		raw_in	 : in  std_logic_vector(0 to FETCHBUF_WIDTH-1);
 		ena		 : in  std_logic;
-		xnop	 : in  std_logic;
 		raw_out	 : out std_logic_vector(0 to FETCH_WIDTH-1);
 		pc_out	 : out std_logic_vector(PC_WIDTH-1 downto 0);
 		vpc0_out : out std_logic_vector(PC_WIDTH-1 downto 0);
@@ -55,11 +54,11 @@ architecture behavior of fetch is
 	
 	signal raw_reg, raw_next : std_logic_vector(0 to FETCHBUF_WIDTH-1);
 
-	type maskvec_type is array (0 to FETCHBUF_BYTES-1) of std_logic_vector(MAX_CLUSTERS-1 downto 0);
-	type opcntvec_type is array (0 to FETCHBUF_BYTES-1) of integer range 0 to MAX_CLUSTERS;
+	type maskvec_type is array (0 to FETCHBUF_BYTES-1) of std_logic_vector(CLUSTERS-1 downto 0);
+	type opcntvec_type is array (0 to FETCHBUF_BYTES-1) of integer range 0 to CLUSTERS;
 	
-	type startvec_type is array (0 to MAX_CLUSTERS) of unsigned(FETCHBUF_BITS-1 downto 0);
-	type pcvec_type is array (0 to MAX_CLUSTERS) of unsigned(PC_WIDTH-1 downto 0);
+	type startvec_type is array (0 to CLUSTERS) of unsigned(FETCHBUF_BITS-1 downto 0);
+	type pcvec_type is array (0 to CLUSTERS) of unsigned(PC_WIDTH-1 downto 0);
 
 	-- precomputed values for next PC value
 	signal vpc0_inc, vpc0_inc_next : unsigned(PC_WIDTH-1 downto 0);
@@ -108,7 +107,7 @@ begin  -- behavior
 		end if;
 	end process sync;
 
-	width: process (raw_in, raw_next, raw_reg, ena, xnop,
+	width: process (raw_in, raw_next, raw_reg, ena,
 					vpc0_reg, vpc1_reg,
 					pc_reg, pc_wr, pc0_in, pc1_in,
 					start_pos, fetch_pos, wrap_reg,
@@ -116,7 +115,7 @@ begin  -- behavior
 					vpc0_stall, vpc1_stall)
 		variable maskvec : maskvec_type;
 		variable opcntvec : opcntvec_type;
-		variable opcnt : integer range 0 to MAX_CLUSTERS;
+		variable opcnt : integer range 0 to CLUSTERS;
 		variable startvec : startvec_type;
 		variable pcvec : pcvec_type;
 
@@ -128,7 +127,8 @@ begin  -- behavior
 		end loop;  -- i
 
 		for i in 0 to FETCHBUF_BYTES-1 loop
-			maskvec(i) := raw_next(i*BYTE_WIDTH to i*BYTE_WIDTH+MAX_CLUSTERS-1);
+			maskvec(i) := raw_next(i*BYTE_WIDTH+MAX_CLUSTERS-CLUSTERS
+                                   to i*BYTE_WIDTH+MAX_CLUSTERS-1);
 			opcntvec(i) := count_bits(maskvec(i));			
 		end loop;  -- i
 		opcnt := opcntvec(to_integer(start_pos));
@@ -195,11 +195,7 @@ begin  -- behavior
 			vpc1_out <= pc1_in;
 		end if;
 
-		if xnop = '1' then
-			pc_out <= std_logic_vector(pc_reg);				
-		end if;
-
-		if ena = '0' or (xnop = '1' and pc_wr = '0') then
+		if ena = '0' then
 			start_next <= start_pos;
 			fetch_next <= fetch_pos;
 			wrap_next <= wrap_reg;
