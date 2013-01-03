@@ -28,11 +28,11 @@ entity g_regfile is
 		clk	   : in	 std_logic;
 		reset  : in	 std_logic;
 		
-		rden   : in  g_reg_rden_type;
+		rden   : in	 g_reg_rden_type;
 		rdaddr : in	 g_reg_rdaddr_type;
 		rddata : out g_reg_rddata_type;
 		
-		wren   : in  g_reg_wren_type;
+		wren   : in	 g_reg_wren_type;
 		wraddr : in	 g_reg_wraddr_type;
 		wrdata : in	 g_reg_wrdata_type);
 
@@ -40,10 +40,12 @@ end g_regfile;
 
 architecture behavior of g_regfile is
 
-	signal regfile : g_reg_regfile_type := (others => (others => '0'));
+	signal src : g_reg_src_type;
+	signal regfile : g_reg_regfile_type := (others => (others => (others => '0')));
+	
 	signal rdaddr_reg : g_reg_rdaddr_type;
 
-	signal wren_reg   : g_reg_wren_type;
+	signal wren_reg	  : g_reg_wren_type;
 	signal wraddr_reg : g_reg_wraddr_type;
 	signal wrdata_reg : g_reg_wrdata_type;
 	
@@ -51,11 +53,11 @@ begin  -- behavior
 
 	sync: process (clk, reset)
 	begin  -- process sync
-		if clk'event and clk = '1' then  -- rising clock edge
+		if clk'event and clk = '1' then	 -- rising clock edge
 			-- latch read addresses
 			for i in 0 to REG_RDPORTS-1 loop
 				if rden(i) = '1' then
-					rdaddr_reg <= rdaddr;
+					rdaddr_reg(i) <= rdaddr(i);
 				end if;
 			end loop;  -- i
 			-- latch writes
@@ -64,17 +66,19 @@ begin  -- behavior
 			wrdata_reg <= wrdata;
 			for i in 0 to REG_WRPORTS-1 loop
 				if wren_reg(i) = '1' then
-					regfile(to_integer(unsigned(wraddr_reg(i)))) <= wrdata_reg(i);
+					regfile(i)(to_integer(unsigned(wraddr_reg(i)))) <= wrdata_reg(i);
+					src(to_integer(unsigned(wraddr_reg(i)))) <= i;
 				end if;
 			end loop;  -- i			
 		end if;
 	end process sync;
 
-	async: process (regfile, rdaddr_reg,
+	async: process (regfile, rdaddr_reg, src,
 					wren_reg, wraddr_reg, wrdata_reg)
 	begin  -- process async
 		for i in 0 to REG_RDPORTS-1 loop
-			rddata(i) <= regfile(to_integer(unsigned(rdaddr_reg(i))));
+			rddata(i) <= regfile(src(to_integer(unsigned(rdaddr_reg(i)))))
+						 (to_integer(unsigned(rdaddr_reg(i))));
 			for k in 0 to REG_WRPORTS-1 loop
 				if wren_reg(k) = '1' and wraddr_reg(k) = rdaddr_reg(i) then
 					rddata(i) <= wrdata_reg(k);
