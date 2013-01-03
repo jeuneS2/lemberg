@@ -191,21 +191,21 @@ package op_pack is
 	type memop_arr_type is array (0 to CLUSTERS-1) of memop_type;
 
 	type stall_type is (STALL_NOP,
-						STALL_SOFTWAIT,
+						STALL_SOFTWAITUNIT,
+						STALL_WAITUNIT,
+						STALL_FULLWAITUNIT,
 						STALL_WAIT,
 						STALL_FULLWAIT);
 	
 	type stallop_type is
 	record
-		value	: std_logic_vector(RDY_CNT_WIDTH-1 downto 0);
 		op      : stall_type;
 		cond	: std_logic;
 		flag	: std_logic_vector(FLAG_COUNT-1 downto 0);		
 	end record;
 
 	constant STALLOP_NOP : stallop_type :=
-		((others => '0'),
-		 STALL_NOP,
+		(STALL_NOP,
 		 COND_FALSE, (others => '0'));
 	
 	type stallop_arr_type is array (0 to CLUSTERS-1) of stallop_type;

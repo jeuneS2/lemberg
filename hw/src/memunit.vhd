@@ -29,22 +29,22 @@ use work.io_pack.all;
 entity memunit is
 	
 	port (
-		clk	        : in  std_logic;
-		reset       : in  std_logic;
-		op	        : in  memop_arr_type;
-		stallop     : in  stallop_arr_type;
-		fl_in       : in  std_logic_vector(FLAG_COUNT-1 downto 0);
-		ena		    : out std_logic;
-		memdata     : out std_logic_vector(DATA_WIDTH-1 downto 0);
-		ba          : out std_logic_vector(ADDR_WIDTH-1 downto 0);
-		rb_out      : out std_logic_vector(ADDR_WIDTH-1 downto 0);
-		rb_wren     : in  std_logic_vector(CLUSTERS-1 downto 0);
-		rb_in       : in  rb_wrdata_type;
-		pcoff       : out std_logic_vector(ICACHE_BLOCK_BITS-1 downto 0);
-		inval       : out std_logic;
-		imem_write  : out imem_write_type;		
-		mem_out     : out sc_out_type;
-		mem_in      : in  sc_in_type);
+		clk			: in  std_logic;
+		reset		: in  std_logic;
+		op			: in  memop_arr_type;
+		stallop		: in  stallop_arr_type;
+		fl_in		: in  std_logic_vector(FLAG_COUNT-1 downto 0);
+		ena			: out std_logic;
+		memdata		: out std_logic_vector(DATA_WIDTH-1 downto 0);
+		ba			: out std_logic_vector(ADDR_WIDTH-1 downto 0);
+		rb_out		: out std_logic_vector(ADDR_WIDTH-1 downto 0);
+		rb_wren		: in  std_logic_vector(CLUSTERS-1 downto 0);
+		rb_in		: in  rb_wrdata_type;
+		pcoff		: out std_logic_vector(ICACHE_BLOCK_BITS-1 downto 0);
+		inval		: out std_logic;
+		imem_write	: out imem_write_type;		
+		mem_out		: out sc_out_type;
+		mem_in		: in  sc_in_type);
 
 end memunit;
 
@@ -55,10 +55,10 @@ architecture behavior of memunit is
 							 SIZE_WAIT, SIZE_SKIP, SIZE_RD,
 							 BODY_WAIT, BODY_SKIP, BODY_WR, BODY_LAST);
 
-	signal imem_state_reg,  imem_state_next  : IMEM_STATE_TYPE;
-	signal imem_addr_reg,   imem_addr_next   : std_logic_vector(ADDR_WIDTH-1 downto 0);
-	signal imem_idx_reg,    imem_idx_next    : std_logic_vector(PC_WIDTH-3 downto 0);
-	signal imem_size_reg,   imem_size_next   : std_logic_vector(PC_WIDTH-3 downto 0);
+	signal imem_state_reg,	imem_state_next	 : IMEM_STATE_TYPE;
+	signal imem_addr_reg,	imem_addr_next	 : std_logic_vector(ADDR_WIDTH-1 downto 0);
+	signal imem_idx_reg,	imem_idx_next	 : std_logic_vector(PC_WIDTH-3 downto 0);
+	signal imem_size_reg,	imem_size_next	 : std_logic_vector(PC_WIDTH-3 downto 0);
 
 	signal icache_hit : std_logic;
 	signal icache_detect, icache_update, icache_clear : std_logic;
@@ -68,14 +68,13 @@ architecture behavior of memunit is
 	signal ba_reg, ba_next : std_logic_vector(ADDR_WIDTH-1 downto 0);
 	signal rb_reg, rb_next : std_logic_vector(ADDR_WIDTH-1 downto 0);
 
-	signal ena_int, ena_init : std_logic;
+	signal ena_int, ena_init, ena_reg : std_logic;
+	signal busy_reg, busy_next : unsigned(1 downto 0);
+	signal rdy_cnt_reg : unsigned(RDY_CNT_WIDTH-1 downto 0);
 
 	signal operation : MEM_TYPE;
-	signal address   : std_logic_vector(ADDR_WIDTH+1 downto 0);
-	signal wrdata    : std_logic_vector(DATA_WIDTH-1 downto 0);
-
-	signal stalloperation : STALL_TYPE;
-	signal ready, ready_reg : std_logic;
+	signal address	 : std_logic_vector(ADDR_WIDTH+1 downto 0);
+	signal wrdata	 : std_logic_vector(DATA_WIDTH-1 downto 0);
 
 	type addrvec_type is array (CLUSTERS-1 downto 0) of std_logic_vector(ADDR_WIDTH+1 downto 0);
 
@@ -85,7 +84,7 @@ begin  -- behavior
 		port map (
 			clk		=> clk,
 			reset	=> reset,
-			detect  => icache_detect,
+			detect	=> icache_detect,
 			update	=> icache_update,
 			clear	=> icache_clear,
 			address => icache_address,
@@ -97,18 +96,24 @@ begin  -- behavior
 	rb_out <= rb_reg;
 	pcoff <= icache_offset;
 	
-	init: process (clk, reset)
+	enaproc: process (clk, reset)
 	begin  -- process init
-		if reset = '0' then  			-- asynchronous reset (active low)
+		if reset = '0' then				-- asynchronous reset (active low)
 			ena_init <= '0';
-		elsif clk'event and clk = '1' then  -- rising clock edge
+			ena_reg <= '1';
+			rdy_cnt_reg <= (others => '0');
+			busy_reg <= "00";
+		elsif clk'event and clk = '1' then	-- rising clock edge
 			ena_init <= '1';
+			ena_reg <= ena_int;			   
+			rdy_cnt_reg <= mem_in.rdy_cnt;
+			busy_reg <= busy_next;
 		end if;
-	end process init;
+	end process enaproc;
 	
 	sync: process (clk, reset)
 	begin  -- process sync
-		if reset = '0' then  			-- asynchronous reset (active low)			
+		if reset = '0' then				-- asynchronous reset (active low)			
 			-- booting!
 			imem_state_reg <= IDLE;			
 			
@@ -119,8 +124,6 @@ begin  -- behavior
 			ba_reg <= (others => '0');
 			rb_reg <= (others => '0');
 			
-			ready_reg <= '0';
-			
 		elsif clk'event and clk = '1' then	-- rising clock edge
 			imem_state_reg <= imem_state_next;
 			imem_addr_reg <= imem_addr_next;
@@ -129,8 +132,6 @@ begin  -- behavior
 
 			ba_reg <= ba_next;
 			rb_reg <= rb_next;
-			
-			ready_reg <= ready;
 
 			assert imem_state_reg /= SIZE_RD
 				or unsigned(mem_in.rd_data(DATA_WIDTH-1 downto PC_WIDTH)) = 0
@@ -138,7 +139,7 @@ begin  -- behavior
 		end if;
 	end process sync;
 
-	async: process (op, fl_in, mem_in, ena_int,
+	async: process (op, fl_in, mem_in, ena_int, busy_reg,
 					operation, address, wrdata,
 					imem_state_reg, imem_addr_reg, imem_idx_reg, imem_size_reg,
 					icache_hit, icache_offset, icache_address,
@@ -217,6 +218,16 @@ begin  -- behavior
 			end if;
 		end loop;  -- i
 
+		if mem_in.rdy_cnt = "00" then
+			busy_next <= "00";
+		elsif mem_in.rdy_cnt = "01" and busy_reg = "11" then
+			busy_next <= "01";
+		elsif busy_reg = "00" or busy_reg = "01" then
+			busy_next <= "00";
+		else
+			busy_next <= "11";
+		end if;
+		
 		inval <= '0';
 
 		case operation is
@@ -291,18 +302,33 @@ begin  -- behavior
 			when MEM_LDM_B =>
 				mem_out.rd <= valid and ena_int;
 				mem_out.cache <= BYPASS;
+				if valid = '1' and ena_int = '1' then
+					busy_next <= "11";
+				end if;
 			when MEM_LDM_D =>
 				mem_out.rd <= valid and ena_int;
 				mem_out.cache <= DIRECTMAP;
+				if valid = '1' and ena_int = '1' then
+					busy_next <= "11";
+				end if;
 			when MEM_LDM_F =>
 				mem_out.rd <= valid and ena_int;
 				mem_out.cache <= FULLASSOC;
+				if valid = '1' and ena_int = '1' then
+					busy_next <= "11";
+				end if;
 			when MEM_LDMR_F =>
 				mem_out.rd <= valid and ena_int;
 				mem_out.cache <= FULLASSOC;
+				if valid = '1' and ena_int = '1' then
+					busy_next <= "11";
+				end if;
 			when MEM_LDM_S =>
 				mem_out.rd <= valid and ena_int;
 				mem_out.cache <= STACK;
+				if valid = '1' and ena_int = '1' then
+					busy_next <= "11";
+				end if;
 			when MEM_CALL | MEM_RET =>
 				if valid = '1' and ena_int = '1' then
 					icache_detect <= '1';
@@ -389,97 +415,60 @@ begin  -- behavior
 	end process async;
 
 	stall: process (stallop, fl_in, mem_in,
-					stalloperation, ready, ready_reg,
+					ena_reg, rdy_cnt_reg, busy_reg,
 					imem_state_reg)
 
-		variable idx : integer range 0 to CLUSTERS-1;
-		variable valid : std_logic;
-		variable readyvec : std_logic_vector(CLUSTERS-1 downto 0);
+		variable valid : std_logic_vector(CLUSTERS-1 downto 0);
+		variable ready : std_logic;
 		
 	begin  -- process stall
 
-		idx := 0;
-		valid := '0';
-		readyvec := (others => '0');
+		valid := (others => '0');
+		ready := '1';
 
 		-- default operations
 		for i in 0 to CLUSTERS-1 loop
 			case stallop(i).cond is
 				when COND_TRUE =>
 					if unsigned(stallop(i).flag and fl_in) /= 0 then
-						idx := i;
-						valid := '1';
+						valid(i) := '1';
 					end if;
 				when COND_FALSE =>
 					if unsigned(stallop(i).flag and not fl_in) /= 0 then
-						idx := i;
-						valid := '1';
+						valid(i) := '1';
 					end if;
 				when others => null;
 			end case;
 
-			if (mem_in.rdy_cnt(0) = '0' or stallop(i).value(0) = '1')
-                and mem_in.rdy_cnt(1) = '0' then
-				readyvec(i) := '1';
-			end if;
-		end loop;  -- i
-
-		-- STALL_WAIT may override STALL_SOFTWAIT
-		for i in 0 to CLUSTERS-1 loop
-			case stallop(i).cond is
-				when COND_TRUE =>
-					if unsigned(stallop(i).flag and fl_in) /= 0 then
-						if stallop(i).op = STALL_WAIT then
-							idx := i;
-						end if;
+			case stallop(i).op is
+				when STALL_NOP =>
+					-- nothing to do
+				when STALL_SOFTWAITUNIT =>
+					if valid(i) = '1' and mem_in.rdy_cnt(1) = '1' then
+						ready := '0';
 					end if;
-				when COND_FALSE =>
-					if unsigned(stallop(i).flag and not fl_in) /= 0 then
-						if stallop(i).op = STALL_WAIT then
-							idx := i;
-						end if;
+				when STALL_WAITUNIT =>
+					if valid(i) = '1' and mem_in.rdy_cnt /= 0 then
+						ready := '0';
 					end if;
-				when others => null;
+				when STALL_FULLWAITUNIT =>
+					if valid(i) = '1' and (rdy_cnt_reg /= 0 or ena_reg = '1') then
+						ready := '0';
+					end if;
+				when STALL_WAIT =>
+					if valid(i) = '1' and busy_reg(0) = '1' and mem_in.rdy_cnt /= 0 then
+						ready := '0';
+					end if;
+				when STALL_FULLWAIT =>
+					if valid(i) = '1' and ((busy_reg(0) = '1' and rdy_cnt_reg /= 0) or ena_reg = '1') then
+						ready := '0';
+					end if;
+				when others =>
+					assert false report "Invalid STALLUNIT operation" severity error;
 			end case;
 		end loop;  -- i
 
-		-- STALL_FULLWAIT may override STALL_WAIT
-		for i in 0 to CLUSTERS-1 loop
-			case stallop(i).cond is
-				when COND_TRUE =>
-					if unsigned(stallop(i).flag and fl_in) /= 0 then
-						if stallop(i).op = STALL_FULLWAIT then
-							idx := i;
-						end if;
-					end if;
-				when COND_FALSE =>
-					if unsigned(stallop(i).flag and not fl_in) /= 0 then
-						if stallop(i).op = STALL_FULLWAIT then
-							idx := i;
-						end if;
-					end if;
-				when others => null;
-			end case;
-		end loop;  -- i
-
-		stalloperation <= stallop(idx).op;
-		ready <= readyvec(idx);
-
-		ena_int <= '1';
-		case stalloperation is
-			when STALL_NOP =>
-				-- nothing to do
-			when STALL_SOFTWAIT | STALL_WAIT =>
-				if valid = '1' then
-					ena_int <= ready;
-				end if;
-			when STALL_FULLWAIT =>
-				if valid = '1' then
-					ena_int <= ready and ready_reg;
-				end if;
-			when others =>
-				assert false report "Invalid STALLUNIT operation" severity error;
-		end case;
+		ena_int <= ready;		 
 		if imem_state_reg /= IDLE then
 			ena_int <= '0';
 		end if;

@@ -123,7 +123,7 @@ begin  -- behavior
 		fl_wren <= (others => '0');
 		fl_out <= (others => '0');
 
-		fpu_wrdata <= op.rdmemd0;
+		fpu_wrdata <= op.rddata0;
 
 		rb_wren <= '0';
 		rb_out <= op.rdmemd0(ADDR_WIDTH-1 downto 0);
@@ -421,7 +421,7 @@ begin  -- behavior
 				end if;
 			when ALU_STFP =>
 				-- just deliver data, actual writing is done in FPU
-				fpu_wrdata <= op.rdmemd0;
+				fpu_wrdata <= op.rddata0;
 			when ALU_LDRB =>
 				wren <= valid;
 				wrdata <= (others => '0');
