@@ -25,11 +25,12 @@ use work.mem_pack.all;
 
 entity datacache is
 	generic (
-		dm_bits    : integer := 8;
-		fa_bits	   : integer := 5;
-		stack_bits : integer := 9);
+		dm_bits		 : integer := 8;
+		fa_bits		 : integer := 5;
+		fa_line_bits : integer := 2;
+		stack_bits	 : integer := 9);
 	port (
-		clk, reset:	    in std_logic;
+		clk, reset:		in std_logic;
 
 		inval:			in std_logic;
 
@@ -44,6 +45,7 @@ architecture rtl of datacache is
 
 	type mux_type is (BP, DM, FA, STACK);
 	signal mux_reg, next_mux : mux_type;	
+	signal dmux_reg, next_dmux : mux_type;	
 	
 	signal dm_cpu_in, fa_cpu_in, stack_cpu_in : sc_in_type;
 	signal dm_mem_out, fa_mem_out, stack_mem_out : sc_out_type;
@@ -65,7 +67,8 @@ begin  -- rtl
 
 	cmp_fa: entity work.lru
 		generic map (
-			index_bits => fa_bits,
+			index_bits => fa_bits-fa_line_bits,
+			line_bits => fa_line_bits,
 			cache_type => FULLASSOC)
 		port map (
 			clk		=> clk,
@@ -91,15 +94,17 @@ begin  -- rtl
 
 	sync: process (clk, reset)
 	begin  -- process sync
-		if reset = '0' then  			-- asynchronous reset (active low)
+		if reset = '0' then				-- asynchronous reset (active low)
 			mux_reg <= BP;
-		elsif clk'event and clk = '1' then  -- rising clock edge
+			dmux_reg <= BP;
+		elsif clk'event and clk = '1' then	-- rising clock edge
 			mux_reg <= next_mux;
+			dmux_reg <= next_dmux;
 		end if;
 	end process sync;
 
 	async: process (cpu_out, mem_in,
-					mux_reg,
+					mux_reg, dmux_reg,
 					dm_mem_out, fa_mem_out, stack_mem_out,
 					dm_cpu_in, fa_cpu_in, stack_cpu_in)
 
@@ -117,23 +122,31 @@ begin  -- rtl
 		case mux_reg is
 			when DM =>
 				mem_out <= dm_mem_out;
-				cpu_in.rd_data <= dm_cpu_in.rd_data;
 				cpu_in.rdy_cnt <= rdy_cnt;
 			when FA =>
 				mem_out <= fa_mem_out;
-				cpu_in.rd_data <= fa_cpu_in.rd_data;					   
 				cpu_in.rdy_cnt <= rdy_cnt;
 			when STACK =>
 				mem_out <= stack_mem_out;
-				cpu_in.rd_data <= stack_cpu_in.rd_data;					   
 				cpu_in.rdy_cnt <= rdy_cnt;
 			when others =>
 				mem_out <= cpu_out;
-				cpu_in.rd_data <= mem_in.rd_data;
 				cpu_in.rdy_cnt <= mem_in.rdy_cnt;
 		end case;
 
+		case dmux_reg is
+			when DM =>
+				cpu_in.rd_data <= dm_cpu_in.rd_data;
+			when FA =>
+				cpu_in.rd_data <= fa_cpu_in.rd_data;					   
+			when STACK =>
+				cpu_in.rd_data <= stack_cpu_in.rd_data;					   
+			when others =>
+				cpu_in.rd_data <= mem_in.rd_data;
+		end case;
+		
 		next_mux <= mux_reg;
+		next_dmux <= dmux_reg;
 
 		bp_rd := '0';
 		bp_wr := '0';
@@ -141,7 +154,7 @@ begin  -- rtl
 		if cpu_out.rd = '1' or cpu_out.wr = '1' then
 			case cpu_out.cache is
 				when DIRECTMAP =>
-					next_mux <= DM;								  
+					next_mux <= DM;
 				when FULLASSOC =>
 					next_mux <= FA;
 				when STACK =>
@@ -152,6 +165,19 @@ begin  -- rtl
 					mem_out <= cpu_out;
 					bp_rd := cpu_out.rd;
 					bp_wr := cpu_out.wr;
+			end case;
+		end if;
+
+		if cpu_out.rd = '1' then
+			case cpu_out.cache is
+				when DIRECTMAP =>
+					next_dmux <= DM;
+				when FULLASSOC =>
+					next_dmux <= FA;
+				when STACK =>
+					next_dmux <= STACK;
+				when others =>
+					next_dmux <= BP;
 			end case;
 		end if;
 
