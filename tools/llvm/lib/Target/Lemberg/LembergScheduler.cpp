@@ -388,7 +388,7 @@ bool Scheduler::runOnMachineFunction(MachineFunction &Fn) {
     for (MachineBasicBlock::iterator I = Current; I != MBB->begin(); ) {
       MachineInstr *MI = prior(I);
 	  // No need to schedule kills or implicit defs
-	  if (MI->isKill() || MI->isImplicitDef()) {
+	  if (MI->isKill() || MI->isImplicitDef() || MI->isDebugValue()) {
 		  MI->eraseFromParent();
 		  --Count;
 		  continue;

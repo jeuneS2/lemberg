@@ -312,7 +312,7 @@ int Pinner::getCluster(MachineRegisterInfo *MRI, MachineInstr &MI) {
 void Pinner::pinToCluster(MachineInstr &MI, int cluster) {
 
 	// Ignore implicitly created no-ops and inline asm
-	if (MI.isKill() || MI.isImplicitDef() || MI.isInlineAsm()) {
+	if (MI.isKill() || MI.isImplicitDef() || MI.isInlineAsm() || MI.isDebugValue()) {
 		return;
 	}
 

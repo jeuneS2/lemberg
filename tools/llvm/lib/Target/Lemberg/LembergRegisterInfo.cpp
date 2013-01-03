@@ -220,6 +220,11 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
            "Instr doesn't have FrameIndex operand!");
   }
 
+  if (II->isDebugValue()) {
+	II->getOperand(FIPos).ChangeToImmediate(-1);
+	return;
+  }
+
   int FrameIndex = MI.getOperand(FIPos).getIndex();
 
   assert(FIPos-1 < MI.getNumOperands() && MI.getOperand(FIPos-1).isImm());
