@@ -272,34 +272,18 @@ multiclass OP3<SDNode opnode, string opstr, PatLeaf immtype> {
 		[(set A:$dst, (opnode A:$src1, (i32 immtype:$src2)))],
 		IIAlu>;
 	let Constraints = "$src3 = $dst" in {
-	def aaat: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
-		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aaat")),
-		[(set A:$dst, (select C:$cond, (opnode A:$src1, A:$src2), A:$src3))],
-		IIAlu>;
 	def aaaf: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
 		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aaaf")),
 		[(set A:$dst, (select C:$cond, A:$src3, (opnode A:$src1, A:$src2)))],
-		IIAlu>;
-	def aiat: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
-		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aiat")),
-		[(set A:$dst, (select C:$cond, (opnode A:$src1, (i32 immtype:$src2)), A:$src3))],
 		IIAlu>;
 	def aiaf: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
 		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aiaf")),
 		[(set A:$dst, (select C:$cond, A:$src3, (opnode A:$src1, (i32 immtype:$src2))))],
 		IIAlu>;
 
-	def aaant: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
-		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aaant")),
-        [(set A:$dst, (select (not C:$cond), (opnode A:$src1, A:$src2), A:$src3))],
-		IIAlu>;
 	def aaanf: F1<(outs A:$dst), (ins C:$cond, A:$src1, A:$src2, A:$src3),
 		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aaanf")),
         [(set A:$dst, (select (not C:$cond), A:$src3, (opnode A:$src1, A:$src2)))],
-		IIAlu>;
-	def aiant: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
-		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aiant")),
-        [(set A:$dst, (select (not C:$cond), (opnode A:$src1, (i32 immtype:$src2)), A:$src3))],
 		IIAlu>;
 	def aianf: F1<(outs A:$dst), (ins C:$cond, A:$src1, i32imm:$src2, A:$src3),
 		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aianf")),
@@ -320,17 +304,9 @@ multiclass OPCMP<PatFrag opnode, string opstr, PatLeaf immtype> {
 		IIAlu>;
 
 	let Constraints = "$src3 = $dst" in {
-	def aact: F1<(outs C:$dst), (ins C:$cond, A:$src1, A:$src2, C:$src3),
-		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aact")),
-		[(set C:$dst, (select C:$cond, (opnode A:$src1, A:$src2), C:$src3))],
-		IIAlu>;
 	def aacf: F1<(outs C:$dst), (ins C:$cond, A:$src1, A:$src2, C:$src3),
 		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aacf")),
 		[(set C:$dst, (select C:$cond, C:$src3, (opnode A:$src1, A:$src2)))],
-		IIAlu>;
-	def aict: F1<(outs C:$dst), (ins C:$cond, A:$src1, i32imm:$src2, C:$src3),
-		!strconcat("if  $cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aict")),
-		[(set C:$dst, (select C:$cond, (opnode A:$src1, (i32 immtype:$src2)), C:$src3))],
 		IIAlu>;
 	def aicf: F1<(outs C:$dst), (ins C:$cond, A:$src1, i32imm:$src2, C:$src3),
 		!strconcat("if !$cond ", !strconcat(opstr, "\t$src1, $src2 -> $dst ; aicf")),
@@ -555,45 +531,39 @@ let Defs = [R31] in {
 
 // Memory stores
 
-let Defs = [R31] in {
-	// Matching stores via stack pointer
-	defm STORE32a: OPST_MATCH<LembergStore32, "STM.A">;
-	defm STORE16a: OPST_MATCH<LembergStore16, "STMH.A">;
-	defm STORE8a: OPST_MATCH<LembergStore8, "STMB.A">;
+// Matching stores via stack pointer
+defm STORE32a: OPST_MATCH<LembergStore32, "STM.A">;
+defm STORE16a: OPST_MATCH<LembergStore16, "STMH.A">;
+defm STORE8a: OPST_MATCH<LembergStore8, "STMB.A">;
 
-	// Normal stores
-	defm STORE32a: OPST4<LembergStore32, "stm.a">;
-	defm STORE16a: OPST2<LembergStore16, "stmh.a">;
-	defm STORE8a: OPST1<LembergStore8, "stmb.a">;
-}
+// Normal stores
+defm STORE32a: OPST4<LembergStore32, "stm.a">;
+defm STORE16a: OPST2<LembergStore16, "stmh.a">;
+defm STORE8a: OPST1<LembergStore8, "stmb.a">;
 
-let Defs = [R31] in {
-	// Pseudo stores to stack
-	def STORE32s_pseudo: Pseudo<(outs), (ins A:$val, mem:$ptr),
-	                            "${:comment} STM.S $val, $ptr",
-							    [(store A:$val, addr:$ptr)]>;
-    def STORE32s_pseudo_imm: Pseudo<(outs), (ins i32imm:$val, mem:$ptr),
-							        "${:comment} STM.S $val, $ptr",
-							        [(store (i32 imm5:$val), addr:$ptr)]>;
-    def STORE32s_xpseudo: Pseudo<(outs), (ins X:$val, mem:$ptr),
-							     "${:comment} STM.S $val, $ptr",
-							     [(store X:$val, addr:$ptr)]>;
-    def STORE64s_xpseudo: Pseudo<(outs), (ins D:$val, mem:$ptr),
-							     "${:comment} STM.S $val, $ptr",
-							     [(store D:$val, addr:$ptr)]>;
-}
+// Pseudo stores to stack
+def STORE32s_pseudo: Pseudo<(outs), (ins A:$val, mem:$ptr),
+							"${:comment} STM.S $val, $ptr",
+							[(store A:$val, addr:$ptr)]>;
+def STORE32s_pseudo_imm: Pseudo<(outs), (ins i32imm:$val, mem:$ptr),
+								"${:comment} STM.S $val, $ptr",
+								[(store (i32 imm5:$val), addr:$ptr)]>;
+def STORE32s_xpseudo: Pseudo<(outs), (ins X:$val, mem:$ptr),
+							 "${:comment} STM.S $val, $ptr",
+							 [(store X:$val, addr:$ptr)]>;
+def STORE64s_xpseudo: Pseudo<(outs), (ins D:$val, mem:$ptr),
+							 "${:comment} STM.S $val, $ptr",
+							 [(store D:$val, addr:$ptr)]>;
 
-let Defs = [R31] in {
-	// Matching stores to stack
-	defm STORE32s: OPST_MATCH<LembergStoreStack32, "STM.S">;
-	defm STORE16s: OPST_MATCH<LembergStoreStack16, "STMH.S">;
-	defm STORE8s: OPST_MATCH<LembergStoreStack8, "STMB.S">;
+// Matching stores to stack
+defm STORE32s: OPST_MATCH<LembergStoreStack32, "STM.S">;
+defm STORE16s: OPST_MATCH<LembergStoreStack16, "STMH.S">;
+defm STORE8s: OPST_MATCH<LembergStoreStack8, "STMB.S">;
 
-	// Real stores to stack
-	defm STORE32s: OPST4<LembergStoreStack32, "stm.s">;
-	defm STORE16s: OPST2<LembergStoreStack16, "stmh.s">;
-	defm STORE8s: OPST1<LembergStoreStack8, "stmb.s">;
-}
+// Real stores to stack
+defm STORE32s: OPST4<LembergStoreStack32, "stm.s">;
+defm STORE16s: OPST2<LembergStoreStack16, "stmh.s">;
+defm STORE8s: OPST1<LembergStoreStack8, "stmb.s">;
 
 // Write back stack cache
 def WB: F1<(outs), (ins pred:$p, A:$src1, i32imm:$src2),
@@ -1282,7 +1252,7 @@ def : Pat<(setge (f64 D:$src1), (f64 D:$src2)),
 
 
 // Jump
-let isBranch = 1, isTerminator = 1, hasDelaySlot=1 in {
+let isBranch = 1, isTerminator = 1, hasDelaySlot=1, Defs = [R31] in {
 
     let isBarrier=1 in {
 	  def JUMP : F1<(outs), (ins brtarget:$target),
@@ -1314,7 +1284,7 @@ let isBranch = 1, isTerminator = 1, hasDelaySlot=1 in {
 	def JUMPfalse_now : F1<(outs), (ins C:$cond, brtarget:$target),
 	                      "if !$cond br @\t$target", [], IIBranch>;
 
-	let Defs = [C3] in {
+	let Defs = [R31,C3] in {
 	  def JUMPeqz : F1<(outs), (ins A:$src, brtarget:$target),
 	                   "       brz eq\t$src, $target",
                        [(brcond (i1 (seteq A:$src, (i32 0))), bb:$target)],
