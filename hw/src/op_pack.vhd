@@ -236,12 +236,19 @@ package op_pack is
 		delayed : std_logic;
 		cond	: std_logic;
 		flag	: std_logic_vector(FLAG_COUNT-1 downto 0);		
+		spec     : std_logic;
+		spec_src : std_logic_vector(PC_WIDTH-1 downto 0);
+		spec_bt  : std_logic_vector(PC_WIDTH-1 downto 0);
+		specpc0  : std_logic_vector(PC_WIDTH-1 downto 0);
+		specpc1  : std_logic_vector(PC_WIDTH-1 downto 0);
 	end record;
 
 	constant JMPOP_NOP : jmpop_type :=
 		((others => '0'), (others => '0'), (others => '0'), (others => '0'), '0',
 		 JMP_NOP, CMP_EQ,
-		 '0', COND_FALSE, (others => '0'));
+		 '0', COND_FALSE, (others => '0'),
+		 '0', (others => '0'), (others => '0'),
+		 (others => '0'), (others => '0'));
 
 	type jmpop_arr_type is array (0 to CLUSTERS-1) of jmpop_type;
 	

@@ -42,19 +42,29 @@ architecture behavior of core is
 	signal ena		   : std_logic;
 	signal flush       : std_logic;
 
-	signal fetch_raw   : std_logic_vector(0 to FETCH_WIDTH-1);
-	signal fetch_vpc0  : std_logic_vector(PC_WIDTH-1 downto 0);
-	signal fetch_vpc1  : std_logic_vector(PC_WIDTH-1 downto 0);
-	signal fetch_pc    : std_logic_vector(PC_WIDTH-1 downto 0);
-
+	signal fetch_raw      : std_logic_vector(0 to FETCH_WIDTH-1);
+	signal fetch_vpc0     : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal fetch_vpc1     : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal fetch_pc       : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal fetch_spec     : std_logic;
+	signal fetch_spec_tag : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal fetch_spec_src : std_logic_vector(PC_WIDTH-1 downto 0);	
+	signal fetch_spec_bt  : std_logic_vector(PC_WIDTH-1 downto 0);	
+	
 	signal imem_raw    : std_logic_vector(0 to 2*FETCH_WIDTH-1);
 	signal imem_write  : imem_write_type;
 	
-	signal jmp_ro 	   : std_logic_vector(PC_WIDTH-1 downto 0);
-	signal jmp_pc_wr   : std_logic;
-	signal jmp_pc0 	   : std_logic_vector(PC_WIDTH-1 downto 0);
-	signal jmp_pc1 	   : std_logic_vector(PC_WIDTH-1 downto 0);
-
+	signal jmp_ro 	    : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal jmp_branch   : std_logic;
+	signal jmp_br_taken : std_logic;
+	signal jmp_br_src   : std_logic_vector(PC_WIDTH-1 downto 0);	
+	signal jmp_bt0 	    : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal jmp_bt1 	    : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal jmp_bt_clear : std_logic;
+	signal jmp_pc_wr    : std_logic;
+	signal jmp_pc0 	    : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal jmp_pc1 	    : std_logic_vector(PC_WIDTH-1 downto 0);	
+	
 	signal infl_bundle : bundle_type;
 	signal infl_pc     : std_logic_vector(PC_WIDTH-1 downto 0);
 	
@@ -63,7 +73,7 @@ architecture behavior of core is
 	signal dec_stallop : stallop_arr_type;
 	signal dec_jmpop   : jmpop_arr_type;
 	signal dec_fpop    : fpop_arr_type;
-
+	
 	signal fwd_op	   : op_arr_type;
 	signal fwd_memop   : memop_arr_type;
 	signal fwd_stallop : stallop_arr_type;
@@ -85,6 +95,10 @@ architecture behavior of core is
 	signal fl_wren     : flag_wren_type;
 	signal fl_wrdata   : flag_wrdata_type;
 
+	signal btb_predict : std_logic;
+	signal btb_target0 : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal btb_target1 : std_logic_vector(PC_WIDTH-1 downto 0);
+	
 	signal fpu_rddata  : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal fpu_wrdata  : fpu_wrdata_type;
 
@@ -110,7 +124,14 @@ begin  -- behavior
 			pc_out   => fetch_pc,
 			pc_wr    => jmp_pc_wr,
 			pc0_in   => jmp_pc0,
-			pc1_in   => jmp_pc1);
+			pc1_in   => jmp_pc1,
+			bt_pred  => btb_predict,
+			bt0      => btb_target0,
+			bt1      => btb_target1,
+			spec     => fetch_spec,
+			spec_tag => fetch_spec_tag,
+			spec_src => fetch_spec_src,
+			spec_bt  => fetch_spec_bt);
 
 	imem: entity work.imem
 		port map (
@@ -148,7 +169,10 @@ begin  -- behavior
 			fpop     => dec_fpop,
 			wren     => alu_wren,
 			wraddr   => alu_wraddr,
-			wrdata   => alu_wrdata);
+			wrdata   => alu_wrdata,
+			spec     => fetch_spec,
+			spec_src => fetch_spec_src,
+			spec_bt  => fetch_spec_bt);
 
 	forward: entity work.forward
 		port map (
@@ -216,23 +240,45 @@ begin  -- behavior
 
 	jumpunit: entity work.jumpunit
 		port map (
-			clk		=> clk,
-			reset	=> reset,
-			op		=> fwd_jmpop,
-			fl_in	=> fl_rddata,
-			zero    => alu_zero,
-			neg     => alu_neg,
-			ena     => ena,
-			flush   => flush,
-			pc_in   => fetch_pc,
-			pcoff   => mem_pcoff,
-			ro_out  => jmp_ro,
-			ro_wren => ro_wren,
-			ro_in   => ro_wrdata,
-			pc_wr	=> jmp_pc_wr,
-			pc0_out => jmp_pc0,
-			pc1_out => jmp_pc1);
+			clk		 => clk,
+			reset	 => reset,
+			op		 => fwd_jmpop,
+			fl_in	 => fl_rddata,
+			zero     => alu_zero,
+			neg      => alu_neg,
+			ena      => ena,
+			flush    => flush,
+			pc_in    => fetch_pc,
+			pcoff    => mem_pcoff,
+			ro_out   => jmp_ro,
+			ro_wren  => ro_wren,
+			ro_in    => ro_wrdata,
+			branch   => jmp_branch,
+			br_taken => jmp_br_taken,
+			br_src   => jmp_br_src,
+			bt0      => jmp_bt0,
+			bt1      => jmp_bt1,
+			bt_clear => jmp_bt_clear,
+			pc_wr	 => jmp_pc_wr,
+			pc0_out  => jmp_pc0,
+			pc1_out  => jmp_pc1);
 
+	btb: entity work.btb
+		port map (
+			clk		   => clk,
+			reset	   => reset,
+			ena		   => ena,
+			clear      => jmp_bt_clear,
+			source	   => fetch_spec_tag,
+			predict	   => btb_predict,
+			target0	   => btb_target0,
+			target1	   => btb_target1,
+			branch	   => jmp_branch,
+			br_source  => jmp_br_src,
+			br_taken   => jmp_br_taken,
+			br_target0 => jmp_bt0,
+			br_target1 => jmp_bt1);
+	
 	fpu: entity work.fpu
 		port map (
 			clk	       => clk,
