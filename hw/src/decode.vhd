@@ -28,20 +28,23 @@ use work.fpu_pack.all;
 entity decode is
 	
 	port (
-		clk     : in  std_logic;
-		reset   : in  std_logic;
-		bundle  : in  bundle_type;
-		pc      : in  std_logic_vector(PC_WIDTH-1 downto 0);
-		ena     : in  std_logic;
-		flush   : in  std_logic;
-		op   	: out op_arr_type;
-		memop   : out memop_arr_type;
-		stallop : out stallop_arr_type;
-		jmpop   : out jmpop_arr_type;
-		fpop    : out fpop_arr_type;
-		wren    : in  reg_wren_type;
-		wraddr  : in  reg_wraddr_type;
-		wrdata  : in  reg_wrdata_type);
+		clk      : in  std_logic;
+		reset    : in  std_logic;
+		bundle   : in  bundle_type;
+		pc       : in  std_logic_vector(PC_WIDTH-1 downto 0);
+		ena      : in  std_logic;
+		flush    : in  std_logic;
+		op   	 : out op_arr_type;
+		memop    : out memop_arr_type;
+		stallop  : out stallop_arr_type;
+		jmpop    : out jmpop_arr_type;
+		fpop     : out fpop_arr_type;
+		wren     : in  reg_wren_type;
+		wraddr   : in  reg_wraddr_type;
+		wrdata   : in  reg_wrdata_type;
+		spec     : in  std_logic;
+		spec_src : in  std_logic_vector(PC_WIDTH-1 downto 0);
+		spec_bt  : in  std_logic_vector(PC_WIDTH-1 downto 0));
 
 end decode;
 
@@ -51,6 +54,9 @@ architecture behavior of decode is
 	signal rdaddr : reg_rdaddr_type;
 	signal rddata : reg_rddata_type;
 
+	signal spec_reg : std_logic;
+	signal spec_src_reg : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal spec_bt_reg : std_logic_vector(PC_WIDTH-1 downto 0);
 	signal pc_reg : std_logic_vector(PC_WIDTH-1 downto 0);
 
 	--pragma synthesis off
@@ -81,10 +87,16 @@ begin  -- behavior
 		if reset = '0' then
 			bundle_reg <= BUNDLE_NOP;
 			pc_reg <= (others => '0');
+			spec_reg <= '0';
+			spec_src_reg <= (others => '0');
+			spec_bt_reg <= (others => '0');
 		elsif clk'event and clk = '1' then  -- rising clock edge
 			if ena = '1' then
 				bundle_reg <= bundle;
 				pc_reg <= pc;
+				spec_reg <= spec;
+				spec_src_reg <= spec_src;
+				spec_bt_reg <= spec_bt;
 				if flush = '1' then
 					bundle_reg <= BUNDLE_NOP;
 				end if;
@@ -92,7 +104,7 @@ begin  -- behavior
 	   end if;
 	end process sync;
 
-	decode: process (bundle_reg, rddata, pc_reg)
+	decode: process (bundle_reg, rddata, pc_reg, spec_reg, spec_src_reg, spec_bt_reg)
 
 		variable always_imm : std_logic;
 		variable imm        : std_logic_vector(DATA_WIDTH-1 downto 0);
@@ -142,6 +154,11 @@ begin  -- behavior
 			jmpop(i).target0 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))+0);
 			jmpop(i).target1 <= std_logic_vector(unsigned(rddata(2*i)(PC_WIDTH-1 downto 0))
 												 +FETCH_WIDTH/BYTE_WIDTH);
+			jmpop(i).spec <= spec_reg;
+			jmpop(i).spec_src <= spec_src_reg;
+			jmpop(i).spec_bt <= spec_bt_reg;
+			jmpop(i).specpc0 <= std_logic_vector(unsigned(pc_reg)+0);
+			jmpop(i).specpc1 <= std_logic_vector(unsigned(pc_reg)+FETCH_WIDTH/BYTE_WIDTH);
 			jmpop(i).fwd <= '0';
 			
 			fpop(i).op <= FPU_NOP;

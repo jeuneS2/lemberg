@@ -36,7 +36,14 @@ entity fetch is
 		vpc1_out : out std_logic_vector(PC_WIDTH-1 downto 0);
 		pc_wr    : in  std_logic;
 		pc0_in   : in  std_logic_vector(PC_WIDTH-1 downto 0);
-		pc1_in   : in  std_logic_vector(PC_WIDTH-1 downto 0));
+		pc1_in   : in  std_logic_vector(PC_WIDTH-1 downto 0);
+		bt_pred  : in  std_logic;
+		bt0      : in  std_logic_vector(PC_WIDTH-1 downto 0);
+		bt1      : in  std_logic_vector(PC_WIDTH-1 downto 0);
+		spec     : out std_logic;		
+		spec_tag : out std_logic_vector(PC_WIDTH-1 downto 0);
+		spec_src : out std_logic_vector(PC_WIDTH-1 downto 0);
+		spec_bt  : out std_logic_vector(PC_WIDTH-1 downto 0));
 
 end fetch;
 
@@ -112,7 +119,8 @@ begin  -- behavior
 					pc_reg, pc_wr, pc0_in, pc1_in,
 					start_pos, fetch_pos, wrap_reg,
 					vpc0_inc, vpc1_inc,
-					vpc0_stall, vpc1_stall)
+					vpc0_stall, vpc1_stall,
+					bt_pred, bt0, bt1)
 		variable maskvec : maskvec_type;
 		variable opcntvec : opcntvec_type;
 		variable opcnt : integer range 0 to CLUSTERS;
@@ -134,6 +142,7 @@ begin  -- behavior
 		
 		start_next <= startvec(opcnt);
 		pc_next <= pcvec(opcnt);
+		spec_tag <= std_logic_vector(pcvec(opcnt));		
 		pc_out <= std_logic_vector(pcvec(opcnt));
 
 		wrap_next <= '0';		
@@ -168,7 +177,27 @@ begin  -- behavior
 			vpc0_out <= std_logic_vector(vpc0_inc);
 			vpc1_out <= std_logic_vector(vpc1_inc);
 		end if;
-				
+
+		spec <= bt_pred and not pc_wr;
+		spec_src <= std_logic_vector(pc_reg);
+		spec_bt <= bt0;
+		if bt_pred = '1' then
+			start_next <= unsigned(bt0(FETCHBUF_BITS-1 downto 0));
+			if unsigned(bt0(FETCHBUF_BITS-1 downto 0)) < FETCHBUF_BYTES/2 then
+				fetch_next <= to_unsigned(0, FETCHBUF_BITS);
+				wrap_next <= '1';
+			else
+				fetch_next <= to_unsigned(FETCHBUF_BYTES/2, FETCHBUF_BITS);
+				wrap_next <= '1';
+			end if;
+			pc_next <= unsigned(bt0);
+			spec_tag <= bt0;
+			vpc0_next <= unsigned(bt0(PC_WIDTH-1 downto FETCHBUF_BITS)) & to_unsigned(0, FETCHBUF_BITS);
+			vpc1_next <= unsigned(bt0(PC_WIDTH-1 downto FETCHBUF_BITS)) & to_unsigned(FETCHBUF_BYTES/2, FETCHBUF_BITS);
+			vpc0_out <= bt0;
+			vpc1_out <= bt1;
+		end if;
+
 		if pc_wr = '1' then
 			start_next <= unsigned(pc0_in(FETCHBUF_BITS-1 downto 0));
 			if unsigned(pc0_in(FETCHBUF_BITS-1 downto 0)) < FETCHBUF_BYTES/2 then
@@ -179,6 +208,7 @@ begin  -- behavior
 				wrap_next <= '1';
 			end if;
 			pc_next <= unsigned(pc0_in);
+			spec_tag <= pc0_in;
 			vpc0_next <= unsigned(pc0_in(PC_WIDTH-1 downto FETCHBUF_BITS)) & to_unsigned(0, FETCHBUF_BITS);
 			vpc1_next <= unsigned(pc0_in(PC_WIDTH-1 downto FETCHBUF_BITS)) & to_unsigned(FETCHBUF_BYTES/2, FETCHBUF_BITS);
 			vpc0_out <= pc0_in;
@@ -194,6 +224,7 @@ begin  -- behavior
 			fetch_next <= fetch_pos;
 			wrap_next <= wrap_reg;
 			pc_next <= pc_reg;
+			spec_tag <= std_logic_vector(pc_reg);
 			vpc0_next <= vpc0_reg;
 			vpc1_next <= vpc1_reg;
 			vpc0_out <= std_logic_vector(vpc0_stall);

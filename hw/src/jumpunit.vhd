@@ -27,22 +27,28 @@ use work.jmp_pack.all;
 
 entity jumpunit is
 	port (
-		clk     : in  std_logic;
-		reset   : in  std_logic;
-		op      : in  jmpop_arr_type;
-		fl_in   : in  std_logic_vector(FLAG_COUNT-1 downto 0);
-		zero    : in  std_logic_vector(CLUSTERS-1 downto 0);
-		neg     : in  std_logic_vector(CLUSTERS-1 downto 0);
-		ena     : in  std_logic;
-		flush   : out std_logic;
-		pc_in   : in  std_logic_vector(PC_WIDTH-1 downto 0);
-		pcoff   : in  std_logic_vector(ICACHE_BLOCK_BITS-1 downto 0);
-		ro_out  : out std_logic_vector(PC_WIDTH-1 downto 0);
-		ro_wren : in  std_logic_vector(CLUSTERS-1 downto 0);
-		ro_in   : in  ro_wrdata_type;
-		pc_wr   : out std_logic;
-		pc0_out : out std_logic_vector(PC_WIDTH-1 downto 0);
-		pc1_out : out std_logic_vector(PC_WIDTH-1 downto 0));
+		clk      : in  std_logic;
+		reset    : in  std_logic;
+		op       : in  jmpop_arr_type;
+		fl_in    : in  std_logic_vector(FLAG_COUNT-1 downto 0);
+		zero     : in  std_logic_vector(CLUSTERS-1 downto 0);
+		neg      : in  std_logic_vector(CLUSTERS-1 downto 0);
+		ena      : in  std_logic;
+		flush    : out std_logic;
+		pc_in    : in  std_logic_vector(PC_WIDTH-1 downto 0);
+		pcoff    : in  std_logic_vector(ICACHE_BLOCK_BITS-1 downto 0);
+		ro_out   : out std_logic_vector(PC_WIDTH-1 downto 0);
+		ro_wren  : in  std_logic_vector(CLUSTERS-1 downto 0);
+		ro_in    : in  ro_wrdata_type;
+		branch   : out std_logic;
+		br_taken : out std_logic;
+		br_src   : out std_logic_vector(PC_WIDTH-1 downto 0);
+		bt0      : out std_logic_vector(PC_WIDTH-1 downto 0);
+		bt1      : out std_logic_vector(PC_WIDTH-1 downto 0);
+		bt_clear : out std_logic;
+		pc_wr    : out std_logic;
+		pc0_out  : out std_logic_vector(PC_WIDTH-1 downto 0);
+		pc1_out  : out std_logic_vector(PC_WIDTH-1 downto 0));
 end jumpunit;
 
 architecture behavior of jumpunit is
@@ -151,6 +157,13 @@ begin  -- behavior
 			
 		end if;
 		fetch_next <= '0';
+
+		branch <= '0';
+		br_taken <= '0';
+		br_src <= (others => '0');
+		bt0 <= (others => '0');
+		bt1 <= (others => '0');
+		bt_clear <= '0';
 		
 		pc_wr <= pc_wr_reg;
 		pc0_out <= pc0_out_reg;
@@ -181,10 +194,38 @@ begin  -- behavior
 			when JMP_NOP =>
 				-- nothing to do
 			when JMP_BR =>
-				pc_wr <= valid;
-				flush <= valid and not op(idx).delayed;
-				pc0_out <= op(idx).target0;
-				pc1_out <= op(idx).target1;
+				branch <= not op(idx).delayed;
+				br_taken <= valid;
+				br_src <= op(idx).spec_src;
+				bt0 <= op(idx).target0;
+				bt1 <= op(idx).target1;
+				if op(idx).spec = '0' then
+					-- no speculation, maybe delayed branch
+					pc_wr <= valid;
+					flush <= valid and not op(idx).delayed;
+					pc0_out <= op(idx).target0;
+					pc1_out <= op(idx).target1;
+				elsif op(idx).target0 = op(idx).spec_bt then
+					-- speculated, target ok
+					pc_wr <= not valid;
+					flush <= not valid;
+					pc0_out <= op(idx).specpc0;
+					pc1_out <= op(idx).specpc1;
+				else
+					-- speculated, target mismatch
+					pc_wr <= '1';
+					flush <= '1';
+					if valid = '1' then
+						pc0_out <= op(idx).target0;
+						pc1_out <= op(idx).target1;
+					else
+						pc0_out <= op(idx).specpc0;
+						pc1_out <= op(idx).specpc1;
+					end if;
+					assert false
+						report "Target mismatch, more than one branch in bundle?"
+						severity warning;
+				end if;
 			when JMP_BRZ =>
 				case op(idx).zop is
 					when BRZ_EQ => valid := zero(idx);
@@ -196,18 +237,47 @@ begin  -- behavior
 					when others =>
 						assert false report "Invalid BRZ sub-operation" severity error;
 				end case;
-				pc_wr <= valid;
-				flush <= valid and not op(idx).delayed;				
-				pc0_out <= op(idx).target0;
-				pc1_out <= op(idx).target1;
+				branch <= not op(idx).delayed;
+				br_taken <= valid;
+				br_src <= op(idx).spec_src;
+				bt0 <= op(idx).target0;
+				bt1 <= op(idx).target1;
+				if op(idx).spec = '0' then
+					-- no speculation, maybe delayed branch
+					pc_wr <= valid;
+					flush <= valid and not op(idx).delayed;
+					pc0_out <= op(idx).target0;
+					pc1_out <= op(idx).target1;
+				elsif op(idx).target0 = op(idx).spec_bt then
+					-- speculated, target ok
+					pc_wr <= not valid;
+					flush <= not valid;
+					pc0_out <= op(idx).specpc0;
+					pc1_out <= op(idx).specpc1;
+				else
+					-- speculated, target mismatch
+					pc_wr <= '1';
+					flush <= '1';
+					if valid = '1' then
+						pc0_out <= op(idx).target0;
+						pc1_out <= op(idx).target1;
+					else
+						pc0_out <= op(idx).specpc0;
+						pc1_out <= op(idx).specpc1;
+					end if;
+					assert false
+						report "Target mismatch, more than one branch in bundle?"
+						severity warning;
+				end if;
 			when JMP_BRIND =>
 				pc_wr <= valid;
 				flush <= valid;
 				pc0_out <= pc0_out_brind;
 				pc1_out <= pc1_out_brind;
-			when JMP_CALL =>
+			when JMP_CALL =>				
 				pc_wr_next <= valid;
 				fetch_next <= valid;
+				bt_clear <= valid;
 				if valid = '1' then
 					off_next <= pcoff;					
 				end if;
@@ -215,6 +285,7 @@ begin  -- behavior
 				pc_wr_next <= valid;
 				pc0_out_next <= pc0_out_ret;
 				pc1_out_next <= pc1_out_ret;
+				bt_clear <= valid;
 				if valid = '1' then
 					off_next <= pcoff;
 				end if;
