@@ -201,6 +201,8 @@ begin  -- behavior
 			spec_tag <= bt0;
 			vpc0_next <= unsigned(bt0(PC_WIDTH-1 downto FETCHBUF_BITS)) & to_unsigned(0, FETCHBUF_BITS);
 			vpc1_next <= unsigned(bt0(PC_WIDTH-1 downto FETCHBUF_BITS)) & to_unsigned(FETCHBUF_BYTES/2, FETCHBUF_BITS);
+			vpc0_inc_next <= unsigned(bt0);
+			vpc1_inc_next <= unsigned(bt0)+FETCHBUF_BYTES/2;            
 			vpc0_out <= bt0;
 			vpc1_out <= bt1;
 		end if;

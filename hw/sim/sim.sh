@@ -23,6 +23,7 @@ vcom $OPTIONS ../src/io_pack.vhd
 vcom $OPTIONS ../src/io/pin_pack.vhd
 vcom $OPTIONS ../src/fpu/fpu_pack.vhd
 vcom $OPTIONS ../src/fetch.vhd
+vcom $OPTIONS ../src/btb.vhd
 vcom $OPTIONS ../src/imem_block.vhd
 vcom $OPTIONS ../src/imem.vhd
 vcom $OPTIONS ../src/icache.vhd
