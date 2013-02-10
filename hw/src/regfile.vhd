@@ -27,8 +27,8 @@ entity g_regfile is
 	port (
 		clk	   : in	 std_logic;
 		reset  : in	 std_logic;
-		
-		rden   : in	 g_reg_rden_type;
+		ena    : in  std_logic;
+        
 		rdaddr : in	 g_reg_rdaddr_type;
 		rddata : out g_reg_rddata_type;
 		
@@ -56,7 +56,7 @@ begin  -- behavior
 		if clk'event and clk = '1' then	 -- rising clock edge
 			-- latch read addresses
 			for i in 0 to REG_RDPORTS-1 loop
-				if rden(i) = '1' then
+				if ena = '1' then
 					rdaddr_reg(i) <= rdaddr(i);
 				end if;
 			end loop;  -- i
@@ -187,7 +187,6 @@ architecture behavior of regfile is
 
 	signal gl_mux : std_logic_vector(REG_RDPORTS-1 downto 0);
 	
-	signal g_rden   : g_reg_rden_type;
 	signal g_rdaddr : g_reg_rdaddr_type;
 	signal g_rddata : g_reg_rddata_type;
 	signal g_wren   : g_reg_wren_type;
@@ -208,7 +207,7 @@ begin  -- behavior
 		port map (
 			clk	   => clk,
 			reset  => reset,
-			rden   => g_rden,
+			ena    => ena,
 			rdaddr => g_rdaddr,
 			rddata => g_rddata,
 			wren   => g_wren,
@@ -252,7 +251,6 @@ begin  -- behavior
 			l_rdaddr1(i) <= rdaddr(2*i+1)(L_REG_BITS-1 downto 0);
 		end loop;  -- i			
 		for i in 0 to REG_RDPORTS-1 loop
-			g_rden(i) <= not rdaddr(i)(REG_BITS-1) and ena;
 			g_rdaddr(i) <= rdaddr(i)(G_REG_BITS-1 downto 0);
 		end loop;  -- i
 		
