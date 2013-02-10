@@ -26,7 +26,8 @@ use work.mem_pack.all;
 entity lru is
 generic (
 	index_bits : integer := 5;
-	line_bits : integer := 2;
+	line_bits  : integer := 2;
+	fast_lines : integer := 2;
 	cache_type : sc_cache_type);
 port (
 	clk, reset:		in std_logic;
@@ -84,10 +85,17 @@ architecture rtl of lru is
 	signal rd_data_reg, next_rd_data : std_logic_vector(DATA_WIDTH-1 downto 0);
 	
 	signal crd_reg, next_crd : std_logic;
+	signal early_reg, next_early : std_logic;
 
 	signal rdoff, next_rdoff : std_logic_vector(line_bits-1 downto 0);
 	signal wroff, next_wroff : std_logic_vector(line_bits-1 downto 0);
-	
+
+    --pragma synthesis off
+    signal hits : integer := 0;
+    type hit_cnt_type is array (0 to line_cnt-1) of integer;
+    signal hit_cnt : hit_cnt_type := (others => 0);
+   	--pragma synthesis on
+
 begin
 
 	int_reset <= reset and not inval;
@@ -171,6 +179,8 @@ begin
 			cpu_out_reg <= ((others => '0'), (others => '0'), '0', '0', "1111", bypass);
 			rd_data_reg <= (others => '0');
 			crd_reg <= '0';
+            early_reg <= '0';
+            
 			rdoff <= (others => '0');
 			wroff <= (others => '0');
 			state <= idle;
@@ -179,6 +189,8 @@ begin
 			cpu_out_reg <= next_cpu_out;				
 			rd_data_reg <= next_rd_data;
 			crd_reg <= next_crd;
+            early_reg <= next_early;
+            
 			rdoff <= next_rdoff;
 			wroff <= next_wroff;
 			state <= next_state;
@@ -187,7 +199,7 @@ begin
 	end process sync;
 	
 	async: process (cpu_out, cpu_out_reg, mem_in,
-					ram_dout, rd_data_reg, crd_reg,
+					ram_dout, rd_data_reg, crd_reg, early_reg,
 					rdoff, wroff, state, data, hit)
 
 		variable merged_index : std_logic_vector(index_bits-1 downto 0);
@@ -232,6 +244,7 @@ begin
 			next_rd_data <= rd_data_reg;
 		end if;
 		next_crd <= '0';
+        next_early <= '0';
 		
 		-- default outputs to memory
 		mem_out.address <= cpu_out_reg.address(ADDR_WIDTH-1 downto line_bits) & rdoff;
@@ -331,7 +344,21 @@ begin
 
 			next_state <= idle;
 		end if;
-			
+
+        -- early reads
+        if cpu_out.rd = '1' then
+			if cpu_out.cache = cache_type then
+                for i in 0 to fast_lines-1 loop
+                    if cpu_out.address(mem_bits-1 downto line_bits) = data(i).tag
+                        and data(i).valid='1' then
+                        ram_rdaddress <= data(i).index & cpu_out.address(line_bits-1 downto 0);
+                        next_crd <= '1';
+                        next_early <= '1';
+                    end if;
+                end loop;  -- i
+            end if;
+        end if;
+
 		if cpu_out_reg.rd = '1' then
 
 			if cpu_out_reg.cache = cache_type then
@@ -344,10 +371,12 @@ begin
 					
 					-- shift in new data
 					data(-1) <= (merged_index, cpu_out_reg.address(mem_bits-1 downto line_bits), '1');
-					ram_rdaddress <= merged_index & cpu_out_reg.address(line_bits-1 downto 0);
-					-- read from cache
-					cpu_in.rdy_cnt <= "11";
-					next_crd <= '1';
+					-- read from cache if not already read
+                    if early_reg = '0' then
+                        ram_rdaddress <= merged_index & cpu_out_reg.address(line_bits-1 downto 0);
+                        cpu_in.rdy_cnt <= "11";                        
+                        next_crd <= '1';
+                    end if;
 
 				else
 
@@ -360,5 +389,24 @@ begin
 		end if;	
 				
 	end process async;
-	
+
+    	----------------------------------------------------------------
+	-- gather statistics
+	----------------------------------------------------------------
+	--pragma synthesis off
+	stat: process (clk)
+	begin  -- process
+		if clk'event and clk = '1' then	 -- rising clock edge
+            for i in 0 to line_cnt-1 loop
+                if cpu_out.rd = '1' and cpu_out_reg.cache = cache_type then
+                    if cpu_out.address(mem_bits-1 downto line_bits) = data(i).tag then
+                        hits <= hits + 1;
+                        hit_cnt(i) <= hit_cnt(i) + 1;
+                    end if;
+                end if;
+            end loop;  -- i
+		end if;
+	end process;
+	--pragma synthesis on
+
 end rtl;

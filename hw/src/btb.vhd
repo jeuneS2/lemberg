@@ -52,7 +52,6 @@ architecture behavior of btb is
 		target1 : std_logic_vector(PC_WIDTH-1 downto 0);
 	end record;
 
-	constant BTB_SIZE : integer := 32;
 	type buffer_type is array (0 to BTB_SIZE-1) of bt_line;
 	signal buffer_reg, buffer_next : buffer_type;
 
@@ -78,7 +77,7 @@ begin  -- behavior
 		target0 <= (others => '0');
 		target1 <= (others => '0');
 		for i in BTB_SIZE-1 downto 0 loop
-			if buffer_reg(i).source = source_reg then
+			if ENABLE_BTB and buffer_reg(i).source = source_reg then
 				predict <= buffer_reg(i).predict;
 				target0 <= buffer_reg(i).target0;
 				target1 <= buffer_reg(i).target1;
@@ -99,7 +98,7 @@ begin  -- behavior
 			buffer_next(0).source <= br_source;
 			buffer_next(0).predict <= br_taken;
 			buffer_next(0).target0 <= br_target0;
-			buffer_next(0).target1 <= br_target1;					
+			buffer_next(0).target1 <= br_target1;
 		end if;
 		if clear = '1' then
 			for i in 0 to BTB_SIZE-1 loop
