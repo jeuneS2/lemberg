@@ -56,7 +56,7 @@ architecture rtl of sc_timer is
 	signal secs         : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal s_modcycles  : integer range 0 to clk_freq;
 
-	signal hireg       : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal hireg_cyc, hireg_nano, hireg_sec : std_logic_vector(DATA_WIDTH-1 downto 0);
 	
 begin  -- rtl
 
@@ -76,7 +76,9 @@ begin  -- rtl
 			secs <= (others => '0');
 			s_modcycles <= 0;
 			nanos <= (others => '0');
-			hireg <= (others => '0');
+			hireg_cyc <= (others => '0');
+			hireg_nano <= (others => '0');
+			hireg_sec <= (others => '0');
 			
 		elsif clk'event and clk = '1' then  -- rising clock edge
 			
@@ -87,20 +89,20 @@ begin  -- rtl
 				case address(2 downto 0) is
 					when "000" =>
 						rd_data_buf <= cycles(DATA_WIDTH-1 downto 0);
-						hireg   <= cycles(2*DATA_WIDTH-1 downto DATA_WIDTH);
+						hireg_cyc   <= cycles(2*DATA_WIDTH-1 downto DATA_WIDTH);
 					when "001" =>
-						rd_data_buf <= hireg;
+						rd_data_buf <= hireg_cyc;
 					when "010" =>
 						rd_data_buf <= nanos(DATA_WIDTH+NANO_PREC-1 downto NANO_PREC);
-						hireg   <= nanos(2*DATA_WIDTH+NANO_PREC-1 downto DATA_WIDTH+NANO_PREC);
+						hireg_nano   <= nanos(2*DATA_WIDTH+NANO_PREC-1 downto DATA_WIDTH+NANO_PREC);
 					when "011" =>
-						rd_data_buf <= hireg;
+						rd_data_buf <= hireg_nano;
 					when "100" =>
 						rd_data_buf <= (others => '0');
 						rd_data_buf(19 downto 0) <= usecs;
-						hireg <= secs;
+						hireg_sec <= secs;
 					when "101" =>
-						rd_data_buf <= hireg;						
+						rd_data_buf <= hireg_sec;						
 					when others =>
 						rd_data_buf <= (others => '0');
 				end case;
