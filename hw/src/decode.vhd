@@ -65,7 +65,7 @@ architecture behavior of decode is
 	signal op_cnt : op_cnt_type := (others => (others => 0));
 	signal ena_cnt : integer := 0;
 	signal flush_cnt : integer := 0;
-	signal br_cnt, br_uncond_cnt : integer := 0;
+	signal br_cnt, br_uncond_cnt, brind_cnt : integer := 0;
 	--pragma synthesis on
 	
 begin  -- behavior
@@ -563,22 +563,24 @@ begin  -- behavior
 								stallop(i).cond <= bundle_reg(i).cond;				
 								stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 							end if;
-						when "00001" | "00010" =>
-							if bundle_reg(i).src2 = "00001" then
-								jmpop(i).op <= JMP_CALL;
-								memop(i).op <= MEM_CALL;
-								if bundle_reg(i).src1 = "11111" then
-									stallop(i).op <= STALL_FULLWAITUNIT;
-								else
-									stallop(i).op <= STALL_SOFTWAITUNIT;
-								end if;
-							else
-								jmpop(i).op <= JMP_RET;
-								memop(i).op <= MEM_RET;
-								stallop(i).op <= STALL_SOFTWAITUNIT;
-							end if;
+						when "00001" =>
+							jmpop(i).op <= JMP_CALL;
+							memop(i).op <= MEM_CALL;
 							memop(i).cond <= bundle_reg(i).cond;
 							memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+							if bundle_reg(i).src1 = "11111" then
+								stallop(i).op <= STALL_FULLWAITUNIT;
+							else
+								stallop(i).op <= STALL_SOFTWAITUNIT;
+							end if;
+							stallop(i).cond <= bundle_reg(i).cond;				
+							stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+						when "00010" =>
+							jmpop(i).op <= JMP_RET;
+							memop(i).op <= MEM_RET;
+							memop(i).cond <= bundle_reg(i).cond;
+							memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+							stallop(i).op <= STALL_SOFTWAITUNIT;
 							stallop(i).cond <= bundle_reg(i).cond;				
 							stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 						when others =>
@@ -996,6 +998,10 @@ begin  -- behavior
 							bundle_reg(i).flag = "00" and
 							bundle_reg(i).cond = '1' then
 							br_uncond_cnt <= br_uncond_cnt + 1;
+						end if;
+						if bundle_reg(i).op = "011110"
+							and bundle_reg(i).src2 = "00000" then
+							brind_cnt <= brind_cnt + 1;
 						end if;
 					end loop;  -- i
 				end if;
