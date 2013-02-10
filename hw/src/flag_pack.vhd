@@ -22,7 +22,7 @@ use work.core_pack.all;
 
 package flag_pack is
 
-	type flag_wren_type is array (0 to CLUSTERS-1) of std_logic_vector(FLAG_COUNT-1 downto 0);
-	type flag_wrdata_type is array (0 to CLUSTERS-1) of std_logic_vector(FLAG_COUNT-1 downto 0);
+	type flag_wren_type is array (0 to CLUSTERS-1) of std_logic_vector(FLAG_COUNT-1 downto 1);
+	type flag_wrdata_type is array (0 to CLUSTERS-1) of std_logic_vector(FLAG_COUNT-1 downto 1);
 
 end flag_pack;

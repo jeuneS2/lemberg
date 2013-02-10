@@ -43,8 +43,8 @@ entity alu is
 		ro_wren    : out std_logic;
 		ro_out     : out std_logic_vector(PC_WIDTH-1 downto 0);
 		fl_in      : in  std_logic_vector(FLAG_COUNT-1 downto 0);
-		fl_wren    : out std_logic_vector(FLAG_COUNT-1 downto 0);
-		fl_out     : out std_logic_vector(FLAG_COUNT-1 downto 0);
+		fl_wren    : out std_logic_vector(FLAG_COUNT-1 downto 1);
+		fl_out     : out std_logic_vector(FLAG_COUNT-1 downto 1);
 		fpu_rddata : in  std_logic_vector(DATA_WIDTH-1 downto 0);
 		fpu_wrdata : out std_logic_vector(DATA_WIDTH-1 downto 0));
 
