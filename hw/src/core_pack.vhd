@@ -69,7 +69,7 @@ package core_pack is
 	constant STACK_ADDR_WIDTH : integer := 12;
 
     -- branch target buffer size
-	constant ENABLE_BTB       : boolean := false;
+	constant ENABLE_BTB       : boolean := true;
 	constant BTB_SIZE         : integer := 8;
 	
 	-- bits for en-/decoding
