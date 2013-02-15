@@ -1,0 +1,253 @@
+#! /usr/bin/wish
+
+set conf_file "hw.conf"
+
+wm title . "Lemberg configuration"
+wm resizable . false false
+
+proc enable_path {path ena state} {
+	if {$ena} {
+		$path configure -state $state
+	} else {
+		$path configure -state disable
+	}
+}
+
+proc update_pll {path infreq mul div} {
+	set hz [expr round(($infreq * $mul / $div) * 1000000)]
+	update_clockfreq $hz
+	set str [format "Target frequency %3.3f MHz / CLOCK_FREQ %d" \
+				 [expr $infreq * $mul / $div] $hz]
+	$path configure -text $str
+}
+
+proc update_clockfreq {val} {
+	global var
+	set var(CLOCK_FREQ) $val
+}
+
+proc update_mcdisp {path size blocks} {
+	set str [format "%d bytes, %d blocks" [expr 2 ** $size] [expr 2 ** $blocks]]
+	$path configure -text $str
+}
+
+proc update_fadisp {path size line fast} {
+	set str [format "%d bytes, %d bytes/line\n%d lines, %d fast lines" \
+				 [expr 2 ** $size * 4] [expr 2 ** $line * 4] [expr 2 ** ($size-$line)] $fast]
+	$path configure -text $str
+}
+
+proc update_szdisp {path size} {
+	set str [format "%d bytes" [expr 2 ** $size * 4]]
+	$path configure -text $str
+}
+
+proc create_widgets { } {
+	global var
+
+	labelframe .core -text "Core"
+	label .core.clusterslabel -text "Number of clusters"
+	spinbox .core.clusters -from 1 -to 4 -textvariable var(CLUSTERS) -state readonly -width 8 -justify right
+
+	labelframe .fpu -text "FPU"
+	checkbutton .fpu.enasingle -text "Enable single-precision FPU" -variable var(ENABLE_SINGLE)
+	checkbutton .fpu.enadouble -text "Enable double-precision FPU" -variable var(ENABLE_DOUBLE) \
+		-command { enable_path .fpu.enasingle [expr !$var(ENABLE_DOUBLE)] normal; \
+					   if {$var(ENABLE_DOUBLE)} { .fpu.enasingle select }  }
+
+	labelframe .btb -text "Branch target buffer"
+	checkbutton .btb.enabtb -text "Enable branch target buffer" -variable var(ENABLE_BTB) \
+		-command { enable_path .btb.size $var(ENABLE_BTB) readonly }
+	label .btb.sizelabel -text "Branch target buffer size"
+	spinbox .btb.size -from 1 -to inf -textvariable var(BTB_SIZE) -width 8 -justify right
+
+	labelframe .pll -text "PLL"
+	label .pll.infreqlabel -text "External clock frequency (MHz)"
+	spinbox .pll.infreq -from 1.0 -to inf -increment 1.0 -format "%3.3f" -textvariable var(PLL_INFREQ) \
+		-command { update_pll .pll.disp $var(PLL_INFREQ) $var(PLL_MUL) $var(PLL_DIV) } -state readonly -width 8 -justify right
+	label .pll.mullabel -text "PLL multiplier"
+	spinbox .pll.mul -from 1 -to inf -textvariable var(PLL_MUL) \
+		-command { update_pll .pll.disp $var(PLL_INFREQ) $var(PLL_MUL) $var(PLL_DIV) } -state readonly -width 8 -justify right
+	label .pll.divlabel -text "PLL divider"
+	spinbox .pll.div -from 1 -to inf -textvariable var(PLL_DIV) \
+		-command { update_pll .pll.disp $var(PLL_INFREQ) $var(PLL_MUL) $var(PLL_DIV) } -state readonly -width 8 -justify right
+	label .pll.disp -relief sunken
+
+	labelframe .mc -text "Method cache"
+	label .mc.sizelabel -text "Size bits"
+	spinbox .mc.size -from 1 -to 32 -textvariable var(PC_WIDTH) \
+		-command { update_mcdisp .mc.disp $var(PC_WIDTH) $var(ICACHE_BLOCK_BITS) } -state readonly -width 8 -justify right
+	label .mc.blockslabel -text "Block bits"
+	spinbox .mc.blocks -from 1 -to 32 -textvariable var(ICACHE_BLOCK_BITS) \
+		-command { update_mcdisp .mc.disp $var(PC_WIDTH) $var(ICACHE_BLOCK_BITS) } -state readonly -width 8 -justify right
+	label .mc.disp -relief sunken
+
+	labelframe .fa -text "Fully-associative cache"
+	label .fa.sizelabel -text "Size bits"
+	spinbox .fa.size -from 0 -to 32 -textvariable var(FA_ADDR_WIDTH) \
+		-command { update_fadisp .fa.disp $var(FA_ADDR_WIDTH) $var(FA_LINE_BITS) $var(FA_FAST_LINES) } -state readonly -width 8 -justify right
+	label .fa.linelabel -text "Line bits"
+	spinbox .fa.line -from 0 -to 32 -textvariable var(FA_LINE_BITS) \
+		-command { update_fadisp .fa.disp $var(FA_ADDR_WIDTH) $var(FA_LINE_BITS) $var(FA_FAST_LINES) } -state readonly -width 8 -justify right
+	label .fa.fastlabel -text "Fast lines"
+	spinbox .fa.fast -from 0 -to inf -textvariable var(FA_FAST_LINES) \
+		-command { update_fadisp .fa.disp $var(FA_ADDR_WIDTH $var(FA_LINE_BITS) $var(FA_FAST_LINES) } -state readonly -width 8 -justify right
+	label .fa.disp -height 2 -relief sunken
+
+	labelframe .st -text "Stack cache"
+	label .st.sizelabel -text "Size bits"
+	spinbox .st.size -from 1 -to 32 -textvariable var(STACK_ADDR_WIDTH) \
+		-command { update_szdisp .st.disp $var(STACK_ADDR_WIDTH) } -state readonly -width 8 -justify right
+	label .st.disp -relief sunken
+
+	labelframe .dm -text "Direct-mapped cache"
+	label .dm.sizelabel -text "Size bits"
+	spinbox .dm.size -from 1 -to 32 -textvariable var(DM_ADDR_WIDTH) \
+		-command { update_szdisp .dm.disp $var(DM_ADDR_WIDTH) } -state readonly -width 8 -justify right
+	label .dm.disp -relief sunken
+
+	button .next0 -text "Next" -state disabled
+	button .next2 -text "Next" -command { display_2 }
+	button .back0 -text "Back" -state disabled
+	button .back1 -text "Back" -command { display_1 }
+
+	button .reset -text "Reset" -command { init_defaults; read_config; init_widgets }
+	button .cancel -text "Cancel" -command { exit }
+	button .submit -text "Finish" -command { write_config; exit }
+}
+
+proc init_widgets { } {
+	global var
+	enable_path .fpu.enasingle [expr !$var(ENABLE_DOUBLE)] normal
+	if {$var(ENABLE_DOUBLE)} { .fpu.enasingle select }
+	enable_path .btb.size $var(ENABLE_BTB) readonly
+	update_pll .pll.disp $var(PLL_INFREQ) $var(PLL_MUL) $var(PLL_DIV)
+	update_mcdisp .mc.disp $var(PC_WIDTH) $var(ICACHE_BLOCK_BITS)
+	update_fadisp .fa.disp $var(FA_ADDR_WIDTH) $var(FA_LINE_BITS) $var(FA_FAST_LINES)
+	update_szdisp .st.disp $var(STACK_ADDR_WIDTH)
+	update_szdisp .dm.disp $var(DM_ADDR_WIDTH)
+}
+
+proc display_1 { } {
+	foreach w [grid slaves .] { grid remove $w }
+
+	grid .core -columnspan 5 -sticky we
+	grid .core.clusterslabel .core.clusters -sticky w
+
+	grid .fpu -columnspan 5 -sticky we
+	grid .fpu.enasingle -sticky w
+	grid .fpu.enadouble -sticky w
+	
+	grid .btb -columnspan 5 -sticky we
+	grid .btb.enabtb -sticky w
+	grid .btb.sizelabel .btb.size -sticky w
+	
+	grid .pll -columnspan 5 -sticky we
+	grid .pll.infreqlabel .pll.infreq -sticky w
+	grid .pll.mullabel .pll.mul -sticky w
+	grid .pll.divlabel .pll.div -sticky w
+	grid .pll.disp -columnspan 2 -sticky we
+
+	grid .back0 .next2 .reset .cancel .submit -sticky we
+
+	foreach w [grid slaves .] { grid columnconfigure $w 0 -weight 1 }
+	foreach w [grid slaves .] { grid configure $w -padx 8 -pady 8 }
+}
+
+proc display_2 { } {
+	foreach w [grid slaves .] { grid remove $w }
+
+	grid .mc -columnspan 5 -sticky we
+	grid .mc.sizelabel .mc.size -sticky w
+	grid .mc.blockslabel .mc.blocks -sticky w
+	grid .mc.disp -columnspan 2 -sticky we
+	
+	grid .fa -columnspan 5 -sticky we
+	grid .fa.sizelabel .fa.size -sticky w
+	grid .fa.linelabel .fa.line -sticky w
+	grid .fa.fastlabel .fa.fast -sticky w
+	grid .fa.disp -columnspan 2 -sticky we
+	
+	grid .st -columnspan 5 -sticky we
+	grid .st.sizelabel .st.size -sticky w
+	grid .st.disp -columnspan 2 -sticky we
+	
+	grid .dm -columnspan 5 -sticky we
+	grid .dm.sizelabel .dm.size -sticky w
+	grid .dm.disp -columnspan 2 -sticky we
+	
+	grid .back1 .next0 .reset .cancel .submit -sticky we
+
+	foreach w [grid slaves .] { grid columnconfigure $w 0 -weight 1 }
+	foreach w [grid slaves .] { grid configure $w -padx 8 -pady 8 }
+}
+
+proc init_defaults { } {
+	global var
+	set var(CLUSTERS) 4
+	set var(ENABLE_SINGLE) 1
+	set var(ENABLE_DOUBLE) 1
+	set var(PLL_INFREQ) 50.0
+	set var(PLL_MUL) 4
+	set var(PLL_DIV) 3
+	set var(CLOCK_FREQ) 66666667
+	set var(PC_WIDTH) 15
+	set var(ICACHE_BLOCK_BITS) 5
+	set var(FA_ADDR_WIDTH) 8
+	set var(FA_LINE_BITS) 2
+	set var(FA_FAST_LINES) 2
+	set var(STACK_ADDR_WIDTH) 12
+	set var(DM_ADDR_WIDTH) 10
+	set var(ENABLE_BTB) 1
+	set var(BTB_SIZE) 8
+
+	global varorder
+	set varorder ""
+}
+
+proc read_config { } {
+	global conf_file var varorder	
+	set f [open $conf_file]
+	foreach i [split [read $f] "\n"] {
+		if { [string first "#" $i] >= 0 } {
+			set i [string replace $i [string first "#" $i] end]
+		}
+		set k [split $i]
+		if { [string match "ENABLE_*" [lindex $k 0]] } {
+			set var([lindex $k 0]) [expr [string is true [lindex $k 1]] ? 1 : 0]
+		} else {
+			array set var $k
+		}
+		if { ([lindex $k 0] != "") && ([lsearch $varorder [lindex $k 0]] < 0) } {
+			lappend varorder [lindex $k 0]
+		}
+	}
+}
+
+proc write_config { } {
+	global conf_file var varorder
+	file copy -force $conf_file $conf_file.old
+	set f [open $conf_file "w"]
+	foreach i $varorder {
+		if { [string match "ENABLE_*" $i] } {
+			puts $f [format "%s %s" $i [expr $var($i) ? "true" : "false"]]
+		} else {
+			puts $f [format "%s %s" $i $var($i)]
+		}
+	}
+	foreach i [array names var] {
+		if { [lsearch $varorder $i] < 0 } {
+			puts $f [format "%s %s" $i $var($i)]
+		}
+	}
+	close $f
+	exec ./config.sh
+}
+
+init_defaults
+read_config
+
+create_widgets
+init_widgets
+
+display_1

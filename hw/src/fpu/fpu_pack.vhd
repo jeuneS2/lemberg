@@ -19,14 +19,12 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
+use work.config.all;
 use work.core_pack.all;
 use work.op_pack.all;
 
 package fpu_pack is
 
-	constant ENABLE_SINGLE : boolean := true;
-	constant ENABLE_DOUBLE : boolean := true;
-	
 	constant FPREG_BITS : integer := 4;
 	constant FPREG_COUNT : integer := 2**FPREG_BITS;
 	

@@ -24,6 +24,7 @@ library ieee_proposed;
 use ieee_proposed.fixed_float_types.all;
 use ieee_proposed.float_pkg.all;
 
+use work.config.all;
 use work.core_pack.all;
 use work.op_pack.all;
 use work.fpu_pack.all;

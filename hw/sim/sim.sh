@@ -13,6 +13,7 @@ vcom $OPTIONS -work ieee_proposed ../src/fpu/float_pkg/float_pkg_c.vhdl
 
 rm -rf work
 vlib work
+vcom $OPTIONS ../src/config.vhd
 vcom $OPTIONS ../src/core_pack.vhd
 vcom $OPTIONS ../src/reg_pack.vhd
 vcom $OPTIONS ../src/flag_pack.vhd

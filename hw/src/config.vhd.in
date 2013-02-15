@@ -1,0 +1,35 @@
+package config is
+
+	-- (assumed) core clock frequency
+	constant CLOCK_FREQ : integer := @CLOCK_FREQ@;
+
+	-- PLL configuration
+	constant PLL_INFREQ : integer := integer(1000000.0 / @PLL_INFREQ@);
+	constant PLL_MUL : integer := @PLL_MUL@;
+	constant PLL_DIV : integer := @PLL_DIV@;
+    
+	-- number of clusters
+	constant CLUSTERS : integer := @CLUSTERS@;
+
+	-- floating-point support
+	constant ENABLE_SINGLE : boolean := @ENABLE_SINGLE@;
+	constant ENABLE_DOUBLE : boolean := @ENABLE_DOUBLE@;
+	
+	-- branch target buffer size
+	constant ENABLE_BTB : boolean := @ENABLE_BTB@;
+	constant BTB_SIZE : integer := @BTB_SIZE@;
+
+	-- width of pc, determines size of method cache
+	constant PC_WIDTH : integer := @PC_WIDTH@;
+	-- method cache properties
+	constant ICACHE_BLOCK_BITS : integer := @ICACHE_BLOCK_BITS@;
+	constant ICACHE_BLOCKS     : integer := 2**@ICACHE_BLOCK_BITS@;
+
+	-- data cache properties
+	constant DM_ADDR_WIDTH	  : integer := @DM_ADDR_WIDTH@;
+	constant FA_ADDR_WIDTH	  : integer := @FA_ADDR_WIDTH@;
+	constant FA_LINE_BITS	  : integer := @FA_LINE_BITS@;
+	constant FA_FAST_LINES	  : integer := @FA_FAST_LINES@;
+	constant STACK_ADDR_WIDTH : integer := @STACK_ADDR_WIDTH@;
+
+end config;

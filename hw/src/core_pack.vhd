@@ -19,12 +19,12 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
+use work.config.all;
+
 package core_pack is
 
 	-- version number
 	constant VERSION : std_logic_vector(31 downto 0) := X"20130210";
-	-- speed
-	constant CLOCK_FREQ : integer := 66666667;
 
 	-- width of a word
 	constant DATA_WIDTH_BITS  : integer := 5;
@@ -33,9 +33,8 @@ package core_pack is
 	constant BYTE_WIDTH       : integer := 8;
 	constant BYTES_PER_WORD   : integer := (DATA_WIDTH+BYTE_WIDTH-1)/BYTE_WIDTH;
 		
-	-- number of clusters
+	-- maximum number of clusters
 	constant MAX_CLUSTERS     : integer := 4;
-	constant CLUSTERS         : integer := 4;
 
 	-- regfile properties
 	constant REG_BITS         : integer := 5;
@@ -54,24 +53,6 @@ package core_pack is
 	-- bits to address memory
 	constant ADDR_WIDTH       : integer := 21;
 
-	-- width of pc, determines size of method cache
-	constant PC_WIDTH         : integer := 15;
-
-	-- method cache properties
-	constant ICACHE_BLOCK_BITS : integer := 5;
-	constant ICACHE_BLOCKS     : integer := 2**ICACHE_BLOCK_BITS;	
-
-	-- data cache sizes
-	constant DM_ADDR_WIDTH    : integer := 10;
-	constant FA_ADDR_WIDTH    : integer := 8;
-	constant FA_LINE_BITS     : integer := 2;
-	constant FA_FAST_LINES    : integer := 2;
-	constant STACK_ADDR_WIDTH : integer := 12;
-
-    -- branch target buffer size
-	constant ENABLE_BTB       : boolean := true;
-	constant BTB_SIZE         : integer := 8;
-	
 	-- bits for en-/decoding
 	constant OP_BITS          : integer := 6;
 
