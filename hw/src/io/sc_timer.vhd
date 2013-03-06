@@ -94,7 +94,7 @@ begin  -- rtl
 						rd_data_buf <= hireg_cyc;
 					when "010" =>
 						rd_data_buf <= nanos(DATA_WIDTH+NANO_PREC-1 downto NANO_PREC);
-						hireg_nano   <= nanos(2*DATA_WIDTH+NANO_PREC-1 downto DATA_WIDTH+NANO_PREC);
+						hireg_nano  <= nanos(2*DATA_WIDTH+NANO_PREC-1 downto DATA_WIDTH+NANO_PREC);
 					when "011" =>
 						rd_data_buf <= hireg_nano;
 					when "100" =>
@@ -112,7 +112,7 @@ begin  -- rtl
 						
 			nanos <= std_logic_vector(unsigned(nanos)+NANOS_PER_CYCLE);
 			
-			us_modcycles <=  std_logic_vector(unsigned(us_modcycles)+NANOS_PER_CYCLE);
+			us_modcycles <= std_logic_vector(unsigned(us_modcycles)+NANOS_PER_CYCLE);
 			if unsigned(us_modcycles(11+NANO_PREC-1 downto NANO_PREC)) >= 1000 then
 				usecs <= std_logic_vector(unsigned(usecs)+1);
 				us_modcycles <= std_logic_vector(unsigned(us_modcycles)+NANOS_PER_CYCLE-1000*2**NANO_PREC);

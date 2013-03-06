@@ -323,14 +323,6 @@ begin  -- behavior
 		doubleB := float64(B);
 		doubleC := float64(C);
 
-		--single_rddataA <= singleA;
-		--single_rddataB <= singleB;
-		--single_rddataC <= singleC;
-
-		--double_rddataA <= doubleA;
-		--double_rddataB <= doubleB;
-		--double_rddataC <= doubleC;
-
 		single_rddataA <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
 		single_rddataB <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
 		single_rddataC <= zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH);
@@ -338,7 +330,7 @@ begin  -- behavior
 		double_rddataA <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
 		double_rddataB <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
 		double_rddataC <= zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH);
-
+        
 		single_result <= (others => zerofp(SINGLE_EXPONENT_WIDTH, SINGLE_FRACTION_WIDTH));
 		double_result <= (others => zerofp(DOUBLE_EXPONENT_WIDTH, DOUBLE_FRACTION_WIDTH));
 		-- a few default results to minimize multiplexing
@@ -394,7 +386,7 @@ begin  -- behavior
 				single_rddataA <= singleA;
 				single_rddataB <= float32(to_std_logic_vector(X"3F800000"));
 				single_rddataC <= singleB;
-			-- FSUB == A * -1.0 + B
+			-- FSUB == A * 1.0 + -B
 			when FPU_FSUB => 
 				single_rddataA <= singleA;
 				single_rddataB <= float32(to_std_logic_vector(X"3F800000"));
@@ -440,7 +432,7 @@ begin  -- behavior
 				double_rddataA <= doubleA;
 				double_rddataB <= float64(to_std_logic_vector(X"3FF0000000000000"));
 				double_rddataC <= doubleB;
-			-- DSUB == A * -1.0 + B
+			-- DSUB == A * 1.0 + -B
 			when FPU_DSUB => 
 				double_rddataA <= doubleA;
 				double_rddataB <= float64(to_std_logic_vector(X"3FF0000000000000"));
