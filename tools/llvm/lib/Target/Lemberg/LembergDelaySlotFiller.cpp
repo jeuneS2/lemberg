@@ -108,14 +108,20 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 			|| Opcode == Lemberg::JUMPgez
 			|| Opcode == Lemberg::JUMPgtz
 			|| Opcode == Lemberg::JUMPlez
+			|| Opcode == Lemberg::JUMPp
 			|| Opcode == Lemberg::CALLga
 			|| Opcode == Lemberg::RET)) {
 
-	    unsigned targReg = Opcode != Lemberg::CALL ? 0 : II->getOperand(2).getReg();
+ 	    unsigned targReg = 0;
+		if (Opcode == Lemberg::JUMPp
+			|| Opcode == Lemberg::CALL) {
+		  targReg = II->getOperand(2).getReg();
+		}
 
 		unsigned condReg = 0;
 		switch (Opcode) {
 		case Lemberg::JUMPpred:
+		case Lemberg::JUMPp:
 		case Lemberg::CALL:
 		case Lemberg::RET:					
 			condReg = II->getOperand(1).getReg();
@@ -186,13 +192,16 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 								|| ConflictOpcode == Lemberg::JUMPfalse
 								|| ConflictOpcode == Lemberg::JUMPfalse_now
 								|| ConflictOpcode == Lemberg::JUMPpred
-								|| ConflictOpcode == Lemberg::JUMPpred_now)) {
+								|| ConflictOpcode == Lemberg::JUMPpred_now
+								|| ConflictOpcode == Lemberg::JUMPp)) {
 
 						    const BranchProbability &Prob =
 							  MBPI->getEdgeProbability(&MBB, II->getOperand(0).getMBB());
 
 							MachineBasicBlock *ConfTarget;
-							if (ConflictOpcode == Lemberg::JUMPpred
+							if (ConflictOpcode == Lemberg::JUMPp) {
+							  ConfTarget = NULL;
+							} else if (ConflictOpcode == Lemberg::JUMPpred
 								|| ConflictOpcode == Lemberg::JUMPpred_now) {
 							  ConfTarget = J->getOperand(2).getMBB();
 							} else {
@@ -200,8 +209,8 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							}
 
 							const BranchProbability &ConfProb =
+							  ConfTarget == NULL ? BranchProbability::getZero() :
 							  MBPI->getEdgeProbability(&MBB, ConfTarget);
-;
 							MachineInstr *MI = J;
 							if (ConfProb > Prob) {
 								// Move up conflicting branch first
@@ -252,6 +261,7 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							  break;
 							case Lemberg::JUMPpred:
 							case Lemberg::JUMPpred_now:
+							case Lemberg::JUMPp:
 							  ConvOpcode = Lemberg::JUMPpred;
 							  break;
 							}
@@ -262,7 +272,8 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 							II->setDesc(*NMID);
 							
 							if (ConflictOpcode == Lemberg::JUMPpred
-								|| ConflictOpcode == Lemberg::JUMPpred_now) {
+								|| ConflictOpcode == Lemberg::JUMPpred_now
+								|| ConflictOpcode == Lemberg::JUMPp) {
 							  int Cond = J->getOperand(0).getImm() == 0 ? 1 : 0;
 							  II->addOperand(MachineOperand::CreateImm(Cond));
 							  II->addOperand(J->getOperand(1));
@@ -280,7 +291,8 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 									|| ConflictOpcode == Lemberg::JUMPfalse
 									|| ConflictOpcode == Lemberg::JUMPfalse_now
 									|| ConflictOpcode == Lemberg::JUMPpred
-									|| ConflictOpcode == Lemberg::JUMPpred_now) {
+									|| ConflictOpcode == Lemberg::JUMPpred_now
+									|| ConflictOpcode == Lemberg::JUMPp) {
 								  if (next(II) != J) II = J;
 								} else {
 								  // We already scheduled J, don't look at it again
@@ -300,7 +312,8 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 									|| ConflictOpcode == Lemberg::JUMPfalse
 									|| ConflictOpcode == Lemberg::JUMPfalse_now
 									|| ConflictOpcode == Lemberg::JUMPpred
-									|| ConflictOpcode == Lemberg::JUMPpred_now) {
+									|| ConflictOpcode == Lemberg::JUMPpred_now
+									|| ConflictOpcode == Lemberg::JUMPp) {
 								  if (next(J) == II) II = J;
 								}
 							}
@@ -311,7 +324,8 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 					} else {
 						if ((Opcode == Lemberg::JUMPpred 
 							 && (ConflictOpcode == Lemberg::JUMPpred
-								 || ConflictOpcode == Lemberg::JUMPpred_now))
+								 || ConflictOpcode == Lemberg::JUMPpred_now
+								 || ConflictOpcode == Lemberg::JUMPp))
 							|| ((Opcode == Lemberg::JUMPtrue
 								 || Opcode == Lemberg::JUMPtrue_now)
 								&& (ConflictOpcode == Lemberg::JUMPfalse
