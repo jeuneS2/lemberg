@@ -65,7 +65,7 @@ int main(void)
 			w >>= 8;
 			w |= (c << 24);
 			/* read back data from RAM */
-			if ((i & 0x3) == 3 && w != ((unsigned *)prog_dest)[-1]) {
+			if ((i & 0x3) == 3 && w != ((volatile unsigned *)prog_dest)[-1]) {
 				goto fail;
 			}
 
@@ -90,7 +90,7 @@ int main(void)
 	PRINTSTR(fail_msg);
 	/* print status */
 	PRINTINT((unsigned)prog_dest);
-	PRINTINT(((unsigned *)prog_dest)[-1]);
+	PRINTINT(((volatile unsigned *)prog_dest)[-1]);
 	PRINTINT(w);
 
  restart:

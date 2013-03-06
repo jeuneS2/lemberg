@@ -16,9 +16,9 @@ _main_start:
 	;;
 #0:	       stm.s	r12, r15, 5
 	;;
-#0:	       stm.s	r13, r15, 4
-	;;
 #0:	       ldiu	0 -> r10
+	;;
+#0:	       stm.s	r13, r15, 4
 	;;
 #0:	       stm.s	r14, r15, 3
 	;;
@@ -74,11 +74,11 @@ _main_start:
 	;;
 #0:	       ldi	0 -> r1
 	;;
+#0:	       br	.BB0_2
+	;;
 #0:	       ldi	0 -> r14
 	;;
 #0:	       ldi	0 -> r0
-	;;
-#0:	       br @	.BB0_2
 	;;
 .BB0_1:                                 ;   in Loop: Header=BB0_2 Depth=1
 #0:	       sr	r12, 8 -> r1
@@ -123,12 +123,14 @@ _main_start:
 	;;
 #0:	       cmp ne	r3, 3 -> c1
 	;;
+#0:	if  c1 br	.BB0_1
+	;;
 #0:	       stmb.a	r2, r14, 0
 	;;
-#0:	if  c1 br @	.BB0_1
+	       nop	0
 	;;
 .BB0_5:                                 ;   in Loop: Header=BB0_2 Depth=1
-#0:	       ldm.f	r14, -3
+#0:	       ldm.b	r14, -3
 	;;
 #0:	       cmp ne	r12, r31 -> c1
 	;;
@@ -169,7 +171,7 @@ _main_start:
 	;;
 	       nop	0
 	;;
-#0:	       ldm.f	r14, -3
+#0:	       ldm.b	r14, -3
 	;;
 #0:	       or	r31, 0 -> r0
 	;;
@@ -191,9 +193,11 @@ _main_start:
 	;;
 	       nop	0
 	;;
+#0:	       br	.BB0_9
+	;;
 #0:	       ldi	0 -> r10
 	;;
-#0:	       br @	.BB0_9
+	       nop	0
 	;;
 .BB0_7:
 #0:	       ldiu	0 -> r1
@@ -337,9 +341,11 @@ _printstr_start:
 	;;
 #0:	       bbh	mzext8 r1 -> r2
 	;;
+#0:	       brz ne	r2, .BB1_1
+	;;
 #0:	       or	r1, 0 -> r0
 	;;
-#0:	       brz ne @	r2, .BB1_1
+	       nop	0
 	;;
 .BB1_3:                                 ; %._crit_edge
 #0:	       jop	ret
@@ -388,11 +394,11 @@ _readint_start:
 	;;
 #0:	       sl	r0, 8 -> r0
 	;;
+#0:	if  c1 br	.BB2_1
+	;;
 #0:	       bbh	zext8 r2 -> r2
 	;;
 #0:	       or	r2, r0 -> r0
-	;;
-#0:	if  c1 br @	.BB2_1
 	;;
 .BB2_3:
 #0:	       jop	ret
@@ -443,19 +449,21 @@ _printint_start:
 #0:	if !c1 br @	.BB3_2
 	;;
 .BB3_3:                                 ;   in Loop: Header=BB3_1 Depth=1
-#0:	       cmpu lt	r3, 10 -> c1
-	;;
 #0:	       ldi	48 -> r4
+	;;
+#0:	       or	r3, r4 -> r4
+	;;
+#0:	       cmpu lt	r3, 10 -> c1
 	;;
 #0:	       sub	r1, 1 -> r1
 	;;
-#0:	if  c1 or	r3, r4 -> r2 ; aaat
+#0:	if  c1 or	r4, 0 -> r2
+	;;
+#0:	       brz ne	r1, .BB3_1
 	;;
 #0:	       ldi	-116 -> r3
 	;;
 #0:	       stmb.a	r2, r3, 0
-	;;
-#0:	       brz ne @	r1, .BB3_1
 	;;
 .BB3_4:
 #0:	       jop	ret
