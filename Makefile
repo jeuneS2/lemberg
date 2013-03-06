@@ -62,7 +62,7 @@ hwconfig:
 	cd hw; ./config.sh
 xhwconfig:
 	cd hw; ./xconfig.tk
-syn:
+syn: hwconfig
 	@echo "You're not slacking off. Your code's compiling."
 	${MAKE} -C hw/quartus syn
 

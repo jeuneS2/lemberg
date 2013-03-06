@@ -47,7 +47,8 @@ proc create_widgets { } {
 
 	labelframe .core -text "Core"
 	label .core.clusterslabel -text "Number of clusters"
-	spinbox .core.clusters -from 1 -to 4 -textvariable var(CLUSTERS) -state readonly -width 8 -justify right
+	spinbox .core.clusters -from 1 -to 4 -textvariable var(CLUSTERS) \
+		-state readonly -width 8 -justify right
 
 	labelframe .fpu -text "FPU"
 	checkbutton .fpu.enasingle -text "Enable single-precision FPU" -variable var(ENABLE_SINGLE)
@@ -64,46 +65,56 @@ proc create_widgets { } {
 	labelframe .pll -text "PLL"
 	label .pll.infreqlabel -text "External clock frequency (MHz)"
 	spinbox .pll.infreq -from 1.0 -to inf -increment 1.0 -format "%3.3f" -textvariable var(PLL_INFREQ) \
-		-command { update_pll .pll.disp $var(PLL_INFREQ) $var(PLL_MUL) $var(PLL_DIV) } -state readonly -width 8 -justify right
+		-command { update_pll .pll.disp $var(PLL_INFREQ) $var(PLL_MUL) $var(PLL_DIV) } \
+		-state readonly -width 8 -justify right
 	label .pll.mullabel -text "PLL multiplier"
 	spinbox .pll.mul -from 1 -to inf -textvariable var(PLL_MUL) \
-		-command { update_pll .pll.disp $var(PLL_INFREQ) $var(PLL_MUL) $var(PLL_DIV) } -state readonly -width 8 -justify right
+		-command { update_pll .pll.disp $var(PLL_INFREQ) $var(PLL_MUL) $var(PLL_DIV) } \
+		-state readonly -width 8 -justify right
 	label .pll.divlabel -text "PLL divider"
 	spinbox .pll.div -from 1 -to inf -textvariable var(PLL_DIV) \
-		-command { update_pll .pll.disp $var(PLL_INFREQ) $var(PLL_MUL) $var(PLL_DIV) } -state readonly -width 8 -justify right
+		-command { update_pll .pll.disp $var(PLL_INFREQ) $var(PLL_MUL) $var(PLL_DIV) } \
+		-state readonly -width 8 -justify right
 	label .pll.disp -relief sunken
 
 	labelframe .mc -text "Method cache"
 	label .mc.sizelabel -text "Size bits"
 	spinbox .mc.size -from 1 -to 32 -textvariable var(PC_WIDTH) \
-		-command { update_mcdisp .mc.disp $var(PC_WIDTH) $var(ICACHE_BLOCK_BITS) } -state readonly -width 8 -justify right
+		-command { update_mcdisp .mc.disp $var(PC_WIDTH) $var(ICACHE_BLOCK_BITS) } \
+		-state readonly -width 8 -justify right
 	label .mc.blockslabel -text "Block bits"
 	spinbox .mc.blocks -from 1 -to 32 -textvariable var(ICACHE_BLOCK_BITS) \
-		-command { update_mcdisp .mc.disp $var(PC_WIDTH) $var(ICACHE_BLOCK_BITS) } -state readonly -width 8 -justify right
+		-command { update_mcdisp .mc.disp $var(PC_WIDTH) $var(ICACHE_BLOCK_BITS) } \
+		-state readonly -width 8 -justify right
 	label .mc.disp -relief sunken
 
 	labelframe .fa -text "Fully-associative cache"
 	label .fa.sizelabel -text "Size bits"
 	spinbox .fa.size -from 0 -to 32 -textvariable var(FA_ADDR_WIDTH) \
-		-command { update_fadisp .fa.disp $var(FA_ADDR_WIDTH) $var(FA_LINE_BITS) $var(FA_FAST_LINES) } -state readonly -width 8 -justify right
+		-command { update_fadisp .fa.disp $var(FA_ADDR_WIDTH) $var(FA_LINE_BITS) $var(FA_FAST_LINES) } \
+		-state readonly -width 8 -justify right
 	label .fa.linelabel -text "Line bits"
 	spinbox .fa.line -from 0 -to 32 -textvariable var(FA_LINE_BITS) \
-		-command { update_fadisp .fa.disp $var(FA_ADDR_WIDTH) $var(FA_LINE_BITS) $var(FA_FAST_LINES) } -state readonly -width 8 -justify right
+		-command { update_fadisp .fa.disp $var(FA_ADDR_WIDTH) $var(FA_LINE_BITS) $var(FA_FAST_LINES) } \
+		-state readonly -width 8 -justify right
 	label .fa.fastlabel -text "Fast lines"
 	spinbox .fa.fast -from 0 -to inf -textvariable var(FA_FAST_LINES) \
-		-command { update_fadisp .fa.disp $var(FA_ADDR_WIDTH $var(FA_LINE_BITS) $var(FA_FAST_LINES) } -state readonly -width 8 -justify right
+		-command { update_fadisp .fa.disp $var(FA_ADDR_WIDTH $var(FA_LINE_BITS) $var(FA_FAST_LINES) } \
+		-state readonly -width 8 -justify right
 	label .fa.disp -height 2 -relief sunken
 
 	labelframe .st -text "Stack cache"
 	label .st.sizelabel -text "Size bits"
 	spinbox .st.size -from 1 -to 32 -textvariable var(STACK_ADDR_WIDTH) \
-		-command { update_szdisp .st.disp $var(STACK_ADDR_WIDTH) } -state readonly -width 8 -justify right
+		-command { update_szdisp .st.disp $var(STACK_ADDR_WIDTH) } \
+		-state readonly -width 8 -justify right
 	label .st.disp -relief sunken
 
 	labelframe .dm -text "Direct-mapped cache"
 	label .dm.sizelabel -text "Size bits"
 	spinbox .dm.size -from 1 -to 32 -textvariable var(DM_ADDR_WIDTH) \
-		-command { update_szdisp .dm.disp $var(DM_ADDR_WIDTH) } -state readonly -width 8 -justify right
+		-command { update_szdisp .dm.disp $var(DM_ADDR_WIDTH) } \
+		-state readonly -width 8 -justify right
 	label .dm.disp -relief sunken
 
 	button .next0 -text "Next" -state disabled
