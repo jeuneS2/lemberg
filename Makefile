@@ -75,6 +75,10 @@ sim: proj
 	cp ${PROJECT_DIR}/${PROJECT_NAME}.dat hw/sim/mem_main.dat
 	${MAKE} -C hw/sim sim
 
+sim-nox: proj
+	cp ${PROJECT_DIR}/${PROJECT_NAME}.dat hw/sim/mem_main.dat
+	${MAKE} -C hw/sim sim-nox
+
 # Run program in FPGA
 fpga: tty proj
 	./fpga_config.sh ${FPGACABLE} hw/quartus/lemberg.svf && \
