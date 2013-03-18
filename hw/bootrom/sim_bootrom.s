@@ -9,11 +9,11 @@ bootrom_start:
 		nop 0
 		;;
 exit:
-#0:		ldi -4 -> r0
+#0:		ldi -4 -> r0.30
 		;;
-#0:		ldm.b r0, 0
+#0:		ldm.b r0.30, 0
 		;;
-#0:		or r31, 0 -> r0
+#0:		or r31, 0 -> r0.30
 		;;
 		nop 0
 		;;
