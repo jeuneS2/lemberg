@@ -127,7 +127,7 @@ unsigned LembergInstrInfo::isStoreToStackSlot(const MachineInstr *MI,
   default: break;
   case Lemberg::STORE32s_pseudo:
   case Lemberg::STORE32s_xpseudo:
-  // case Lemberg::STORE64s_xpseudo:
+  case Lemberg::STORE64s_xpseudo:
     if (MI->getOperand(2).isFI() &&
         MI->getOperand(1).isImm() &&
         MI->getOperand(1).getImm() == 0) {
@@ -150,7 +150,7 @@ unsigned LembergInstrInfo::isLoadFromStackSlot(const MachineInstr *MI,
   default: break;
   case Lemberg::LOAD32s_pseudo:
   case Lemberg::LOAD32s_xpseudo:
-  // case Lemberg::LOAD64s_xpseudo:
+  case Lemberg::LOAD64s_xpseudo:
     if (MI->getOperand(2).isFI() &&
         MI->getOperand(1).isImm() &&
         MI->getOperand(1).getImm() == 0) {
@@ -204,28 +204,6 @@ LembergInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 
   DebugLoc DL = I != MBB.end() ? I->getDebugLoc() : DebugLoc();
 
-  bool inLoad = false;
-  for (MachineBasicBlock::iterator MI = I, E = MBB.end(); MI != E; ++MI) {
-	if (MI->readsRegister(Lemberg::R31)) {
-	  inLoad = true;
-	  break;
-	} else if (MI->mayLoad()) {
-	  break;
-	}
-  }
-
-  // R31 must appear to remain unchanged
-  if (inLoad) {
-	unsigned EmergencyReg = RI.getEmergencyRegister();
-	// __mem_emergency must be addressably with 11 bits
-	BuildMI(MBB, I, DL, get(Lemberg::LOADsym11lo), EmergencyReg)
-	  .addImm(-1).addReg(0)
-	  .addExternalSymbol("__mem_emergency");
-	BuildMI(MBB, I, DL, get(Lemberg::STORE32ap))
-	  .addImm(-1).addReg(0)
-	  .addReg(Lemberg::R31).addReg(EmergencyReg);
-  }
-
   if (inClass(Lemberg::ARegClass, DestReg, RC, TRI)) {
 	// A normal register
 	BuildMI(MBB, I, DL, get(Lemberg::LOAD32s_pseudo), DestReg)
@@ -241,11 +219,6 @@ LembergInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   } else {
 	llvm_unreachable((std::string("Cannot load regclass from stack slot: ")+
 					  RC->getName()).c_str());
-  }
-
-  if (inLoad) {
-	BuildMI(MBB, I, DL, get(Lemberg::LOAD32d_ga))
-	  .addExternalSymbol("__mem_emergency");
   }
 }
 

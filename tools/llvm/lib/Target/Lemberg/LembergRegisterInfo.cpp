@@ -186,6 +186,30 @@ static int getModOffset(int Offset, bool isLoad, int storeIdxShift) {
 	}
 }
 
+static bool isInLoad(MachineBasicBlock &MBB, MachineBasicBlock::iterator II) {
+  // read without preceding load
+  if (II != MBB.end()) {
+	for (MachineBasicBlock::iterator MI = next(II), E = MBB.end(); MI != E; ++MI) {
+	  if (MI->readsRegister(Lemberg::R31)) {
+		return true;
+	  } else if (MI->mayLoad()) {
+		break;
+	  }
+	}
+  }
+  // load without succeeding read
+  if (II != MBB.begin()) {
+	for (MachineBasicBlock::iterator MI = prior(II), E = MBB.begin(); MI != E; --MI) {
+	  if (MI->readsRegister(Lemberg::R31)) {
+		break;
+	  } else if (MI->mayLoad()) {
+		return true;
+	  }
+	}
+  }
+  return false;
+}
+
 void LembergRegisterInfo::
 eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
 							  MachineBasicBlock::iterator I) const {
@@ -443,6 +467,20 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 	  bool isFloat = RegClass == Lemberg::FRegisterClass;
 	  
 	  assert((Offset & 0x03) == 0 && "Offset for store not correctly aligned");
+
+	  bool guardLoad = isLoad ? isInLoad(MBB, II) : false;
+
+	  // R31 must appear to remain unchanged
+	  if (guardLoad) {
+		unsigned EmergencyReg = getEmergencyRegister();
+		// __mem_emergency must be addressable with 11 bits
+		BuildMI(MBB, II, DL, TII.get(Lemberg::LOADsym11lo), EmergencyReg)
+		  .addImm(-1).addReg(0)
+		  .addExternalSymbol("__mem_emergency");
+		BuildMI(MBB, II, DL, TII.get(Lemberg::STORE32ap))
+		  .addImm(-1).addReg(0)
+		  .addReg(Lemberg::R31).addReg(EmergencyReg);
+	  }
 	  
   	  if (isUInt<5>(Offset >> 2) || (isLoad && isInt<11>(Offset))) {
 
@@ -504,6 +542,13 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  llvm_unreachable("Cannot eliminate frame index");
 			  break;
 		  }
+
+		  if (guardLoad) {
+			BuildMI(MBB, next(II), DL, TII.get(Lemberg::LOAD32d_ga))
+			  .addExternalSymbol("__mem_emergency")
+			  .addReg(Lemberg::R31, RegState::ImplicitDefine);
+		  }
+
   		  return;
   	  }
   	  if (isInt<22>(Offset)) {
@@ -513,9 +558,6 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 
 		  unsigned ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseOffset);
 		  unsigned CopyReg;
-
-		  const TargetRegisterClass *RegClass = getMinimalPhysRegClass(MI.getOperand(0).getReg());
-		  bool isFloat = RegClass == Lemberg::FRegisterClass;
 
 		  switch (Opcode) {
 		  case Lemberg::LOAD32s_pseudo:
@@ -581,6 +623,13 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  llvm_unreachable("Cannot eliminate frame index");
 			  break;
 		  }
+
+		  if (guardLoad) {
+			BuildMI(MBB, next(II), DL, TII.get(Lemberg::LOAD32d_ga))
+			  .addExternalSymbol("__mem_emergency")
+			  .addReg(Lemberg::R31, RegState::ImplicitDefine);
+		  }
+
  		  return;
 	  }
   }
@@ -600,6 +649,20 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 	  unsigned CopyRegB;
 
 	  unsigned Reg = MI.getOperand(0).getReg();
+
+	  bool guardLoad = isLoad ? isInLoad(MBB, II) : false;
+
+	  // R31 must appear to remain unchanged
+	  if (guardLoad) {
+		unsigned EmergencyReg = getEmergencyRegister();
+		// __mem_emergency must be addressable with 11 bits
+		BuildMI(MBB, II, DL, TII.get(Lemberg::LOADsym11lo), EmergencyReg)
+		  .addImm(-1).addReg(0)
+		  .addExternalSymbol("__mem_emergency");
+		BuildMI(MBB, II, DL, TII.get(Lemberg::STORE32ap))
+		  .addImm(-1).addReg(0)
+		  .addReg(Lemberg::R31).addReg(EmergencyReg);
+	  }
 
 	  switch (Opcode) {
 	  case Lemberg::LOAD64s_xpseudo:
@@ -667,6 +730,12 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  MI.dump();
 		  llvm_unreachable("Cannot eliminate frame index");
 		  break;
+	  }
+
+	  if (guardLoad) {
+		BuildMI(MBB, next(II), DL, TII.get(Lemberg::LOAD32d_ga))
+		  .addExternalSymbol("__mem_emergency")
+		  .addReg(Lemberg::R31, RegState::ImplicitDefine);
 	  }
 
 	  return;
