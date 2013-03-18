@@ -428,8 +428,8 @@ begin  -- behavior
 						when "001" => op(i).op <= ALU_CMPNE;
 						when "010" => op(i).op <= ALU_CMPLT;
 						when "011" => op(i).op <= ALU_CMPGE;
-						when "100" => op(i).op <= ALU_CMPGT;
-						when "101" => op(i).op <= ALU_CMPLE;
+						when "100" => op(i).op <= ALU_CMPLE;
+						when "101" => op(i).op <= ALU_CMPGT;
 						when others =>
 							assert false report "Cannot decode CMP operation" severity error;
 					end case;
@@ -449,8 +449,8 @@ begin  -- behavior
 						when "001" => op(i).op <= ALU_CMPNE;
 						when "010" => op(i).op <= ALU_CMPULT;
 						when "011" => op(i).op <= ALU_CMPUGE;
-						when "100" => op(i).op <= ALU_CMPUGT;
-						when "101" => op(i).op <= ALU_CMPULE;
+						when "100" => op(i).op <= ALU_CMPULE;
+						when "101" => op(i).op <= ALU_CMPUGT;
 						when others =>
 							assert false report "Cannot decode CMPU operation" severity error;
 					end case;
@@ -540,8 +540,8 @@ begin  -- behavior
 						when "001" => jmpop(i).zop <= CMP_NE;
 						when "010" => jmpop(i).zop <= CMP_LT;
 						when "011" => jmpop(i).zop <= CMP_GE;
-						when "100" => jmpop(i).zop <= CMP_GT;
-						when "101" => jmpop(i).zop <= CMP_LE;
+						when "100" => jmpop(i).zop <= CMP_LE;
+						when "101" => jmpop(i).zop <= CMP_GT;
 						when others =>
 							assert false report "Cannot decode BRZ operation" severity error;
 					end case;

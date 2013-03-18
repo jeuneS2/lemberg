@@ -95,8 +95,8 @@
 #define OP_NE        0x01
 #define OP_LT        0x02
 #define OP_GE        0x03
-#define OP_GT        0x04
-#define OP_LE        0x05
+#define OP_LE        0x04
+#define OP_GT        0x05
 
 /* jump operations */
 #define OP_BRIND     0x00

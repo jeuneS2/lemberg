@@ -426,16 +426,7 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.op = $1;
 		  $$.fmt.Z.reg = $4;
 		  $$.fmt.Z.target = $6;
-		  switch ($2) {
-		  case OP_EQ: $$.fmt.Z.op = 0; break;
-		  case OP_NE: $$.fmt.Z.op = 1; break;
-		  case OP_LT: $$.fmt.Z.op = 2; break;
-		  case OP_GE: $$.fmt.Z.op = 3; break;
-		  case OP_LE: $$.fmt.Z.op = 4; break;
-		  case OP_GT: $$.fmt.Z.op = 5; break;
-		  default:
-			  yyerror("Invalid branch zero operation.");
-		  }
+		  $$.fmt.Z.op = $2;
 		  $$.fmt.Z.delayed = $3;
       }
       | Condition JOP JSUBOP REG {
