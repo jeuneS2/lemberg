@@ -1,5 +1,5 @@
 __crt0:
-		.funsz __crt0_end-__crt0
+		.funsz __crt0_end@__crt0
 		#0: ldiu 0 -> r15
 		;; 
 		#0: ldim 1023 -> r15
@@ -41,7 +41,7 @@ __crt0_return:
 __crt0_end:
 		
 __crt0_exit:
-		.funsz __crt0_exit_end-__crt0_exit
+		.funsz __crt0_exit_end@__crt0_exit
 		#0: ldmg.d __crt0_sp
 		;;
 		#0: or r31, 0 -> r15

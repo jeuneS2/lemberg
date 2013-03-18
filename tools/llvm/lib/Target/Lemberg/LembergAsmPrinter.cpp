@@ -141,7 +141,7 @@ void LembergAsmPrinter::EmitFunctionBodyStart() {
   // Emit function size size
   SmallString<128> Str;
   raw_svector_ostream OS(Str);
-  OS << "\t.funsz\t" << *CurrentFnSym << "_end-" << *CurrentFnSym << "\n";
+  OS << "\t.funsz\t" << *CurrentFnSym << "_end@" << *CurrentFnSym << "\n";
   OS << *CurrentFnSym << "_start:\n";
   OutStreamer.EmitRawText(OS.str());
 }
@@ -180,15 +180,12 @@ MCSymbol *LembergAsmPrinter::GetBlockAddressSymbol(const BlockAddress *BA) const
 	NameStr += "_start";
 
 	// create basic block offsets relative to function start
-	const MCSymbol *FunSym = OutContext.GetOrCreateSymbol(NameStr.str());
-	const MCExpr *Fun = MCSymbolRefExpr::Create(FunSym, OutContext);
 	const MCSymbol *BBSym = MMI->getAddrLabelSymbol(BA->getBasicBlock());
-	const MCExpr *Value = MCSymbolRefExpr::Create(BBSym, OutContext);
-	const MCExpr *RelAddr = MCBinaryExpr::CreateSub(Value, Fun, OutContext);
+	SmallString<64> ExprStr = BBSym->getName();
+	ExprStr += "@";
+	ExprStr += NameStr;
 
-	MCSymbol *RelSym = OutContext.CreateTempSymbol();
-	RelSym->setVariableValue(RelAddr);
+	MCSymbol *RelSym = OutContext.GetOrCreateSymbol(ExprStr);
 
-	// Does not work
 	return RelSym;
 }

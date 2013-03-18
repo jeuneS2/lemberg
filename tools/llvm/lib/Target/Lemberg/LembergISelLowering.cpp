@@ -294,10 +294,12 @@ const MCExpr
 	NameStr += "_start";
 
 	// create basic block offsets relative to function start
-	const MCSymbol *FunSym = Ctx.GetOrCreateSymbol(NameStr.str());
-	const MCExpr *Fun = MCSymbolRefExpr::Create(FunSym, Ctx);
-	const MCExpr *Value = MCSymbolRefExpr::Create(MBB->getSymbol(), Ctx);
-	const MCExpr *RelAddr = MCBinaryExpr::CreateSub(Value, Fun, Ctx);
+	SmallString<64> ExprStr = MBB->getSymbol()->getName();
+	ExprStr += "@";
+	ExprStr += NameStr;
+
+	const MCSymbol *RelSym = Ctx.GetOrCreateSymbol(ExprStr.str());
+	const MCExpr *RelAddr = MCSymbolRefExpr::Create(RelSym, Ctx);
 
 	return RelAddr;
 }

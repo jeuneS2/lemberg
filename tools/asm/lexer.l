@@ -277,11 +277,12 @@ $f[0-9]+ {
 	return EXPR;
   }
 
-{SYM}-{SYM} {
-	/* recognize the difference of two symbols */
+{SYM}@{SYM} {
+	/* recognize '@' for the difference of two symbols */
 	yylval.exprval = NULL_EXPR;
 	yylval.exprval.strval = malloc(strlen(yytext)+1);
 	strcpy(yylval.exprval.strval, yytext);
+	*strchr(yylval.exprval.strval, '@') = '-';
 	return EXPR;
   }
 
