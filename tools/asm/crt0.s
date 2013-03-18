@@ -14,9 +14,9 @@ __crt0:
 		;; 
 		#0: callg _main
 		;; 
-		#0: ldga __crt0_sp -> r0.30
+		#0: ldga __crt0_sp -> r0.16
 		;;
-		#0: stm.a r15, r0.30, 0
+		#0: stm.a r15, r0.16, 0
 		;; 
 		nop 0
 		;;
