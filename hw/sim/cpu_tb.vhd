@@ -15,16 +15,22 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ----------------------------------------------------------------------------
+use std.env.all;
+use std.textio.all;
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 use work.pin_pack.all;
+use work.reg_pack.all;
 
 entity cpu_tb is	
 end cpu_tb;
 
 architecture sim of cpu_tb is
+
+	signal halted    : boolean := false;
 
 	signal clk	     : std_logic := '1';
 	signal ram_out   : sram_pin_out_type;
@@ -221,35 +227,97 @@ begin  -- sim
 
 	clock : process
 	begin
+		if halted then
+			wait until not halted;			
+		end if;
 		wait for 7.5 ns; clk <= not clk;
 	end process clock;
-
+	
 	sim: process
-		variable data : std_logic_vector(9 downto 0);
+	begin  -- process sim
+		io_in.rxd <= '1';
+		wait until halted;
+	end process sim;
+
+	tick: process
+		variable t : integer := 0;
+		variable l : line;
+	begin  -- process sim
+		wait for 100 us;
+
+		if halted then
+			wait until not halted;			
+		end if;
+
+		t := t+100;
+		write(l, string'("@"));
+		write(l, t);
+		write(l, string'("us"));
+		writeline(output, l);
+	end process tick;
+
+	halt: process
+		variable s : g_reg_src_type;
+		variable r : g_reg_regfile_type;
+		variable l : line;
 	begin  -- process sim
 
-		io_in.rxd <= '1';
+		-- detect halt from CPU
+		wait until <<signal .cpu_tb.cpu.sc_io.sc_sysinfo.rdy_reg : std_logic_vector(1 downto 0)>> = "11";
+		-- wait for UART to complete
+        if unsigned(<<signal .cpu_tb.cpu.sc_io.sc_uart.tf.f : std_logic_vector(31 downto 0)>>) /= 0 then
+            wait until unsigned(<<signal .cpu_tb.cpu.sc_io.sc_uart.tf.f : std_logic_vector(31 downto 0)>>) = 0;
+            wait for 11 * 8.68 us;
+        end if;
+
+		halted <= true;
+
+		-- extract r0 and print
+		s := <<signal .cpu_tb.cpu.core.decode.rf.g_regfile.src : g_reg_src_type>>;
+		r := <<signal .cpu_tb.cpu.core.decode.rf.g_regfile.regfile : g_reg_regfile_type>>;
+		write(l, string'("EXIT "));
+		write(l, to_integer(signed(r(s(0))(0))));
+		writeline(output, l);
 		
-        wait for 10 us;
-
-		data := "1000000000";
-		for k in 0 to 3 loop
-			for i in 0 to 9 loop
-				wait for 8.68 us;
-				io_in.rxd <= data(i);
-			end loop;			
-		end loop;  -- k
-
-		data := "1000000000";
-		for k in 0 to 3 loop
-			for i in 0 to 9 loop
-				wait for 8.68 us;
-				io_in.rxd <= data(i);
-			end loop;			
-		end loop;  -- k
-
-		wait for 10000 ms;
+		wait until not halted;
+	end process halt;
+	
+	read_tx: process
+		variable data : std_logic_vector(8 downto 0);
+		variable l, m : line;
+	begin
+		wait until io_out.txd = '0' or halted;
 		
-	end process sim;
+		if halted then
+			-- flush output
+			if l /= null then
+				write(m, string'("LINE "));
+				write(m, l.all);
+				writeline(output, m);
+			end if;
+			wait until not halted;
+		end if;
+
+		wait for 4.34 us;
+		for i in 0 to 8 loop
+			wait for 8.68 us;
+			data(i) := io_out.txd;
+		end loop;
+
+		-- write each character
+		write(m, string'(">"));
+		write(m, character'val(to_integer(unsigned(data(7 downto 0)))));
+		writeline(output, m);
+
+		-- write full line
+		write(l, character'val(to_integer(unsigned(data(7 downto 0)))));
+		if data(7 downto 0) = X"0A" then
+			write(m, string'("LINE "));
+			write(m, l.all);
+            deallocate(l);
+			writeline(output, m);
+		end if;
+
+	end process read_tx;
 
 end sim;

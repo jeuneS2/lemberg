@@ -7,59 +7,66 @@ vlib rtl_work
 
 rm -rf ieee_proposed
 vlib ieee_proposed
-vcom $OPTIONS -work ieee_proposed ../src/fpu/float_pkg/fixed_float_types_c.vhdl
-vcom $OPTIONS -work ieee_proposed ../src/fpu/float_pkg/fixed_pkg_c.vhdl
-vcom $OPTIONS -work ieee_proposed ../src/fpu/float_pkg/float_pkg_c.vhdl
+vcom $OPTIONS -work ieee_proposed \
+	../src/fpu/float_pkg/fixed_float_types_c.vhdl \
+	../src/fpu/float_pkg/fixed_pkg_c.vhdl \
+	../src/fpu/float_pkg/float_pkg_c.vhdl
 
 rm -rf work
 vlib work
-vcom $OPTIONS ../src/config.vhd
-vcom $OPTIONS ../src/core_pack.vhd
-vcom $OPTIONS ../src/reg_pack.vhd
-vcom $OPTIONS ../src/flag_pack.vhd
-vcom $OPTIONS ../src/mem_pack.vhd
-vcom $OPTIONS ../src/op_pack.vhd
-vcom $OPTIONS ../src/jmp_pack.vhd
-vcom $OPTIONS ../src/io_pack.vhd
-vcom $OPTIONS ../src/io/pin_pack.vhd
-vcom $OPTIONS ../src/fpu/fpu_pack.vhd
-vcom $OPTIONS ../src/fetch.vhd
-vcom $OPTIONS ../src/btb.vhd
-vcom $OPTIONS ../src/imem_block.vhd
-vcom $OPTIONS ../src/imem.vhd
-vcom $OPTIONS ../src/icache.vhd
-vcom $OPTIONS ../src/inflate.vhd
-vcom $OPTIONS ../src/regfile.vhd
-vcom $OPTIONS ../src/decode.vhd
-vcom $OPTIONS ../src/flags.vhd
-vcom $OPTIONS ../src/forward.vhd
-vcom $OPTIONS ../src/alu.vhd
-vcom $OPTIONS ../src/memunit.vhd
-vcom $OPTIONS ../src/jumpunit.vhd
-vcom $OPTIONS ../src/cache/sdpram.vhd
-vcom $OPTIONS ../src/cache/directmapped.vhd
-vcom $OPTIONS ../src/cache/lru.vhd
-vcom $OPTIONS ../src/cache/stack.vhd
-vcom $OPTIONS ../src/cache/datacache.vhd
-vcom $OPTIONS ../src/fpu/cmp.vhd
-vcom $OPTIONS ../src/fpu/cvt.vhd
-vcom $OPTIONS ../src/fpu/mac.vhd
-vcom $OPTIONS ../src/fpu/fpu.vhd
-vcom $OPTIONS ../src/core.vhd
-vcom $OPTIONS ../src/iomux.vhd
-vcom $OPTIONS sim_ssram_pll.vhd
-vcom $OPTIONS ../src/io/sc_ssram32.vhd
-vcom $OPTIONS ../src/io/sc_sysinfo.vhd
-vcom $OPTIONS ../src/io/sc_timer.vhd
-vcom $OPTIONS ../src/io/fifo.vhd
-vcom $OPTIONS ../src/io/sc_uart.vhd
-vcom $OPTIONS ../bootrom/sim_bootrom.vhd
-vcom $OPTIONS ../src/io/sc_io.vhd
-vcom $OPTIONS sim_pll.vhd
-vcom $OPTIONS ../src/cpu.vhd
-vcom $OPTIONS conversions.vhd
-vcom $OPTIONS gen_utils.vhd
-vcom $OPTIONS sim_ssram_512x36.vhd
-vcom $OPTIONS cpu_tb.vhd
+vcom $OPTIONS \
+	../src/config.vhd \
+	../src/core_pack.vhd \
+	../src/reg_pack.vhd \
+	../src/flag_pack.vhd \
+	../src/mem_pack.vhd \
+	../src/op_pack.vhd \
+	../src/jmp_pack.vhd \
+	../src/io_pack.vhd \
+	../src/io/pin_pack.vhd \
+	../src/fpu/fpu_pack.vhd \
+	../src/fetch.vhd \
+	../src/btb.vhd \
+	../src/imem_block.vhd \
+	../src/imem.vhd \
+	../src/icache.vhd \
+	../src/inflate.vhd \
+	../src/regfile.vhd \
+	../src/decode.vhd \
+	../src/flags.vhd \
+	../src/forward.vhd \
+	../src/alu.vhd \
+	../src/memunit.vhd \
+	../src/jumpunit.vhd \
+	../src/cache/sdpram.vhd \
+	../src/cache/directmapped.vhd \
+	../src/cache/lru.vhd \
+	../src/cache/stack.vhd \
+	../src/cache/datacache.vhd \
+	../src/fpu/cmp.vhd \
+	../src/fpu/cvt.vhd \
+	../src/fpu/mac.vhd \
+	../src/fpu/fpu.vhd \
+	../src/core.vhd \
+	../src/iomux.vhd \
+	sim_ssram_pll.vhd \
+	../src/io/sc_ssram32.vhd \
+	../src/io/sc_sysinfo.vhd \
+	../src/io/sc_timer.vhd \
+	../src/io/fifo.vhd \
+	../src/io/sc_uart.vhd \
+	../bootrom/sim_bootrom.vhd \
+	../src/io/sc_io.vhd \
+	sim_pll.vhd \
+	../src/cpu.vhd \
+	conversions.vhd \
+	gen_utils.vhd \
+	sim_ssram_512x36.vhd
 
-vsim -i -t 100ps -do sim.do cpu_tb
+vcom -2008 -quiet cpu_tb.vhd
+
+if [ x$1 = "x-nox" ]; then
+	vsim -quiet -c -t 100ps -do sim-nox.do cpu_tb
+else
+	vsim -i -t 100ps -do sim.do cpu_tb
+fi
