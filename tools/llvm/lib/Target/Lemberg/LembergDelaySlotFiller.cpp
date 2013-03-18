@@ -110,6 +110,7 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 			|| Opcode == Lemberg::JUMPlez
 			|| Opcode == Lemberg::JUMPp
 			|| Opcode == Lemberg::CALLga
+			|| Opcode == Lemberg::CALL
 			|| Opcode == Lemberg::RET)) {
 
  	    unsigned targReg = 0;
@@ -123,7 +124,7 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 		case Lemberg::JUMPpred:
 		case Lemberg::JUMPp:
 		case Lemberg::CALL:
-		case Lemberg::RET:					
+		case Lemberg::RET:
 			condReg = II->getOperand(1).getReg();
 			break;
 		case Lemberg::JUMPtrue:
