@@ -1228,25 +1228,19 @@ LembergTargetLowering::LowerCallResult(SDValue Chain, SDValue InFlag,
   return Chain;
 }
 
-std::vector<unsigned> LembergTargetLowering::
-getRegClassForInlineAsmConstraint(const std::string &Constraint,
-                                  EVT VT) const {
+std::pair<unsigned, const TargetRegisterClass*>
+LembergTargetLowering::getRegForInlineAsmConstraint(const std::string &Constraint,
+													EVT VT) const {
   if (Constraint.size() != 1)
-    return std::vector<unsigned>();
+	return TargetLowering::getRegForInlineAsmConstraint(Constraint, VT);
 
   switch (Constraint[0]) {
   default: break;
   case 'r': // Only allow global regs
-	  return make_vector<unsigned>(Lemberg::R0, Lemberg::R1, Lemberg::R2, Lemberg::R3,
-								   Lemberg::R4, Lemberg::R5, Lemberg::R4, Lemberg::R5,
-								   Lemberg::R8, Lemberg::R9, Lemberg::R10, Lemberg::R11,
-								   Lemberg::R12, Lemberg::R13, Lemberg::R14, Lemberg::R15, 0);
+	return std::pair<unsigned, const TargetRegisterClass*>(0U, Lemberg::GRegisterClass);
   case 'f':
-	  return make_vector<unsigned>(Lemberg::F0, Lemberg::F1, Lemberg::F2, Lemberg::F3,
-								   Lemberg::F4, Lemberg::F5, Lemberg::F4, Lemberg::F5,
-								   Lemberg::F8, Lemberg::F9, Lemberg::F10, Lemberg::F11,
-								   Lemberg::F12, Lemberg::F13, Lemberg::F14, Lemberg::F15, 0);
+	return std::pair<unsigned, const TargetRegisterClass*>(0U, Lemberg::FRegisterClass);
   }
 
-  return std::vector<unsigned>();
+  return TargetLowering::getRegForInlineAsmConstraint(Constraint, VT);
 }
