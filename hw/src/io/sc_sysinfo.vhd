@@ -48,6 +48,8 @@ end sc_sysinfo;
 architecture rtl of sc_sysinfo is
 
 	signal rdy_reg : unsigned(RDY_CNT_WIDTH-1 downto 0);
+
+	signal mem_emergency_reg : std_logic_vector(DATA_WIDTH-1 downto 0);
 	
 begin  -- rtl
 
@@ -70,6 +72,7 @@ begin  -- rtl
 						rd_data <= std_logic_vector(to_unsigned(clk_freq, DATA_WIDTH));
 					when "0010" =>
 						rd_data <= (others => '0');
+						rd_data(3 downto 2) <= std_logic_vector(to_unsigned(CLUSTERS, 2));
 						if ENABLE_SINGLE then rd_data(0) <= '1'; end if;
 						if ENABLE_DOUBLE then rd_data(1) <= '1'; end if;
 					when "0011" =>
@@ -92,7 +95,10 @@ begin  -- rtl
 						rd_data <= std_logic_vector(to_unsigned(FA_ADDR_WIDTH, DATA_WIDTH));
 					when "1011" =>
 						rd_data <= std_logic_vector(to_unsigned(STACK_ADDR_WIDTH, DATA_WIDTH));
-						
+
+					when "1110" =>
+						rd_data <= mem_emergency_reg;
+
 					when "1111" => -- halt
 						rd_data <= (others => '0');
 						rdy_reg   <= "11";
@@ -103,6 +109,9 @@ begin  -- rtl
 			end if;
 			if wr = '1' then
 				case address(3 downto 0) is
+					when "1110" =>
+						mem_emergency_reg <= wr_data;
+
 					when "1111" =>
 						int_reset <= '0';  -- reset						
 					when others => null;

@@ -473,10 +473,9 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 	  // R31 must appear to remain unchanged
 	  if (guardLoad) {
 		unsigned EmergencyReg = getEmergencyRegister();
-		// __mem_emergency must be addressable with 11 bits
-		BuildMI(MBB, II, DL, TII.get(Lemberg::LOADsym11lo), EmergencyReg)
-		  .addImm(-1).addReg(0)
-		  .addExternalSymbol("__mem_emergency");
+		// mem_emergency register is at address -8
+		BuildMI(MBB, II, DL, TII.get(Lemberg::LOADimm11), EmergencyReg)
+		  .addImm(-1).addReg(0).addImm(-8);
 		BuildMI(MBB, II, DL, TII.get(Lemberg::STORE32ap))
 		  .addImm(-1).addReg(0)
 		  .addReg(Lemberg::R31).addReg(EmergencyReg);
@@ -544,8 +543,13 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  }
 
 		  if (guardLoad) {
-			BuildMI(MBB, next(II), DL, TII.get(Lemberg::LOAD32d_ga))
-			  .addExternalSymbol("__mem_emergency")
+			unsigned EmergencyReg = getEmergencyRegister();
+			// mem_emergency register is at address -8
+			BuildMI(MBB, II, DL, TII.get(Lemberg::LOADimm11), EmergencyReg)
+			  .addImm(-1).addReg(0).addImm(-8);
+			BuildMI(MBB, next(II), DL, TII.get(Lemberg::LOAD32fpv))
+			  .addImm(-1).addReg(0)
+			  .addReg(EmergencyReg)
 			  .addReg(Lemberg::R31, RegState::ImplicitDefine);
 		  }
 
@@ -625,8 +629,13 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  }
 
 		  if (guardLoad) {
-			BuildMI(MBB, next(II), DL, TII.get(Lemberg::LOAD32d_ga))
-			  .addExternalSymbol("__mem_emergency")
+			unsigned EmergencyReg = getEmergencyRegister();
+			// mem_emergency register is at address -8
+			BuildMI(MBB, II, DL, TII.get(Lemberg::LOADimm11), EmergencyReg)
+			  .addImm(-1).addReg(0).addImm(-8);
+			BuildMI(MBB, next(II), DL, TII.get(Lemberg::LOAD32fpv))
+			  .addImm(-1).addReg(0)
+			  .addReg(EmergencyReg)
 			  .addReg(Lemberg::R31, RegState::ImplicitDefine);
 		  }
 
@@ -655,10 +664,9 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 	  // R31 must appear to remain unchanged
 	  if (guardLoad) {
 		unsigned EmergencyReg = getEmergencyRegister();
-		// __mem_emergency must be addressable with 11 bits
-		BuildMI(MBB, II, DL, TII.get(Lemberg::LOADsym11lo), EmergencyReg)
-		  .addImm(-1).addReg(0)
-		  .addExternalSymbol("__mem_emergency");
+		// mem_emergency register is at address -8
+		BuildMI(MBB, II, DL, TII.get(Lemberg::LOADimm11), EmergencyReg)
+		  .addImm(-1).addReg(0).addImm(-8);
 		BuildMI(MBB, II, DL, TII.get(Lemberg::STORE32ap))
 		  .addImm(-1).addReg(0)
 		  .addReg(Lemberg::R31).addReg(EmergencyReg);
@@ -733,8 +741,13 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 	  }
 
 	  if (guardLoad) {
-		BuildMI(MBB, next(II), DL, TII.get(Lemberg::LOAD32d_ga))
-		  .addExternalSymbol("__mem_emergency")
+		unsigned EmergencyReg = getEmergencyRegister();
+		// mem_emergency register is at address -8
+		BuildMI(MBB, II, DL, TII.get(Lemberg::LOADimm11), EmergencyReg)
+		  .addImm(-1).addReg(0).addImm(-8);
+		BuildMI(MBB, next(II), DL, TII.get(Lemberg::LOAD32fpv))
+		  .addImm(-1).addReg(0)
+		  .addReg(EmergencyReg)
 		  .addReg(Lemberg::R31, RegState::ImplicitDefine);
 	  }
 

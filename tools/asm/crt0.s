@@ -67,6 +67,3 @@ __crt0_exit_end:
 
 __crt0_sp:
 		.long 0
-		
-___mem_emergency:
-		.long 0
