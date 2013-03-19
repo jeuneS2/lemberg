@@ -239,7 +239,8 @@ void LembergInstrInfo::reMaterialize(MachineBasicBlock &MBB,
 	  assert((TRI.isVirtualRegister(DestReg) || Lemberg::AImmRegClass.contains(DestReg))
 			 && "Cannot rematerialize this instruction to arbitrary physical register");
 	  if (TRI.isVirtualRegister(DestReg)) {
-		  MBB.getParent()->getRegInfo().setRegClass(DestReg, Lemberg::AImmRegisterClass);
+		MachineRegisterInfo &MRI = MBB.getParent()->getRegInfo();
+		MRI.constrainRegClass(DestReg, Lemberg::AImmRegisterClass);
 	  }
   }
 
