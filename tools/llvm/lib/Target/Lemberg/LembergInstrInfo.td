@@ -860,24 +860,26 @@ let Constraints = "$src2 = $dst" in {
 				       "if !$cond comb\tand $src1, $src1 -> $dst",
                        [(set C:$dst, (select (notcc C:$cond), C:$src1, C:$src2))],
 				       IIAlu>;
-    // Conditional move for floats
-	def FMOVtrue: F1<(outs F:$dst), (ins C:$cond, F:$src1, F:$src2),
-	                 "if  $cond fop\tfmov\t$src1 -> $dst",
-	                 [(set (f32 F:$dst), (select C:$cond, F:$src1, F:$src2))],
-				     IIFpu0>;
-	def FMOVfalse: F1<(outs F:$dst), (ins C:$cond, F:$src1, F:$src2),
-	                  "if !$cond fop\tfmov\t$src1 -> $dst",
-                      [(set (f32 F:$dst), (select (notcc C:$cond), F:$src1, F:$src2))],
-				      IIFpu0>;
-    // Conditional move for doubles
-	def DMOVtrue: F1<(outs D:$dst), (ins C:$cond, D:$src1, D:$src2),
-	                 "if  $cond fop\tdmov\t$src1 -> $dst",
-	                 [(set (f64 D:$dst), (select C:$cond, D:$src1, D:$src2))],
-				     IIFpu0>;
-	def DMOVfalse: F1<(outs D:$dst), (ins C:$cond, D:$src1, D:$src2),
-	                  "if !$cond fop\tdmov\t$src1 -> $dst",
-                      [(set (f64 D:$dst), (select (notcc C:$cond), D:$src1, D:$src2))],
-				      IIFpu0>;
+	let hasExtraSrcRegAllocReq = 1, hasExtraDefRegAllocReq = 1 in {
+	  // Conditional move for floats
+	  def FMOVtrue: F1<(outs F:$dst), (ins C:$cond, F:$src1, F:$src2),
+					   "if  $cond fop\tfmov\t$src1 -> $dst",
+					   [(set (f32 F:$dst), (select C:$cond, F:$src1, F:$src2))],
+					   IIFpu0>;
+	  def FMOVfalse: F1<(outs F:$dst), (ins C:$cond, F:$src1, F:$src2),
+						"if !$cond fop\tfmov\t$src1 -> $dst",
+						[(set (f32 F:$dst), (select (notcc C:$cond), F:$src1, F:$src2))],
+						IIFpu0>;
+      // Conditional move for doubles
+	  def DMOVtrue: F1<(outs D:$dst), (ins C:$cond, D:$src1, D:$src2),
+					   "if  $cond fop\tdmov\t$src1 -> $dst",
+					   [(set (f64 D:$dst), (select C:$cond, D:$src1, D:$src2))],
+					   IIFpu0>;
+	  def DMOVfalse: F1<(outs D:$dst), (ins C:$cond, D:$src1, D:$src2),
+						"if !$cond fop\tdmov\t$src1 -> $dst",
+						[(set (f64 D:$dst), (select (notcc C:$cond), D:$src1, D:$src2))],
+						IIFpu0>;
+	}
 }
 
 let neverHasSideEffects = 1 in
@@ -973,110 +975,115 @@ let Constraints = "$src2 = $dst" in {
 				 IIAlu>;
 }
 
-// Single-precision floating-point operations
-def FMOV: F1<(outs F:$dst), (ins pred:$p, F:$src),
-			 "$p fop\tfmov\t$src -> $dst",
-			 [], IIFpu0>;
+let hasExtraSrcRegAllocReq = 1, hasExtraDefRegAllocReq = 1 in {
 
-def FNEG: F1<(outs F:$dst), (ins pred:$p, F:$src),
-			 "$p fop\tfneg\t$src -> $dst",
-			 [(set F:$dst, (fneg F:$src))],
-			 IIFpu0>;
-def FABS: F1<(outs F:$dst), (ins pred:$p, F:$src),
-			 "$p fop\tfabs\t$src -> $dst",
-			 [(set F:$dst, (fabs F:$src))],
-			 IIFpu0>;
+  // Single-precision floating-point operations
+  def FMOV: F1<(outs F:$dst), (ins pred:$p, F:$src),
+			   "$p fop\tfmov\t$src -> $dst",
+			   [], IIFpu0>;
 
-def FADD: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2),
-			 "$p fop\tfadd\t$src1, $src2 -> $dst",
-			 [(set F:$dst, (fadd F:$src1, F:$src2))],
-			 IIFpu6>;
-def FSUB: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2),
-			 "$p fop\tfsub\t$src1, $src2 -> $dst",
-			 [(set F:$dst, (fsub F:$src1, F:$src2))],
-			 IIFpu6>;
-def FMUL: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2),
- 			 "$p fop\tfmul\t$src1, $src2 -> $dst",
- 			 [(set F:$dst, (fmul F:$src1, F:$src2))],
- 			 IIFpu6>;
-let Constraints = "$src1 = $dst" in
-def FMAC: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2, F:$src3),
- 			 "$p fop\tfmac\t$src2, $src3 -> $dst",
- 			 [(set F:$dst, (fadd (fmul F:$src2, F:$src3), F:$src1))],
- 			 IIFpu6>;
+  def FNEG: F1<(outs F:$dst), (ins pred:$p, F:$src),
+			   "$p fop\tfneg\t$src -> $dst",
+			   [(set F:$dst, (fneg F:$src))],
+			   IIFpu0>;
+  def FABS: F1<(outs F:$dst), (ins pred:$p, F:$src),
+			   "$p fop\tfabs\t$src -> $dst",
+			   [(set F:$dst, (fabs F:$src))],
+			   IIFpu0>;
 
-// Double-precision floating-point operations
-def DMOV: F1<(outs D:$dst), (ins pred:$p, D:$src),
-			 "$p fop\tdmov\t$src -> $dst",
-			 [], IIFpu0>;
+  def FADD: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2),
+			   "$p fop\tfadd\t$src1, $src2 -> $dst",
+			   [(set F:$dst, (fadd F:$src1, F:$src2))],
+			   IIFpu6>;
+  def FSUB: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2),
+			   "$p fop\tfsub\t$src1, $src2 -> $dst",
+			   [(set F:$dst, (fsub F:$src1, F:$src2))],
+			   IIFpu6>;
+  def FMUL: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2),
+			   "$p fop\tfmul\t$src1, $src2 -> $dst",
+			   [(set F:$dst, (fmul F:$src1, F:$src2))],
+			   IIFpu6>;
+  let Constraints = "$src1 = $dst" in
+	def FMAC: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2, F:$src3),
+				 "$p fop\tfmac\t$src2, $src3 -> $dst",
+				 [(set F:$dst, (fadd (fmul F:$src2, F:$src3), F:$src1))],
+				 IIFpu6>;
 
-def DNEG: F1<(outs D:$dst), (ins pred:$p, D:$src),
-			 "$p fop\tdneg\t$src -> $dst",
-			 [(set D:$dst, (fneg D:$src))],
-			 IIFpu0>;
-def DABS: F1<(outs D:$dst), (ins pred:$p, D:$src),
-			 "$p fop\tdabs\t$src -> $dst",
-			 [(set D:$dst, (fabs D:$src))],
-			 IIFpu0>;
+  // Double-precision floating-point operations
+  def DMOV: F1<(outs D:$dst), (ins pred:$p, D:$src),
+			   "$p fop\tdmov\t$src -> $dst",
+			   [], IIFpu0>;
 
-def DADD: F1<(outs D:$dst), (ins pred:$p, D:$src1, D:$src2),
-			 "$p fop\tdadd\t$src1, $src2 -> $dst",
-			 [(set D:$dst, (fadd D:$src1, D:$src2))],
-			 IIFpu7>;
-def DSUB: F1<(outs D:$dst), (ins pred:$p, D:$src1, D:$src2),
-			 "$p fop\tdsub\t$src1, $src2 -> $dst",
-			 [(set D:$dst, (fsub D:$src1, D:$src2))],
-			 IIFpu7>;
-def DMUL: F1<(outs D:$dst), (ins pred:$p, D:$src1, D:$src2),
- 			 "$p fop\tdmul\t$src1, $src2 -> $dst",
- 			 [(set D:$dst, (fmul D:$src1, D:$src2))],
- 			 IIFpu7>;
-let Constraints = "$src1 = $dst" in
-def DMAC: F1<(outs D:$dst), (ins pred:$p, D:$src1, D:$src2, D:$src3),
- 			 "$p fop\tdmac\t$src2, $src3 -> $dst",
- 			 [(set D:$dst, (fadd (fmul D:$src2, D:$src3), D:$src1))],
- 			 IIFpu7>;
+  def DNEG: F1<(outs D:$dst), (ins pred:$p, D:$src),
+			   "$p fop\tdneg\t$src -> $dst",
+			   [(set D:$dst, (fneg D:$src))],
+			   IIFpu0>;
+  def DABS: F1<(outs D:$dst), (ins pred:$p, D:$src),
+			   "$p fop\tdabs\t$src -> $dst",
+			   [(set D:$dst, (fabs D:$src))],
+			   IIFpu0>;
 
-// All kinds of floating-point conversions
-def SF2SI: F1<(outs F:$dst), (ins pred:$p, F:$src),
-			  "$p fop\tsf2si\t$src -> $dst",
-			  [(set F:$dst, (fp_to_sint F:$src))],
-			  IIFpu2>;
-def SI2SF: F1<(outs F:$dst), (ins pred:$p, F:$src),
-			  "$p fop\tsi2sf\t$src -> $dst",
-			  [(set F:$dst, (sint_to_fp F:$src))],
-			  IIFpu2>;
+  def DADD: F1<(outs D:$dst), (ins pred:$p, D:$src1, D:$src2),
+			   "$p fop\tdadd\t$src1, $src2 -> $dst",
+			   [(set D:$dst, (fadd D:$src1, D:$src2))],
+			   IIFpu7>;
+  def DSUB: F1<(outs D:$dst), (ins pred:$p, D:$src1, D:$src2),
+			   "$p fop\tdsub\t$src1, $src2 -> $dst",
+			   [(set D:$dst, (fsub D:$src1, D:$src2))],
+			   IIFpu7>;
+  def DMUL: F1<(outs D:$dst), (ins pred:$p, D:$src1, D:$src2),
+			   "$p fop\tdmul\t$src1, $src2 -> $dst",
+			   [(set D:$dst, (fmul D:$src1, D:$src2))],
+			   IIFpu7>;
+  let Constraints = "$src1 = $dst" in
+	def DMAC: F1<(outs D:$dst), (ins pred:$p, D:$src1, D:$src2, D:$src3),
+				 "$p fop\tdmac\t$src2, $src3 -> $dst",
+				 [(set D:$dst, (fadd (fmul D:$src2, D:$src3), D:$src1))],
+				 IIFpu7>;
 
-def DF2SI: F1<(outs F:$dst), (ins pred:$p, D:$src),
-			  "$p fop\tdf2si\t$src -> $dst",
-			  [(set F:$dst, (fp_to_sint D:$src))],
-			  IIFpu2>;
-def SI2DF: F1<(outs D:$dst), (ins pred:$p, F:$src),
-			  "$p fop\tsi2df\t$src -> $dst",
-			  [(set D:$dst, (sint_to_fp F:$src))],
-			  IIFpu2>;
+  // All kinds of floating-point conversions
+  def SF2SI: F1<(outs F:$dst), (ins pred:$p, F:$src),
+				"$p fop\tsf2si\t$src -> $dst",
+				[(set F:$dst, (fp_to_sint F:$src))],
+				IIFpu2>;
+  def SI2SF: F1<(outs F:$dst), (ins pred:$p, F:$src),
+				"$p fop\tsi2sf\t$src -> $dst",
+				[(set F:$dst, (sint_to_fp F:$src))],
+				IIFpu2>;
 
-def D2F: F1<(outs F:$dst), (ins pred:$p, D:$src),
-			"$p fop\trnd\t$src -> $dst",
-			[(set F:$dst, (f32 (fround D:$src)))],
-			IIFpu4>;
-def F2D: F1<(outs D:$dst), (ins pred:$p, F:$src),
-			"$p fop\text\t$src -> $dst",
-			[(set D:$dst, (f64 (fextend F:$src)))],
-			IIFpu3>;
+  def DF2SI: F1<(outs F:$dst), (ins pred:$p, D:$src),
+				"$p fop\tdf2si\t$src -> $dst",
+				[(set F:$dst, (fp_to_sint D:$src))],
+				IIFpu2>;
+  def SI2DF: F1<(outs D:$dst), (ins pred:$p, F:$src),
+				"$p fop\tsi2df\t$src -> $dst",
+				[(set D:$dst, (sint_to_fp F:$src))],
+				IIFpu2>;
+
+  def D2F: F1<(outs F:$dst), (ins pred:$p, D:$src),
+			  "$p fop\trnd\t$src -> $dst",
+			  [(set F:$dst, (f32 (fround D:$src)))],
+			  IIFpu4>;
+  def F2D: F1<(outs D:$dst), (ins pred:$p, F:$src),
+			  "$p fop\text\t$src -> $dst",
+			  [(set D:$dst, (f64 (fextend F:$src)))],
+			  IIFpu3>;
+}
 
 // Same as MOVEax/MOVExa, but with proper typing and execution unit
+let hasExtraDefRegAllocReq = 1 in
 def MOVEaf: F1<(outs F:$dst), (ins pred:$p, A:$src),
 			   "$p stx\t$src -> $$$dst",
 			   [(set (f32 F:$dst), (bitconvert (i32 A:$src)))],
 			   IIFpu0>;
+let hasExtraSrcRegAllocReq = 1 in
 def MOVEfa: F1<(outs A:$dst), (ins pred:$p, F:$src),
 			   "$p ldx\t$$$src -> $dst",
 			   [(set (i32 A:$dst), (bitconvert (f32 F:$src)))],
 			   IIFpu0>;
 
 // load +0.0 and -0.0
-let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
+let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1, hasExtraDefRegAllocReq = 1 in {
 	def FZERO: F1<(outs F:$dst), (ins pred:$p),
 	              "$p fop\tfzero -> $dst",
 	              [(set (f32 F:$dst), fpimm0)],
@@ -1103,7 +1110,7 @@ def : Pat<(f32 fpimmHneg), (FNEG (FHALF))>;
 def : Pat<(f32 fpimm1neg), (FNEG (FONE))>;
 def : Pat<(f32 fpimm2neg), (FNEG (FTWO))>;
 
-let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
+let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1, hasExtraDefRegAllocReq = 1 in {
 	def DZERO: F1<(outs D:$dst), (ins pred:$p),
 			      "$p fop\tdzero -> $dst",
 			      [(set D:$dst, fpimm0)],
@@ -1155,6 +1162,7 @@ def : Pat<(f64 fpimm:$imm),
 			sub_odd)>;
 
 // Comparison result must be checked with btest to get actual condition
+let hasExtraSrcRegAllocReq = 1, hasExtraDefRegAllocReq = 1 in
 def FCMP: F1<(outs F:$dst), (ins pred:$p, F:$src1, F:$src2),
 			 "$p fop\tfcmp\t$src1, $src2 -> $dst", [], IIFpu1>;
 
