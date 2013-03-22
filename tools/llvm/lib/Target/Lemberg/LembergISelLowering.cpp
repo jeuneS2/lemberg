@@ -143,6 +143,8 @@ LembergTargetLowering::LembergTargetLowering(TargetMachine &TM)
 	setOperationAction(ISD::SMUL_LOHI, MVT::i32, Expand);
 
 	// Expand whatever we don't have
+	setOperationAction(ISD::CTTZ_ZERO_UNDEF, MVT::i32, Expand);
+	setOperationAction(ISD::CTLZ_ZERO_UNDEF, MVT::i32, Expand);
 	setOperationAction(ISD::BSWAP, MVT::i32, Expand);
 	setOperationAction(ISD::ROTR, MVT::i32, Expand);
 	setOperationAction(ISD::SHL_PARTS, MVT::i32, Expand);
