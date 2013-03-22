@@ -46,7 +46,12 @@ architecture behavior of cpu is
 	
 	signal res_cnt     : unsigned(2 downto 0) := "111";
 	signal reset       : std_logic;
-	
+
+	signal intr        : std_logic;
+	signal intraddr    : std_logic_vector(ADDR_WIDTH-1 downto 0);
+	signal intrcall    : std_logic;
+	signal intrret     : std_logic;
+    
 	signal sc_out      : sc_out_type;
 	signal sc_in       : sc_in_type;
 
@@ -59,10 +64,14 @@ begin  -- behavior
 
 	core: entity work.core
 		port map (
-			clk	   => clk,
-			reset  => reset,
-			sc_out => sc_out,
-			sc_in  => sc_in);
+			clk	     => clk,
+			reset    => reset,
+			sc_out   => sc_out,
+			sc_in    => sc_in,
+			intr     => intr,
+			intraddr => intraddr,
+			intrcall => intrcall,
+			intrret  => intrret);
 
 	iomux: entity work.iomux
 		port map (
@@ -100,6 +109,10 @@ begin  -- behavior
 			int_reset => int_reset,
 			cpu_out   => io_out,
 			cpu_in 	  => io_in,
+			intr      => intr,
+			intraddr  => intraddr,
+			intrcall  => intrcall,
+			intrret   => intrret,
 			io_out    => io_pin_out,
 			io_in     => io_pin_in);
 		

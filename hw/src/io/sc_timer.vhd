@@ -31,10 +31,13 @@ entity sc_timer is
 	port (
 		clk, reset : in std_logic;
 		address    : in  std_logic_vector(addr_width-1 downto 0);
+		wr_data    : in  std_logic_vector(DATA_WIDTH-1 downto 0);
+		wr         : in  std_logic;
 		rd         : in  std_logic;
 		rd_data    : out std_logic_vector(DATA_WIDTH-1 downto 0);
-		rdy_cnt    : out unsigned(1 downto 0)
-		);	
+		rdy_cnt    : out unsigned(1 downto 0);
+		intr_cycle : out std_logic;
+		intr_usec  : out std_logic);	
 
 end sc_timer;
 
@@ -57,7 +60,10 @@ architecture rtl of sc_timer is
 	signal s_modcycles  : integer range 0 to clk_freq;
 
 	signal hireg_cyc, hireg_nano, hireg_sec : std_logic_vector(DATA_WIDTH-1 downto 0);
-	
+
+	signal cycle_timer : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal usec_timer : std_logic_vector(19 downto 0);
+    
 begin  -- rtl
 
 	assert addr_width = 3 report "Wrong address width" severity failure;
@@ -107,15 +113,35 @@ begin  -- rtl
 						rd_data_buf <= (others => '0');
 				end case;
 			end if;
-			
+
+			if wr = '1' then
+				case address(2 downto 0) is
+					when "000" =>
+						cycle_timer <= wr_data;
+					when "100" =>
+						usec_timer <= wr_data(19 downto 0);
+					when others => null;
+				end case;
+			end if;
+
+			intr_cycle <= '0';
+			if cycles(DATA_WIDTH-1 downto 0) = cycle_timer then
+				intr_cycle <= '1';
+			end if;
 			cycles <= std_logic_vector(unsigned(cycles)+1);
-						
+
+
 			nanos <= std_logic_vector(unsigned(nanos)+NANOS_PER_CYCLE);
+
 			
+			intr_usec <= '0';
 			us_modcycles <= std_logic_vector(unsigned(us_modcycles)+NANOS_PER_CYCLE);
 			if unsigned(us_modcycles(11+NANO_PREC-1 downto NANO_PREC)) >= 1000 then
 				usecs <= std_logic_vector(unsigned(usecs)+1);
 				us_modcycles <= std_logic_vector(unsigned(us_modcycles)+NANOS_PER_CYCLE-1000*2**NANO_PREC);
+				if usecs = usec_timer then
+					intr_usec <= '1';
+				end if;
 			end if;
 			
 			s_modcycles <= s_modcycles+1;
@@ -125,7 +151,8 @@ begin  -- rtl
 				usecs <= (others => '0');
 				us_modcycles <= (others => '0');
 			end if;			
-		end if;
+
+        end if;
 	end process sync;
 	
 end rtl;

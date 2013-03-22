@@ -33,6 +33,10 @@ entity sc_io is
 		int_reset  : out   std_logic;
 		cpu_out	   : in	   sc_out_type;
 		cpu_in	   : out   sc_in_type;
+		intr       : out   std_logic;
+		intraddr   : out   std_logic_vector(ADDR_WIDTH-1 downto 0);
+		intrcall   : in    std_logic;
+		intrret    : in    std_logic;
 		io_out     : out   io_pin_out_type;
 		io_in      : in    io_pin_in_type);
 		
@@ -50,17 +54,25 @@ architecture rtl of sc_io is
 	signal timer_out : sc_out_type;
 	signal timer_in : sc_in_type;
 
+	signal timer_intr_cycle : std_logic;
+	signal timer_intr_usec : std_logic;
+    
 	constant UART_ADDR_WIDTH : integer := 1;
 	constant UART_SELECT : std_logic_vector(IO_ADDR_WIDTH-UART_ADDR_WIDTH-1 downto 0) := "11110001";
 	signal uart_out : sc_out_type;
 	signal uart_in : sc_in_type;
+
+	constant INTR_ADDR_WIDTH : integer := 5;
+	constant INTR_SELECT : std_logic_vector(IO_ADDR_WIDTH-INTR_ADDR_WIDTH-1 downto 0) := "1110";
+	signal intr_out : sc_out_type;
+	signal intr_in : sc_in_type;
 
 	constant BOOTROM_ADDR_WIDTH : integer := 8;	
 	constant BOOTROM_SELECT : std_logic_vector(IO_ADDR_WIDTH-BOOTROM_ADDR_WIDTH-1 downto 0) := "0";
 	signal bootrom_out : sc_out_type;
 	signal bootrom_in : sc_in_type;
 	
-	type mux_type is (SYSINFO_MUX, TIMER_MUX, UART_MUX, BOOTROM_MUX);
+	type mux_type is (SYSINFO_MUX, TIMER_MUX, UART_MUX, INTR_MUX, BOOTROM_MUX);
 	signal mux_reg, mux_next : mux_type;
 	
 begin  -- rtl
@@ -85,12 +97,16 @@ begin  -- rtl
 			addr_width => TIMER_ADDR_WIDTH,
 			clk_freq   => CLOCK_FREQ)
 		port map (
-			clk		=> clk,
-			reset   => reset,
-			address => timer_out.address(TIMER_ADDR_WIDTH-1 downto 0),
-			rd		=> timer_out.rd,
-			rd_data => timer_in.rd_data,
-			rdy_cnt => timer_in.rdy_cnt);
+			clk		   => clk,
+			reset      => reset,
+			address    => timer_out.address(TIMER_ADDR_WIDTH-1 downto 0),
+			wr_data    => timer_out.wr_data,
+			wr		   => timer_out.wr,
+			rd		   => timer_out.rd,
+			rd_data    => timer_in.rd_data,
+			rdy_cnt    => timer_in.rdy_cnt,
+			intr_cycle => timer_intr_cycle,
+			intr_usec  => timer_intr_usec);
 
 	sc_uart: entity work.sc_uart
 		generic map (
@@ -115,6 +131,28 @@ begin  -- rtl
 			ncts	=> '0',
 			nrts	=> open);
 
+	sc_intr: entity work.sc_intr
+		generic map (
+			addr_width => INTR_ADDR_WIDTH,
+			intr_count_bits => 4,
+			intr_count => 16)
+		port map (
+			clk		    => clk,
+			reset	    => reset,
+			address     => intr_out.address(INTR_ADDR_WIDTH-1 downto 0),
+			wr_data     => intr_out.wr_data,
+			rd		    => intr_out.rd,
+			wr		    => intr_out.wr,
+			rd_data     => intr_in.rd_data,
+			rdy_cnt     => intr_in.rdy_cnt,
+			intr        => intr,
+			intraddr    => intraddr,
+			intrcall    => intrcall,
+			intrret     => intrret,
+			intrsrc(0)  => timer_intr_cycle,
+			intrsrc(1)  => timer_intr_usec,
+			intrsrc(15 downto 2) => (others => '0'));
+
 	bootrom: entity work.bootrom
 		generic map (
 			addr_width => BOOTROM_ADDR_WIDTH)
@@ -124,7 +162,7 @@ begin  -- rtl
 			rd		=> bootrom_out.rd,
 			rd_data => bootrom_in.rd_data,
 			rdy_cnt => bootrom_in.rdy_cnt);
-	
+
 	sync: process (clk, reset)
 	begin  -- process sync
 		if reset = '0' then  			-- asynchronous reset (active low)
@@ -135,7 +173,7 @@ begin  -- rtl
 	end process sync;
 
 	async: process (cpu_out,
-					sysinfo_in, timer_in, bootrom_in, uart_in,
+					sysinfo_in, timer_in, intr_in, bootrom_in, uart_in,
 					mux_reg)
 	begin  -- process async
 
@@ -150,6 +188,10 @@ begin  -- rtl
 		uart_out <= cpu_out;
 		uart_out.rd <= '0';
 		uart_out.wr <= '0';
+
+		intr_out <= cpu_out;
+		intr_out.rd <= '0';
+		intr_out.wr <= '0';
 
 		bootrom_out <= cpu_out;
 		bootrom_out.rd <= '0';
@@ -173,6 +215,11 @@ begin  -- rtl
 				uart_out.wr <= cpu_out.wr;
 				mux_next <= UART_MUX;
 			end if;
+			if cpu_out.address(IO_ADDR_WIDTH-1 downto INTR_ADDR_WIDTH) = INTR_SELECT then
+				intr_out.rd <= cpu_out.rd;
+				intr_out.wr <= cpu_out.wr;
+				mux_next <= INTR_MUX;
+			end if;
 			if cpu_out.address(IO_ADDR_WIDTH-1 downto BOOTROM_ADDR_WIDTH) = BOOTROM_SELECT then
 				bootrom_out.rd <= cpu_out.rd;
 				bootrom_out.wr <= cpu_out.wr;
@@ -187,6 +234,8 @@ begin  -- rtl
 				cpu_in.rd_data <= timer_in.rd_data;
 			when UART_MUX =>
 				cpu_in.rd_data <= uart_in.rd_data;
+			when INTR_MUX =>
+				cpu_in.rd_data <= intr_in.rd_data;
 			when BOOTROM_MUX =>
 				cpu_in.rd_data <= bootrom_in.rd_data;
 			when others => null;
@@ -194,7 +243,8 @@ begin  -- rtl
 
 		-- simplify return of rdy_cnt; precondition: all entities assert rdy_cnt only when necessary
 		cpu_in.rdy_cnt <= sysinfo_in.rdy_cnt or timer_in.rdy_cnt
-						  or uart_in.rdy_cnt or bootrom_in.rdy_cnt;
+						  or uart_in.rdy_cnt or intr_in.rdy_cnt
+						  or bootrom_in.rdy_cnt;
 
 	end process async;
 

@@ -31,10 +31,14 @@ use work.fpu_pack.all;
 entity core is
 	
 	port (
-		clk     : in  std_logic;
-		reset   : in  std_logic;
-		sc_out  : out sc_out_type;
-		sc_in   : in  sc_in_type);
+		clk      : in  std_logic;
+		reset    : in  std_logic;
+		sc_out   : out sc_out_type;
+		sc_in    : in  sc_in_type;
+		intr     : in  std_logic;
+		intraddr : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
+		intrcall : out std_logic;
+		intrret  : out std_logic);
 	
 end core;
 
@@ -56,6 +60,8 @@ architecture behavior of core is
 	signal imem_write  : imem_write_type;
 	
 	signal jmp_ro 	    : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal jmp_iro 	    : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal jmp_itmp	    : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal jmp_branch   : std_logic;
 	signal jmp_br_taken : std_logic;
 	signal jmp_br_src   : std_logic_vector(PC_WIDTH-1 downto 0);	
@@ -91,7 +97,16 @@ architecture behavior of core is
 
 	signal ro_wren     : std_logic_vector(CLUSTERS-1 downto 0);
 	signal ro_wrdata   : ro_wrdata_type;
-	
+
+	signal irb_wren    : std_logic_vector(CLUSTERS-1 downto 0);
+	signal irb_wrdata  : rb_wrdata_type;
+
+	signal iro_wren    : std_logic_vector(CLUSTERS-1 downto 0);
+	signal iro_wrdata  : ro_wrdata_type;
+
+	signal itmp_wren   : std_logic_vector(CLUSTERS-1 downto 0);
+	signal itmp_wrdata : tmp_wrdata_type;
+
 	signal fl_rddata   : std_logic_vector(FLAG_COUNT-1 downto 0);
 	signal fl_wren     : flag_wren_type;
 	signal fl_wrdata   : flag_wrdata_type;
@@ -106,6 +121,7 @@ architecture behavior of core is
 	signal mem_memdata : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal mem_ba      : std_logic_vector(ADDR_WIDTH-1 downto 0);
 	signal mem_rb 	   : std_logic_vector(ADDR_WIDTH-1 downto 0);
+	signal mem_irb 	   : std_logic_vector(ADDR_WIDTH-1 downto 0);
 	signal mem_pcoff   : std_logic_vector(ICACHE_BLOCK_BITS-1 downto 0);
 	signal mem_inval   : std_logic;
 	signal mem_out	   : sc_out_type;
@@ -171,6 +187,10 @@ begin  -- behavior
 			wren     => alu_wren,
 			wraddr   => alu_wraddr,
 			wrdata   => alu_wrdata,
+			intr     => intr,
+			intraddr => intraddr,
+			intrcall => intrcall,
+			intrret  => intrret,
 			spec     => fetch_spec,
 			spec_src => fetch_spec_src,
 			spec_bt  => fetch_spec_bt);
@@ -197,25 +217,34 @@ begin  -- behavior
 	gen_alu: for i in 0 to CLUSTERS-1 generate
 		alu: entity work.alu
 			port map (
-				clk     => clk,
-				reset   => reset,
-				op      => fwd_op(i),
-				ena     => ena,
-				wren    => alu_wren(i),
-				wraddr  => alu_wraddr(i),
-				wrdata  => alu_wrdata(i),
-				zero    => alu_zero(i),
-				neg     => alu_neg(i),
-				rb_in   => mem_rb,
-				rb_wren => rb_wren(i),
-				rb_out  => rb_wrdata(i),
-				ro_in   => jmp_ro,
-				ro_wren => ro_wren(i),
-				ro_out  => ro_wrdata(i),
-				ba      => mem_ba,
-				fl_in   => fl_rddata,
-				fl_wren => fl_wren(i),
-				fl_out  => fl_wrdata(i),
+				clk        => clk,
+				reset      => reset,
+				op         => fwd_op(i),
+				ena        => ena,
+				wren       => alu_wren(i),
+				wraddr     => alu_wraddr(i),
+				wrdata     => alu_wrdata(i),
+				zero       => alu_zero(i),
+				neg        => alu_neg(i),
+				rb_in      => mem_rb,
+				rb_wren    => rb_wren(i),
+				rb_out     => rb_wrdata(i),
+				ro_in      => jmp_ro,
+				ro_wren    => ro_wren(i),
+				ro_out     => ro_wrdata(i),
+				irb_in     => mem_irb,
+				irb_wren   => irb_wren(i),
+				irb_out    => irb_wrdata(i),
+				iro_in     => jmp_iro,
+				iro_wren   => iro_wren(i),
+				iro_out    => iro_wrdata(i),
+				itmp_in    => jmp_itmp,
+				itmp_wren  => itmp_wren(i),
+				itmp_out   => itmp_wrdata(i),
+				ba         => mem_ba,
+				fl_in      => fl_rddata,
+				fl_wren    => fl_wren(i),
+				fl_out     => fl_wrdata(i),
 				fpu_rddata => fpu_rddata,
 				fpu_wrdata => fpu_wrdata(i));
 	end generate;
@@ -233,6 +262,9 @@ begin  -- behavior
 			rb_out     => mem_rb,
 			rb_wren    => rb_wren,
 			rb_in      => rb_wrdata,
+			irb_out    => mem_irb,
+			irb_wren   => irb_wren,
+			irb_in     => irb_wrdata,
 			pcoff      => mem_pcoff,
 			inval      => mem_inval,
 			imem_write => imem_write,
@@ -254,6 +286,12 @@ begin  -- behavior
 			ro_out   => jmp_ro,
 			ro_wren  => ro_wren,
 			ro_in    => ro_wrdata,
+			iro_out  => jmp_iro,
+			iro_wren => iro_wren,
+			iro_in   => iro_wrdata,
+			itmp_out  => jmp_itmp,
+			itmp_wren => itmp_wren,
+			itmp_in   => itmp_wrdata,
 			branch   => jmp_branch,
 			br_taken => jmp_br_taken,
 			br_src   => jmp_br_src,

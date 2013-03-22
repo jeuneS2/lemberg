@@ -41,6 +41,9 @@ entity memunit is
 		rb_out		: out std_logic_vector(ADDR_WIDTH-1 downto 0);
 		rb_wren		: in  std_logic_vector(CLUSTERS-1 downto 0);
 		rb_in		: in  rb_wrdata_type;
+		irb_out		: out std_logic_vector(ADDR_WIDTH-1 downto 0);
+		irb_wren	: in  std_logic_vector(CLUSTERS-1 downto 0);
+		irb_in		: in  rb_wrdata_type;
 		pcoff		: out std_logic_vector(ICACHE_BLOCK_BITS-1 downto 0);
 		inval		: out std_logic;
 		imem_write	: out imem_write_type;		
@@ -68,6 +71,7 @@ architecture behavior of memunit is
 	
 	signal ba_reg, ba_next : std_logic_vector(ADDR_WIDTH-1 downto 0);
 	signal rb_reg, rb_next : std_logic_vector(ADDR_WIDTH-1 downto 0);
+	signal irb_reg, irb_next : std_logic_vector(ADDR_WIDTH-1 downto 0);
 
 	signal ena_int, ena_init, ena_reg : std_logic;
 	signal busy_reg, busy_next : unsigned(1 downto 0);
@@ -95,6 +99,7 @@ begin  -- behavior
 	ena <= ena_int and ena_init;
 	ba <= ba_reg;
 	rb_out <= rb_reg;
+	irb_out <= irb_reg;
 	pcoff <= icache_offset;
 	
 	enaproc: process (clk, reset)
@@ -124,6 +129,7 @@ begin  -- behavior
 
 			ba_reg <= (others => '0');
 			rb_reg <= (others => '0');
+			irb_reg <= (others => '0');
 			
 		elsif clk'event and clk = '1' then	-- rising clock edge
 			imem_state_reg <= imem_state_next;
@@ -133,6 +139,7 @@ begin  -- behavior
 
 			ba_reg <= ba_next;
 			rb_reg <= rb_next;
+			irb_reg <= irb_next;
 
 			assert imem_state_reg /= SIZE_RD
 				or unsigned(mem_in.rd_data(DATA_WIDTH-1 downto PC_WIDTH)) = 0
@@ -144,7 +151,7 @@ begin  -- behavior
 					operation, address, wrdata,
 					imem_state_reg, imem_addr_reg, imem_idx_reg, imem_size_reg,
 					icache_hit, icache_offset, icache_address,
-					ba_reg, rb_reg, rb_in, rb_wren)
+					ba_reg, rb_reg, rb_in, rb_wren, irb_reg, irb_in, irb_wren)
 		
 		variable idx : integer range 0 to CLUSTERS-1;
 		variable valid : std_logic;
@@ -206,16 +213,22 @@ begin  -- behavior
 		icache_clear <= '0';
 		if operation = MEM_RET then
 			icache_address <= rb_reg;
+		elsif operation = MEM_IRET then
+			icache_address <= irb_reg;
 		else
 			icache_address <= op(idx).address(ADDR_WIDTH+1 downto 2);
 		end if;
 		
 		ba_next <= ba_reg;
 		rb_next <= rb_reg;
+		irb_next <= irb_reg;
 
 		for i in CLUSTERS-1 downto 0 loop
 			if rb_wren(i) = '1' then
 				rb_next <= rb_in(i);
+			end if;
+			if irb_wren(i) = '1' then
+				irb_next <= irb_in(i);
 			end if;
 		end loop;  -- i
 
@@ -330,7 +343,7 @@ begin  -- behavior
 				if valid = '1' and ena_int = '1' then
 					busy_next <= "11";
 				end if;
-			when MEM_CALL | MEM_RET =>
+			when MEM_CALL | MEM_INTR | MEM_RET | MEM_IRET =>
 				if valid = '1' and ena_int = '1' then
 					icache_detect <= '1';
 
@@ -346,10 +359,17 @@ begin  -- behavior
 					if operation = MEM_RET then
 						imem_addr_next <= rb_reg;
 						ba_next <= rb_reg;
-					else
+					elsif operation = MEM_IRET then
+						imem_addr_next <= irb_reg;
+						ba_next <= irb_reg;
+					elsif operation = MEM_CALL then
 						imem_addr_next <= icache_address;
 						ba_next <= icache_address;
 						rb_next <= ba_reg;
+					elsif operation = MEM_INTR then                        
+						imem_addr_next <= icache_address;
+						ba_next <= icache_address;
+						irb_next <= ba_reg;
 					end if;
 				end if;
 			when others =>

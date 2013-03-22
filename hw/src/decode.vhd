@@ -25,6 +25,7 @@ use work.reg_pack.all;
 use work.mem_pack.all;
 use work.op_pack.all;
 use work.fpu_pack.all;
+use work.io_pack.all;
 
 entity decode is
 	
@@ -43,9 +44,13 @@ entity decode is
 		wren	: in  reg_wren_type;
 		wraddr	: in  reg_wraddr_type;
 		wrdata	: in  reg_wrdata_type;
-		spec     : in  std_logic;
+		intr	 : in  std_logic;
+		intraddr : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
+		intrcall : out std_logic;
+		intrret	 : out std_logic;
+		spec	 : in  std_logic;
 		spec_src : in  std_logic_vector(PC_WIDTH-1 downto 0);
-		spec_bt  : in  std_logic_vector(PC_WIDTH-1 downto 0));
+		spec_bt	 : in  std_logic_vector(PC_WIDTH-1 downto 0));
 
 end decode;
 
@@ -58,7 +63,9 @@ architecture behavior of decode is
 	signal spec_reg : std_logic;
 	signal spec_src_reg : std_logic_vector(PC_WIDTH-1 downto 0);
 	signal spec_bt_reg : std_logic_vector(PC_WIDTH-1 downto 0);
-	signal pc_reg : std_logic_vector(PC_WIDTH-1 downto 0);
+	signal pc_reg, pc_prev : std_logic_vector(PC_WIDTH-1 downto 0);
+
+	signal dlyslot_reg, dlyslot_next : std_logic_vector(2 downto 0);
 
 	--pragma synthesis off
 	type op_cnt_slice is array (0 to 63) of integer;
@@ -88,13 +95,17 @@ begin  -- behavior
 		if reset = '0' then
 			bundle_reg <= BUNDLE_NOP;
 			pc_reg <= (others => '0');
+			pc_prev <= (others => '0');
+			dlyslot_reg <= (others => '0');
 			spec_reg <= '0';
 			spec_src_reg <= (others => '0');
 			spec_bt_reg <= (others => '0');
-		elsif clk'event and clk = '1' then  -- rising clock edge
+		elsif clk'event and clk = '1' then	-- rising clock edge
 			if ena = '1' then
 				bundle_reg <= bundle;
 				pc_reg <= pc;
+				pc_prev <= pc_reg;
+				dlyslot_reg <= dlyslot_next;
 				spec_reg <= spec;
 				spec_src_reg <= spec_src;
 				spec_bt_reg <= spec_bt;
@@ -105,7 +116,9 @@ begin  -- behavior
 	   end if;
 	end process sync;
 
-	decode: process (bundle_reg, rddata, pc_reg, spec_reg, spec_src_reg, spec_bt_reg)
+	decode: process (bundle_reg, rddata, pc_reg, pc_prev,
+					 intr, intraddr, ena, dlyslot_reg,
+					 spec_reg, spec_src_reg, spec_bt_reg)
 
 		variable always_imm : std_logic;
 		variable imm		: std_logic_vector(DATA_WIDTH-1 downto 0);
@@ -122,6 +135,12 @@ begin  -- behavior
 		
 	begin  -- process async
 
+		intrcall <= '0';
+		intrret <= '0';
+
+		dlyslot_next <= (others => '0');
+		dlyslot_next(1 downto 0) <= dlyslot_reg(2 downto 1);
+		
 		for i in 0 to CLUSTERS-1 loop
 
 			raw_op := to_raw_op(bundle_reg(i));
@@ -531,6 +550,7 @@ begin  -- behavior
 					jmpop(i).target0 <= std_logic_vector(unsigned(target)+0);
 					jmpop(i).target1 <= std_logic_vector(unsigned(target)
 														 +FETCH_WIDTH/BYTE_WIDTH);
+					dlyslot_next(1) <= '1';
 				when "011101" =>
 					jmpop(i).op <= JMP_BRZ;
 					jmpop(i).cond <= '1';
@@ -553,6 +573,7 @@ begin  -- behavior
 						stallop(i).cond <= '1';
 						stallop(i).flag(0) <= '1';
 					end if;
+					dlyslot_next(1) <= '1';
 				when "011110" =>		-- jump operation
 					jmpop(i).cond <= bundle_reg(i).cond;
 					jmpop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';			
@@ -564,6 +585,7 @@ begin  -- behavior
 								stallop(i).cond <= bundle_reg(i).cond;				
 								stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
 							end if;
+							dlyslot_next(1) <= '1';
 						when "00001" =>
 							jmpop(i).op <= JMP_CALL;
 							memop(i).op <= MEM_CALL;
@@ -576,6 +598,7 @@ begin  -- behavior
 							end if;
 							stallop(i).cond <= bundle_reg(i).cond;				
 							stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+							dlyslot_next(2) <= '1';
 						when "00010" =>
 							jmpop(i).op <= JMP_RET;
 							memop(i).op <= MEM_RET;
@@ -584,6 +607,17 @@ begin  -- behavior
 							stallop(i).op <= STALL_SOFTWAITUNIT;
 							stallop(i).cond <= bundle_reg(i).cond;				
 							stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+							dlyslot_next(2) <= '1';
+						when "00011" =>
+							jmpop(i).op <= JMP_IRET;
+							memop(i).op <= MEM_IRET;
+							memop(i).cond <= bundle_reg(i).cond;
+							memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+							stallop(i).op <= STALL_SOFTWAITUNIT;
+							stallop(i).cond <= bundle_reg(i).cond;				
+							stallop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
+							intrret <= ena;
+							dlyslot_next(2) <= '1';
 						when others =>
 							assert false report "Cannot decode JOP operation" severity error;
 					end case;
@@ -598,6 +632,7 @@ begin  -- behavior
 					stallop(i).op <= STALL_SOFTWAITUNIT;
 					stallop(i).cond <= '1';
 					stallop(i).flag(0) <= '1';
+					dlyslot_next(2) <= '1';
 				when "100000" =>
 					memop(i).op <= MEM_STM_A;
 					memop(i).cond <= bundle_reg(i).cond;
@@ -777,6 +812,9 @@ begin  -- behavior
 						when "00110" => op(i).op <= ALU_LDRB;
 						when "00111" => op(i).op <= ALU_LDRO;
 						when "01000" => op(i).op <= ALU_LDBA;
+						when "01001" => op(i).op <= ALU_LDIRB;
+						when "01010" => op(i).op <= ALU_LDIRO;
+						when "01011" => op(i).op <= ALU_LDITMP;
 						when "10000" | "10001" | "10010" | "10011" |
 							 "10100" | "10101" | "10110" | "10111" |
 							 "11000" | "11001" | "11010" | "11011" |
@@ -801,6 +839,9 @@ begin  -- behavior
 						when "00100" | "00101" => op(i).op <= ALU_STMUL;
 						when "00110" => op(i).op <= ALU_STRB;
 						when "00111" => op(i).op <= ALU_STRO;
+						when "01001" => op(i).op <= ALU_STIRB;
+						when "01010" => op(i).op <= ALU_STIRO;
+						when "01011" => op(i).op <= ALU_STITMP;
 						when "10000" | "10001" | "10010" | "10011" |
 							 "10100" | "10101" | "10110" | "10111" |
 							 "11000" | "11001" | "11010" | "11011" |
@@ -967,6 +1008,47 @@ begin  -- behavior
 			jmpop(i).rddata <= rddata(2*i)(PC_WIDTH-1 downto 0);
 
 		end loop;  -- i
+
+		if intr = '1' then
+			-- nullify all instructions
+			for i in 0 to CLUSTERS-1 loop
+				op(i).flag <= (others => '0');
+				memop(i).flag <= (others => '0');
+				stallop(i).flag <= (others => '0');
+				fpop(i).flag <= (others => '0');
+				-- not all jumps use the flags
+				jmpop(i) <= JMPOP_NOP;
+			end loop;  -- i
+
+			if dlyslot_reg /= "000" then
+				dlyslot_next <= (others => '0');
+				dlyslot_next(1 downto 0) <= dlyslot_reg(2 downto 1);
+			else
+				-- acknowledge issuing of interrupt
+				intrcall <= ena;
+				-- issue instructions for interrupt
+				op(0).op <= ALU_STITMP;
+				op(0).cond <= '1';
+				op(0).flag(0) <= '1';
+				op(0).rdaddr0 <= (others => '1');
+				op(0).mem0 <= '1';
+				jmpop(0).op <= JMP_INTR;
+				jmpop(0).cond <= '1';
+				jmpop(0).flag(0) <= '1';
+				jmpop(0).target0 <= spec_src_reg;
+				memop(0).op <= MEM_INTR;
+				memop(0).cond <= '1';
+				memop(0).flag(0) <= '1';
+				memop(0).address <= intraddr & "00";
+				memop(0).fwdA <= '0';
+				memop(0).memA <= '0';
+				stallop(0).op <= STALL_WAIT;
+				stallop(0).cond <= '1';
+				stallop(0).flag(0) <= '1';
+				dlyslot_next(2) <= '1';
+			end if;
+		end if;
+
 	end process decode;
 
 	rdregs: process (bundle)

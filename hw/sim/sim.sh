@@ -52,6 +52,7 @@ vcom $OPTIONS \
 	sim_ssram_pll.vhd \
 	../src/io/sc_ssram32.vhd \
 	../src/io/sc_sysinfo.vhd \
+	../src/io/sc_intr.vhd \
 	../src/io/sc_timer.vhd \
 	../src/io/fifo.vhd \
 	../src/io/sc_uart.vhd \

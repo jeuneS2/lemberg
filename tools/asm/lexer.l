@@ -106,6 +106,7 @@ SYM [\._a-zA-Z0-9]+
 "brind"    ACCEPT(BRIND, JSUBOP);
 "call"     ACCEPT(CALL,  JSUBOP);
 "ret"      ACCEPT(RET,   JSUBOP);
+"iret"     ACCEPT(IRET,  JSUBOP);
 
 "stm.a"    ACCEPT(STM_A,  STOREOP);
 "stmh.a"   ACCEPT(STMH_A, STOREOP);
@@ -248,6 +249,21 @@ $ro {
 
 $ba {
 	yylval.intval = 8;
+	return EXT;
+  }
+
+$irb {
+	yylval.intval = 9;
+	return EXT;
+  }
+
+$iro {
+	yylval.intval = 10;
+	return EXT;
+  }
+
+$itmp {
+	yylval.intval = 11;
 	return EXT;
   }
 

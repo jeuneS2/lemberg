@@ -43,6 +43,7 @@
 	char **infiles;
 	FILE *datafile;
 	FILE *symfile;
+	char *vhdname;
 
 	static void emit_bundle(struct bundle);
 	static void emit_string(const char *);
@@ -433,8 +434,9 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.op = $2;
 		  $$.fmt.B.src1 = $4;
 		  switch ($3) {
-		  case OP_BRIND: $$.fmt.B.src2.reg = 0; break;
-		  case OP_CALL: $$.fmt.B.src2.reg = 1; break;
+		  case OP_BRIND:
+		  case OP_CALL:
+			$$.fmt.B.src2.reg = $3; break;
 		  default:
 			  yyerror("Invalid jump operation.");
 		  }
@@ -446,7 +448,9 @@ AsmOp : Condition THREEOP REG ',' Constant DEST REG
 		  $$.op = $2;
 		  $$.fmt.B.src1 = 0;
 		  switch ($3) {
-		  case OP_RET: $$.fmt.B.src2.reg = 2; break;
+		  case OP_RET:
+		  case OP_IRET:
+			$$.fmt.B.src2.reg = $3; break;
 		  default:
 			  yyerror("Invalid jump operation.");
 		  }
@@ -900,7 +904,7 @@ static void dump()
 
 	if (data_format == FMT_VHD)
 		{
-			fprintf(datafile, "%s", vhd_header);
+		  fprintf(datafile, vhd_header, vhdname, vhdname, vhdname);
 		}
 	else if (data_format == FMT_BIN)
 		{
@@ -1050,7 +1054,7 @@ static void dump()
 
 static void usage(char *name) 
 {
-	fprintf(stderr, "Usage: %s [-h] [-b|-d|-v] [-o outfile] infile ...\n", name);
+	fprintf(stderr, "Usage: %s [-h] [-b|-d|-v] [-e entity] [-o outfile] infile ...\n", name);
 	exit(EXIT_FAILURE);
 }
 
@@ -1058,6 +1062,7 @@ int main(int argc, char **argv)
 {
 	int opt;
 	int found_outfile = 0;
+	int found_vhdname = 0;
 	int seen_format = 0;
 
 	code = malloc(sizeof(struct bundle));
@@ -1066,8 +1071,9 @@ int main(int argc, char **argv)
 
 	datafile = stdout;
 	symfile = stdout;
+	vhdname = "rom";
 
-	while ((opt = getopt(argc, argv, "hbdvo:")) != -1)
+	while ((opt = getopt(argc, argv, "hbdve:o:")) != -1)
 		{
 			switch (opt)
 				{
@@ -1086,6 +1092,17 @@ int main(int argc, char **argv)
 								case 'v': data_format = FMT_VHD; break;
 								}
 							seen_format = 1;
+						}
+					else
+						{
+							usage(argv[0]);
+						}
+				break;
+				case 'e':
+					if (!found_vhdname)
+						{
+							vhdname = malloc(strlen(optarg));
+							strcpy(vhdname, optarg);
 						}
 					else
 						{

@@ -112,12 +112,18 @@ package op_pack is
 					  ALU_LDMUL,
 					  ALU_LDRB,
 					  ALU_LDRO,
+					  ALU_LDIRB,
+					  ALU_LDIRO,
+					  ALU_LDITMP,
 					  ALU_LDBA,
 					  ALU_LDFP,
 					  ALU_STCOND,
 					  ALU_STMUL,
 					  ALU_STRB,
 					  ALU_STRO,
+					  ALU_STIRB,
+					  ALU_STIRO,
+					  ALU_STITMP,
 					  ALU_STFP);
 	
 	type op_type is
@@ -160,7 +166,9 @@ package op_pack is
 					  MEM_LDMR_F,
 					  MEM_WB_S,
 					  MEM_CALL,
-					  MEM_RET);
+					  MEM_RET,
+					  MEM_INTR,
+					  MEM_IRET);
 
 	type memop_type is
 	record
@@ -216,7 +224,9 @@ package op_pack is
 					  JMP_BRZ,
 					  JMP_BRIND,
 					  JMP_CALL,
-					  JMP_RET);
+					  JMP_RET,
+					  JMP_INTR,
+					  JMP_IRET);
 
 	type cmp_type is (CMP_EQ,
 					  CMP_NE,

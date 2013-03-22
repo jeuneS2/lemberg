@@ -27,5 +27,7 @@ package jmp_pack is
 		array (0 to CLUSTERS-1) of std_logic_vector(PC_WIDTH-1 downto 0);
 	type rb_wrdata_type is
 		array (0 to CLUSTERS-1) of std_logic_vector(ADDR_WIDTH-1 downto 0);
+	type tmp_wrdata_type is
+		array (0 to CLUSTERS-1) of std_logic_vector(DATA_WIDTH-1 downto 0);
 
 end jmp_pack;

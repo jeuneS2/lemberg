@@ -62,6 +62,7 @@ begin  -- rtl
 		if reset = '0' then
 			int_reset <= '1';
 			rdy_reg <= "00";
+			mem_emergency_reg <= (others => '0');
 		elsif clk'event and clk = '1' then  -- rising clock edge
 			int_reset <= '1';
 			if rd = '1' then
@@ -72,7 +73,7 @@ begin  -- rtl
 						rd_data <= std_logic_vector(to_unsigned(clk_freq, DATA_WIDTH));
 					when "0010" =>
 						rd_data <= (others => '0');
-						rd_data(3 downto 2) <= std_logic_vector(to_unsigned(CLUSTERS, 2));
+						rd_data(3 downto 2) <= std_logic_vector(to_unsigned(CLUSTERS-1, 2));
 						if ENABLE_SINGLE then rd_data(0) <= '1'; end if;
 						if ENABLE_DOUBLE then rd_data(1) <= '1'; end if;
 					when "0011" =>

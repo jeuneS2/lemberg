@@ -102,6 +102,7 @@
 #define OP_BRIND     0x00
 #define OP_CALL      0x01
 #define OP_RET       0x02
+#define OP_IRET      0x03
 
 /* Floating-point operations */
 #define OP_FADD      0x00

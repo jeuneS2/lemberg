@@ -43,6 +43,15 @@ entity alu is
 		ro_in      : in  std_logic_vector(PC_WIDTH-1 downto 0);
 		ro_wren    : out std_logic;
 		ro_out     : out std_logic_vector(PC_WIDTH-1 downto 0);
+		irb_in     : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
+		irb_wren   : out std_logic;
+		irb_out    : out std_logic_vector(ADDR_WIDTH-1 downto 0);
+		iro_in     : in  std_logic_vector(PC_WIDTH-1 downto 0);
+		iro_wren   : out std_logic;
+		iro_out    : out std_logic_vector(PC_WIDTH-1 downto 0);
+		itmp_in    : in  std_logic_vector(DATA_WIDTH-1 downto 0);
+		itmp_wren  : out std_logic;
+		itmp_out   : out std_logic_vector(DATA_WIDTH-1 downto 0);
 		fl_in      : in  std_logic_vector(FLAG_COUNT-1 downto 0);
 		fl_wren    : out std_logic_vector(FLAG_COUNT-1 downto 1);
 		fl_out     : out std_logic_vector(FLAG_COUNT-1 downto 1);
@@ -93,7 +102,8 @@ begin  -- behavior
 		end if;
 	end process sync;
 	
-	alu: process (op, fl_in, mul0_reg, mul1_reg, rb_in, ro_in, ba,
+	alu: process (op, fl_in, mul0_reg, mul1_reg,
+                  rb_in, ro_in, ba, irb_in, iro_in, itmp_in,
 				  add_tmp, sub_tmp, eq_tmp, lt_tmp, fpu_rddata)
 		variable valid : std_logic;
 		variable mul_tmp : std_logic_vector(2*DATA_WIDTH-1 downto 0);
@@ -130,6 +140,12 @@ begin  -- behavior
 		rb_out <= op.rdmemd0(ADDR_WIDTH-1 downto 0);
 		ro_wren <= '0';
 		ro_out <= op.rdmemd0(PC_WIDTH-1 downto 0);
+		irb_wren <= '0';
+		irb_out <= op.rdmemd0(ADDR_WIDTH-1 downto 0);
+		iro_wren <= '0';
+		iro_out <= op.rdmemd0(PC_WIDTH-1 downto 0);
+		itmp_wren <= '0';
+		itmp_out <= op.rdmemd0(DATA_WIDTH-1 downto 0);
 		
 		mul0_next <= mul0_reg;
 		mul1_next <= mul1_reg;
@@ -435,6 +451,23 @@ begin  -- behavior
 				wrdata(PC_WIDTH-1 downto 0) <= ro_in;
 			when ALU_STRO =>
 				ro_wren <= valid;
+			when ALU_LDIRB =>
+				wren <= valid;
+				wrdata <= (others => '0');
+				wrdata(ADDR_WIDTH-1 downto 0) <= irb_in;
+			when ALU_STIRB =>
+				irb_wren <= valid;
+			when ALU_LDIRO =>
+				wren <= valid;
+				wrdata <= (others => '0');
+				wrdata(PC_WIDTH-1 downto 0) <= iro_in;
+			when ALU_STIRO =>
+				iro_wren <= valid;
+			when ALU_LDITMP =>
+				wren <= valid;
+				wrdata <= itmp_in;
+			when ALU_STITMP =>
+				itmp_wren <= valid;
 			when ALU_LDBA =>
 				wren <= valid;
 				wrdata <= (others => '0');
