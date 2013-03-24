@@ -172,7 +172,18 @@ add wave -noupdate -divider I/O
 add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/bootrom_in
 add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/bootrom_out
 add wave -noupdate -radix hexadecimal -childformat {{/cpu_tb/cpu/sc_io/uart_in.rd_data -radix hexadecimal} {/cpu_tb/cpu/sc_io/uart_in.rdy_cnt -radix hexadecimal}} -expand -subitemconfig {/cpu_tb/cpu/sc_io/uart_in.rd_data {-radix hexadecimal} /cpu_tb/cpu/sc_io/uart_in.rdy_cnt {-radix hexadecimal}} /cpu_tb/cpu/sc_io/uart_in
-add wave -noupdate -radix hexadecimal -childformat {{/cpu_tb/cpu/sc_io/uart_out.address -radix hexadecimal} {/cpu_tb/cpu/sc_io/uart_out.wr_data -radix hexadecimal} {/cpu_tb/cpu/sc_io/uart_out.rd -radix hexadecimal} {/cpu_tb/cpu/sc_io/uart_out.wr -radix hexadecimal} {/cpu_tb/cpu/sc_io/uart_out.byte_ena -radix hexadecimal} {/cpu_tb/cpu/sc_io/uart_out.cache -radix hexadecimal}} -expand -subitemconfig {/cpu_tb/cpu/sc_io/uart_out.address {-radix hexadecimal} /cpu_tb/cpu/sc_io/uart_out.wr_data {-radix hexadecimal} /cpu_tb/cpu/sc_io/uart_out.rd {-radix hexadecimal} /cpu_tb/cpu/sc_io/uart_out.wr {-radix hexadecimal} /cpu_tb/cpu/sc_io/uart_out.byte_ena {-radix hexadecimal} /cpu_tb/cpu/sc_io/uart_out.cache {-radix hexadecimal}} /cpu_tb/cpu/sc_io/uart_out
+add wave -noupdate -radix hexadecimal -childformat {{/cpu_tb/cpu/sc_io/uart_out.address -radix hexadecimal} {/cpu_tb/cpu/sc_io/uart_out.wr_data -radix ascii} {/cpu_tb/cpu/sc_io/uart_out.rd -radix hexadecimal} {/cpu_tb/cpu/sc_io/uart_out.wr -radix hexadecimal} {/cpu_tb/cpu/sc_io/uart_out.byte_ena -radix hexadecimal} {/cpu_tb/cpu/sc_io/uart_out.cache -radix hexadecimal}} -expand -subitemconfig {/cpu_tb/cpu/sc_io/uart_out.address {-radix hexadecimal} /cpu_tb/cpu/sc_io/uart_out.wr_data {-radix ascii} /cpu_tb/cpu/sc_io/uart_out.rd {-radix hexadecimal} /cpu_tb/cpu/sc_io/uart_out.wr {-radix hexadecimal} /cpu_tb/cpu/sc_io/uart_out.byte_ena {-radix hexadecimal} /cpu_tb/cpu/sc_io/uart_out.cache {-radix hexadecimal}} /cpu_tb/cpu/sc_io/uart_out
+add wave -noupdate -divider Interrupts
+add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/sc_intr/iena
+add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/sc_intr/imask
+add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/sc_intr/intr
+add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/sc_intr/intr_vecs
+add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/sc_intr/intraddr
+add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/sc_intr/intrcall
+add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/sc_intr/intrret
+add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/sc_intr/intrsrc
+add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/sc_intr/ipend
+add wave -noupdate -radix hexadecimal /cpu_tb/cpu/sc_io/sc_intr/isrc
 add wave -noupdate -divider Timer
 add wave -noupdate -radix decimal /cpu_tb/cpu/sc_io/sc_timer/cycles
 add wave -noupdate -radix decimal /cpu_tb/cpu/sc_io/sc_timer/secs
@@ -186,7 +197,7 @@ add wave -noupdate /cpu_tb/cpu/core/inflate/nop_cnt
 add wave -noupdate -expand /cpu_tb/cpu/core/inflate/bundle_cnt
 add wave -noupdate -expand /cpu_tb/cpu/core/decode/op_cnt
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 2} {214155000 ps} 0}
+WaveRestoreCursors {{Cursor 2} {5000 ns} 0}
 configure wave -namecolwidth 382
 configure wave -valuecolwidth 325
 configure wave -justifyvalue left
@@ -201,4 +212,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ps} {228564 ns}
+WaveRestoreZoom {0 ps} {12000 ns}
