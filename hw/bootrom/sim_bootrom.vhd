@@ -16,12 +16,12 @@ architecture rtl of bootrom is
 begin
 process(a) begin
 	case a is
-		when X"00" => d <= X"00000018";
+		when X"00" => d <= X"0000001c";
 		when X"01" => d <= X"17c00000";
 		when X"02" => d <= X"00000016";
-		when X"03" => d <= X"01ff2019";
-		when X"04" => d <= X"80002011";
-		when X"05" => d <= X"be006000";
+		when X"03" => d <= X"3dff2019";
+		when X"04" => d <= X"bc002011";
+		when X"05" => d <= X"be0f6000";
 		when X"06" => d <= X"00000000";
 		when others => d <= (others => '0');
 	end case;

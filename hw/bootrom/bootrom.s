@@ -3,7 +3,7 @@
 	.globl	_main
 	.type	_main,@function
 _main:                                  ; @main
-	.funsz	_main_end-_main
+	.funsz	_main_end@_main
 _main_start:
 ; BB#0:
 #0:	       wb.s	r15, 12
@@ -38,11 +38,9 @@ _main_start:
 	;;
 #0:	       add	r1, r10 -> r1
 	;;
-#0:	       stm.s	r12, r15, 1
-	;;
 #0:	       jop	call	r1
 	;;
-	       nop	0
+#0:	       stm.s	r12, r15, 1
 	;;
 	       nop	0
 	;;
@@ -60,11 +58,9 @@ _main_start:
 	;;
 	       nop	0
 	;;
-#0:	       or	r0, 0 -> r11
-	;;
 #0:	       jop	call	r10
 	;;
-	       nop	0
+#0:	       or	r0, 0 -> r11
 	;;
 	       nop	0
 	;;
@@ -161,33 +157,25 @@ _main_start:
 	;;
 #0:	       add	r0, r10 -> r10
 	;;
-#0:	       or	r13, 0 -> r0
-	;;
 #0:	       jop	call	r10
 	;;
-	       nop	0
+#0:	       or	r13, 0 -> r0
 	;;
 	       nop	0
 	;;
 	       nop	0
+	;;
+#0:	       jop	call	r10
 	;;
 #0:	       ldm.b	r14, -3
 	;;
 #0:	       or	r31, 0 -> r0
 	;;
+	       nop	0
+	;;
 #0:	       jop	call	r10
-	;;
-	       nop	0
-	;;
-	       nop	0
-	;;
-	       nop	0
 	;;
 #0:	       or	r12, 0 -> r0
-	;;
-#0:	       jop	call	r10
-	;;
-	       nop	0
 	;;
 	       nop	0
 	;;
@@ -255,11 +243,9 @@ _main_start:
 	;;
 #0:	       add	r0, r11 -> r1
 	;;
-#0:	       or	r10, 0 -> r0
-	;;
 #0:	       jop	call	r1
 	;;
-	       nop	0
+#0:	       or	r10, 0 -> r0
 	;;
 	       nop	0
 	;;
@@ -306,7 +292,7 @@ _main_end:
 
 	.type	_printstr,@function
 _printstr:                              ; @printstr
-	.funsz	_printstr_end-_printstr
+	.funsz	_printstr_end@_printstr
 _printstr_start:
 ; BB#0:
 #0:	       ldm.f	r0, 0
@@ -363,7 +349,7 @@ _printstr_end:
 
 	.type	_readint,@function
 _readint:                               ; @readint
-	.funsz	_readint_end-_readint
+	.funsz	_readint_end@_readint
 _readint_start:
 ; BB#0:
 #0:	       ldi	0 -> r1
@@ -416,7 +402,7 @@ _readint_end:
 
 	.type	_printint,@function
 _printint:                              ; @printint
-	.funsz	_printint_end-_printint
+	.funsz	_printint_end@_printint
 _printint_start:
 ; BB#0:
 #0:	       ldi	8 -> r1
@@ -481,7 +467,7 @@ _printint_end:
 
 	.type	_reset,@function
 _reset:                                 ; @reset
-	.funsz	_reset_end-_reset
+	.funsz	_reset_end@_reset
 _reset_start:
 ; BB#0:
 #0:	       wb.s	r15, 6

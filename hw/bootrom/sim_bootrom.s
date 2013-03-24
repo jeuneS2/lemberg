@@ -1,4 +1,5 @@
-		.funsz bootrom_end-bootrom_start
+bootrom:
+		.funsz bootrom_end@bootrom
 bootrom_start:
 #0:		callg 0
 		;;

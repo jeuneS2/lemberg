@@ -4,7 +4,7 @@ CFLAGS=-Os -ansi -pedantic -Wall
 OPTFLAGS=-O2 -unroll-threshold=0
 LLCFLAGS=-mcpu=lemberg-minimal -O2 -disable-machine-licm -code-model=small
 
-all: bootrom.vhd sim_bootrom.vhd intrrom.vhd
+all: bootrom.vhd sim_bootrom.vhd
 
 bootrom.linked.bc: bootrom.bc
 	llvm-ld -b $@ $<
