@@ -46,7 +46,7 @@ OBJCOPY = `if [ -f ${objroot}/../binutils/objcopy ] ; \
 	else t='$(program_transform_name)'; echo objcopy | sed -e $$t ; fi`
 
 BSP = liblemberg.a
-BSP_OBJS = read.o write.o close.o isatty.o getrusage.o gettod.o times.o exit.o
+BSP_OBJS = read.o write.o close.o isatty.o getrusage.o gettod.o times.o exit.o intr.o
 
 # Host specific makefile fragment comes in here.
 @host_makefile_frag@
@@ -59,6 +59,9 @@ $(BSP): $(BSP_OBJS)
 	$(AR) $(ARFLAGS) $@ $?
 	$(RANLIB) $@
 
+%.o : %.s
+	$(AS) -o $@ $<
+
 clean mostlyclean:
 	rm -f *.a *.o
 
@@ -67,9 +70,12 @@ distclean maintainer-clean realclean: clean
 
 .PHONY: install info install-info clean-info
 install:
-	@for file in $(BSP); do \
+	for file in $(BSP); do \
 	  $(INSTALL_DATA) $${file} $(DESTDIR)$(tooldir)/lib${MULTISUBDIR}; \
-	done
+	done; \
+	for file in ${srcdir}/include/*.h; do \
+	  $(INSTALL_DATA) $${file} $(DESTDIR)$(tooldir)/include; \
+	done;
 
 doc:
 info:

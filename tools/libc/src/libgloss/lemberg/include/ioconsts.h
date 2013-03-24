@@ -5,6 +5,8 @@
 #ifndef _IOCONSTS_H
 #define _IOCONSTS_H
 
+#include <intr.h>
+
 #define SYSINFO_REVISION         (*((const unsigned int *)-64))
 #define SYSINFO_FREQUENCY        (*((const unsigned int *)-60))
 #define SYSINFO_FEATURES         (*((const unsigned int *)-56))
@@ -30,6 +32,13 @@
 #define UART_RTS_MASK            0x01
 #define UART_RTR_MASK            0x02
 
-#define BOOTROM                  ((const unsigned char *)0xffe00000)
+#define INTR_ENA                 (*((volatile int *) -256))
+#define INTR_MASK                (*((volatile int *) -252))
+#define INTR_PEND                (*((volatile int *) -248))
+#define INTR_SRC                 (*((volatile int *) -244))
+
+#define INTR_VEC                 ((volatile isr_t *) -192)
+
+#define BOOTROM                  ((const unsigned char *)0xfffff800)
 
 #endif
