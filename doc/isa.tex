@@ -17,7 +17,7 @@
 \definecolor{gray2}{gray}{0.55}
 \definecolor{gray3}{gray}{0.35}
 
-\bytefieldsetup{endianness=l}
+\bytefieldsetup{endianness=little}
 
 \newcommand{\BitBox}[2]{%
   \bitbox{#1}{\raisebox{.9\baselineskip}{\rule{0pt}{1.5\baselineskip}#2}}}
@@ -186,8 +186,6 @@
 \BitBox{1}{c} & \BitBox{2}{F}
 \end{bytefield}
 
-TODO: Change to format C (?)
-
 \item Floating-point format \textsf{\textbf{F}}:\\
 
 \begin{bytefield}{25}
@@ -262,92 +260,94 @@ dest values \texttt{000}-\texttt{011} address r0-r3, values \texttt{100}-\texttt
   d & delayed branch \\
 \end{tabular}
 
+\pagebreak
 \section{Register File}
 
 \subsection{General-Purpose Registers}
 
-\begin{tabular}{rll}
+\begin{tabular}{rlll}
 \toprule
-Index & Name & Purpose \\
+Index & Name & Description & Use \\
 \midrule
-0 & r0 & global reg 0 \\
-1 & r1 & global reg 1 \\
-2 & r2 & global reg 2 \\
-3 & r3 & global reg 3 \\
-4 & r4 & global reg 4 \\
-5 & r5 & global reg 5 \\
-6 & r6 & global reg 6 \\
-7 & r7 & global reg 7 \\
-8 & r8 & global reg 8 \\
-9 & r9 & global reg 9 \\
-10 & r10 & global reg 10 \\
-11 & r11 & global reg 11 \\
-12 & r12 & global reg 12 \\
-13 & r13 & global reg 13 \\
-14 & r14 & global reg 14, frame pointer \\
-15 & r15 & global reg 15, stack pointer \\
-\cmidrule{1-3}
-16 & r16 & local reg 0 \\
-17 & r17 & local reg 1 \\
-18 & r18 & local reg 2 \\
-19 & r19 & local reg 3 \\
-20 & r20 & local reg 4 \\
-21 & r21 & local reg 5 \\
-22 & r22 & local reg 6 \\
-23 & r23 & local reg 7 \\
-24 & r24 & local reg 8 \\
-25 & r25 & local reg 9 \\
-26 & r26 & local reg 10 \\
-27 & r27 & local reg 11 \\
-28 & r28 & local reg 12 \\
-29 & r29 & local reg 13 \\
-30 & r30 & local reg 14, reserved \\
+0 & r0 & global reg 0 & integer result 0, argument 0 \\
+1 & r1 & global reg 1 & integer result 1, argument 1 \\
+2 & r2 & global reg 2 & argument 2 \\
+3 & r3 & global reg 3 & argument 3 \\
+4 & r4 & global reg 4 & temporary \\
+5 & r5 & global reg 5 & temporary \\
+6 & r6 & global reg 6 & temporary \\
+7 & r7 & global reg 7 & temporary \\
+8 & r8 & global reg 8 & temporary \\
+9 & r9 & global reg 9 & temporary \\
+10 & r10 & global reg 10 & callee saved \\
+11 & r11 & global reg 11 & callee saved \\
+12 & r12 & global reg 12 & callee saved \\
+13 & r13 & global reg 13 & callee saved \\
+14 & r14 & global reg 14 & frame pointer, callee saved \\
+15 & r15 & global reg 15 & stack pointer \\
+\cmidrule{1-4}
+16 & r\textit{n}.16 & local reg 0 & temporary \\
+17 & r\textit{n}.17 & local reg 1 & temporary \\
+18 & r\textit{n}.18 & local reg 2 & temporary \\
+19 & r\textit{n}.19 & local reg 3 & temporary \\
+20 & r\textit{n}.20 & local reg 4 & temporary \\
+21 & r\textit{n}.21 & local reg 5 & temporary \\
+22 & r\textit{n}.22 & local reg 6 & temporary \\
+23 & r\textit{n}.23 & local reg 7 & callee saved \\
+24 & r\textit{n}.24 & local reg 8 & callee saved \\
+25 & r\textit{n}.25 & local reg 9 & callee saved \\
+26 & r\textit{n}.26 & local reg 10 & callee saved \\
+27 & r\textit{n}.27 & local reg 11 & callee saved \\
+28 & r\textit{n}.28 & local reg 12 & callee saved \\
+29 & r\textit{n}.29 & local reg 13 & callee saved \\
+30 & r\textit{n}.30 & local reg 14 & reserved \\
 31 & r31 & memory load result \\
 \bottomrule 
 \end{tabular}
 
 \subsection{Special Registers}
 
-\begin{tabular}{rll}
+\begin{tabular}{rlll}
   \toprule
-  Index & Name & Purpose \\
+  Index & Name & Description & Use \\
   \midrule
-  0 & \$c0 & Condition flag 0, global, always true \\
-  1 & \$c1 & Condition flag 1, global \\
-  2 & \$c2 & Condition flag 2, global \\
-  3 & \$c3 & Condition flag 3, global \\
-  \cmidrule{1-3}
-  4 & \$mul0 & Multiplication result 0, per-cluster \\
-  5 & \$mul1 & Multiplication result 1, per-cluster \\
-  \cmidrule{1-3}
-  6 & \$rb & Return base, global \\
-  7 & \$ro & Return offset, global \\
-  8 & \$ba & Base address, read only, global \\
-  \cmidrule{1-3}
-  9 & ? & \\
-  10 & ? & \\
-  11 & ? & \\
-  12 & ? & \\
-  13 & ? & \\
-  14 & ? & \\
-  15 & ? & \\
-  \cmidrule{1-3}
-  16 & \$f0, \$d0 & FPU register 0 \\
-  17 & \$f1 & FPU register 1 \\
-  18 & \$f2, \$d1 & FPU register 2 \\
-  19 & \$f3 & FPU register 3 \\
-  20 & \$f4, \$d2 & FPU register 4 \\
-  21 & \$f5 & FPU register 5 \\
-  22 & \$f6, \$d3 & FPU register 6 \\
-  23 & \$f7 & FPU register 7 \\
-  24 & \$f8, \$d4 & FPU register 8 \\
-  25 & \$f9 & FPU register 9 \\
-  26 & \$f10, \$d5 & FPU register 10 \\
-  27 & \$f11 & FPU register 11 \\
-  28 & \$f12, \$d6 & FPU register 12 \\
-  29 & \$f13 & FPU register 13 \\
-  30 & \$f14, \$d7 & FPU register 14 \\
-  31 & \$f15 & FPU register 15 \\
+  0 & \$c0 & Condition flag 0 & global, always true \\
+  1 & \$c1 & Condition flag 1 & global \\
+  2 & \$c2 & Condition flag 2 & global \\
+  3 & \$c3 & Condition flag 3 & global \\
+  \cmidrule{1-4}
+  4 & \$mul\textit{n}.0 & Multiplication result 0 & per-cluster \\
+  5 & \$mul\textit{n}.1 & Multiplication result 1 & per-cluster \\
+  \cmidrule{1-4}
+  6 & \$rb & Return base & global \\
+  7 & \$ro & Return offset & global \\
+  8 & \$ba & Base address & read only, global \\
+  \cmidrule{1-4}
+  9 & \$irb & Interrupt return base & global \\
+  10 & \$iro & Interrupt return offset & global  \\
+  11 & \$itmp & Interrupt temporary & old value r31 at start of interrupt, global \\
+  \cmidrule{1-4}
+  12 & ? & & \\
+  13 & ? & & \\
+  14 & ? & & \\
+  15 & ? & & \\
+  \cmidrule{1-4}
+  16 & \$f0, \$d0 & FPU register 0 & floating-point result 0 \\
+  17 & \$f1 & FPU register 1       & floating-point result 1 \\
+  18 & \$f2, \$d1 & FPU register 2 & temporary \\
+  19 & \$f3 & FPU register 3       & temporary \\
+  20 & \$f4, \$d2 & FPU register 4 & temporary \\
+  21 & \$f5 & FPU register 5       & temporary \\
+  22 & \$f6, \$d3 & FPU register 6 & temporary \\
+  23 & \$f7 & FPU register 7       & temporary \\
+  24 & \$f8, \$d4 & FPU register 8 & temporary \\
+  25 & \$f9 & FPU register 9       & temporary \\
+  26 & \$f10, \$d5 & FPU register 10 & callee saved \\
+  27 & \$f11 & FPU register 11       & callee saved \\
+  28 & \$f12, \$d6 & FPU register 12 & callee saved \\
+  29 & \$f13 & FPU register 13       & callee saved \\
+  30 & \$f14, \$d7 & FPU register 14 & callee saved \\
+  31 & \$f15 & FPU register 15       & callee saved \\
   \bottomrule
 \end{tabular}
 
@@ -542,48 +542,57 @@ Op & Name & Semantics \\
 \toprule
 Src2 & Name & Semantics \\
 \midrule
-\texttt{000 00} & \texttt{jmp} & \texttt{pc = src1} \\
+\texttt{000 00} & \texttt{brind} & \texttt{pc = src1} \\
 \texttt{000 01} & \texttt{call} & \texttt{\$rb = \$ba, \$ro = pc, \$ba = src1, pc = 0} \\
 \texttt{000 10} & \texttt{ret} & \texttt{\$ba = \$rb, pc = \$ro} \\
+\texttt{000 11} & \texttt{iret} & \texttt{\$ba = \$irb, pc = \$iro} \\
 \bottomrule  
 \end{tabular}
 
 \subsection{Floating-Point Operations}
 \label{sec:fop}
 
-\begin{tabular}{ccll}
+\begin{tabular}{cccll}
 \toprule
-Op & Src2 & Name & Semantics \\
+Op & Src2 & Src1 & Name & Semantics \\
 \midrule
-\texttt{0000} & - & \texttt{fadd} & \texttt{dest = src1 + src2}, single \\
-\texttt{0001} & - & \texttt{fsub} & \texttt{dest = src1 - src2}, single \\
-\texttt{0010} & - & \texttt{fmul} & \texttt{dest = src1 * src2}, single \\
-\texttt{0011} & - & \texttt{fmac} & \texttt{dest += src1 * src2}, single \\
-\texttt{0100} & - & \texttt{dadd} & \texttt{dest = src1 + src2}, double \\
-\texttt{0101} & - & \texttt{dsub} & \texttt{dest = src1 - src2}, double \\
-\texttt{0110} & - & \texttt{dmul} & \texttt{dest = src1 * src2}, double \\
-\texttt{0111} & - & \texttt{dmac} & \texttt{dest += src1 * src2}, double \\
-\texttt{1000} & - & \texttt{fcmp} & comparison, single $\rightarrow$ int32\_t (see Section~\ref{sec:fcmp}) \\
-\texttt{1001} & - & \texttt{dcmp} & comparison, double $\rightarrow$ int32\_t (see Section~\ref{sec:fcmp}) \\
-\texttt{1010} & - & \texttt{?} & \\
-\texttt{1011} & - & \texttt{?} & \\
-\texttt{1100} & - & \texttt{?} & \\
-\texttt{1101} & - & \texttt{?} & \\
-\texttt{1110} & - & \texttt{?} & \\
-\texttt{1111} & \texttt{0000} & \texttt{fmov} & \texttt{dest = src1}, single \\
-\texttt{1111} & \texttt{0001} & \texttt{fneg} & \texttt{dest = -src1}, single \\
-\texttt{1111} & \texttt{0010} & \texttt{fabs} & \texttt{dest = abs(src1)}, single \\
-\texttt{1111} & \texttt{0011} & \texttt{fzero} & \texttt{dest = 0.0}, single \\
-\texttt{1111} & \texttt{0100} & \texttt{dmov} & \texttt{dest = src1}, double \\
-\texttt{1111} & \texttt{0101} & \texttt{dneg} & \texttt{dest = -src1}, double \\
-\texttt{1111} & \texttt{0110} & \texttt{dabs} & \texttt{dest = abs(src1)}, double \\
-\texttt{1111} & \texttt{0111} & \texttt{dzero} & \texttt{dest = 0.0}, double \\
-\texttt{1111} & \texttt{1000} & \texttt{rnd} & \texttt{dest = (float)src1}, double $\rightarrow$ single \\
-\texttt{1111} & \texttt{1001} & \texttt{ext} & \texttt{dest = (double)src1}, single $\rightarrow$ double \\
-\texttt{1111} & \texttt{1010} & \texttt{si2sf} & \texttt{dest = (float)src1}, int32\_t $\rightarrow$ single \\
-\texttt{1111} & \texttt{1011} & \texttt{si2df} & \texttt{dest = (double)src1}, int32\_t $\rightarrow$ double \\
-\texttt{1111} & \texttt{1100} & \texttt{sf2si} & \texttt{dest = (int)src1}, single $\rightarrow$ int32\_t \\
-\texttt{1111} & \texttt{1101} & \texttt{df2si} & \texttt{dest = (int)src1}, double $\rightarrow$ int32\_t \\
+\texttt{0000} & - & - & \texttt{fadd} & \texttt{dest = src1 + src2}, single \\
+\texttt{0001} & - & - & \texttt{fsub} & \texttt{dest = src1 - src2}, single \\
+\texttt{0010} & - & - & \texttt{fmul} & \texttt{dest = src1 * src2}, single \\
+\texttt{0011} & - & - & \texttt{fmac} & \texttt{dest += src1 * src2}, single \\
+\texttt{0100} & - & - & \texttt{dadd} & \texttt{dest = src1 + src2}, double \\
+\texttt{0101} & - & - & \texttt{dsub} & \texttt{dest = src1 - src2}, double \\
+\texttt{0110} & - & - & \texttt{dmul} & \texttt{dest = src1 * src2}, double \\
+\texttt{0111} & - & - & \texttt{dmac} & \texttt{dest += src1 * src2}, double \\
+\texttt{1000} & - & - & \texttt{fcmp} & comparison, single $\rightarrow$ int32\_t (see Section~\ref{sec:fcmp}) \\
+\texttt{1001} & - & - & \texttt{dcmp} & comparison, double $\rightarrow$ int32\_t (see Section~\ref{sec:fcmp}) \\
+\texttt{1010} & - & - & \texttt{?} & \\
+\texttt{1011} & - & - & \texttt{?} & \\
+\texttt{1100} & - & - & \texttt{?} & \\
+\texttt{1101} & - & - & \texttt{?} & \\
+\texttt{1110} & - & - & \texttt{?} & \\
+\texttt{1111} & \texttt{0000} & - & \texttt{fmov} & \texttt{dest = src1}, single \\
+\texttt{1111} & \texttt{0001} & - & \texttt{fneg} & \texttt{dest = -src1}, single \\
+\texttt{1111} & \texttt{0010} & - & \texttt{fabs} & \texttt{dest = abs(src1)}, single \\
+\texttt{1111} & \texttt{0011} & \texttt{0000} & \texttt{fzero} & \texttt{dest = 0.0}, single \\
+\texttt{1111} & \texttt{0011} & \texttt{0001} & \texttt{fhalf} & \texttt{dest = 0.5}, single \\
+\texttt{1111} & \texttt{0011} & \texttt{0010} & \texttt{fone} & \texttt{dest = 1.0}, single \\
+\texttt{1111} & \texttt{0011} & \texttt{0011} & \texttt{ftwo} & \texttt{dest = 2.0}, single \\
+\texttt{1111} & \texttt{0011} & \texttt{1111} & \texttt{fnan} & \texttt{dest = NaN}, single \\
+\texttt{1111} & \texttt{0100} & - & \texttt{dmov} & \texttt{dest = src1}, double \\
+\texttt{1111} & \texttt{0101} & - & \texttt{dneg} & \texttt{dest = -src1}, double \\
+\texttt{1111} & \texttt{0110} & - & \texttt{dabs} & \texttt{dest = abs(src1)}, double \\
+\texttt{1111} & \texttt{0111} & \texttt{0000} & \texttt{dzero} & \texttt{dest = 0.0}, double \\
+\texttt{1111} & \texttt{0111} & \texttt{0001} & \texttt{dhalf} & \texttt{dest = 0.5}, double \\
+\texttt{1111} & \texttt{0111} & \texttt{0010} & \texttt{done} & \texttt{dest = 1.0}, double \\
+\texttt{1111} & \texttt{0111} & \texttt{0011} & \texttt{dtwo} & \texttt{dest = 2.0}, double \\
+\texttt{1111} & \texttt{0111} & \texttt{1111} & \texttt{dnan} & \texttt{dest = NaN}, double \\
+\texttt{1111} & \texttt{1000} & - & \texttt{rnd} & \texttt{dest = (float)src1}, double $\rightarrow$ single \\
+\texttt{1111} & \texttt{1001} & - & \texttt{ext} & \texttt{dest = (double)src1}, single $\rightarrow$ double \\
+\texttt{1111} & \texttt{1010} & - & \texttt{si2sf} & \texttt{dest = (float)src1}, int32\_t $\rightarrow$ single \\
+\texttt{1111} & \texttt{1011} & - & \texttt{si2df} & \texttt{dest = (double)src1}, int32\_t $\rightarrow$ double \\
+\texttt{1111} & \texttt{1100} & - & \texttt{sf2si} & \texttt{dest = (int)src1}, single $\rightarrow$ int32\_t \\
+\texttt{1111} & \texttt{1101} & - & \texttt{df2si} & \texttt{dest = (int)src1}, double $\rightarrow$ int32\_t \\
 \bottomrule
 \end{tabular}
 
@@ -609,6 +618,52 @@ Result Bit & Semantics \\
 12 & \texttt{src1 >\ \  src2 || unord(src1, src2)} \\
 13 & \texttt{src1 >= src2 || unord(src1, src2)} \\
 \bottomrule
+\end{tabular}
+
+\section{Default Memory Map}
+
+\begin{tabular}{ll}
+  \toprule
+  Address & Description \\
+  \midrule
+  \texttt{0xfffff800} & Boot ROM \\
+  \ldots              & \ldots   \\
+  \texttt{0xfffffbff} & Boot ROM \\
+  \cmidrule{1-2}
+  \texttt{0xffffff00} & Interrupt enable \\
+  \texttt{0xffffff04} & Interrupt mask \\
+  \texttt{0xffffff08} & Interrupt pending \\
+  \texttt{0xffffff0c} & Interrupt source \\
+  \texttt{0xffffff10} & Interrupt enable \\
+  \texttt{0xffffff40} & Interrupt vector 0 \\
+  \ldots              & \ldots   \\
+  \texttt{0xffffff7c} & Interrupt vector 15 \\
+  \cmidrule{1-2}
+  \texttt{0xffffff88} & UART status \\
+  \texttt{0xffffff8c} & UART data \\
+  \cmidrule{1-2}
+  \texttt{0xffffffa0} & Timer cycles, low word \\
+  \texttt{0xffffffa4} & Timer cycles, high word \\
+  \texttt{0xffffffa8} & Timer nanoseconds, low word \\
+  \texttt{0xffffffac} & Timer nanoseconds, high word \\
+  \texttt{0xffffffb0} & Timer microseconds \\
+  \texttt{0xffffffb4} & Timer seconds \\
+  \cmidrule{1-2}
+  \texttt{0xffffffc0} & Revision \\
+  \texttt{0xffffffc4} & Frequency \\
+  \texttt{0xffffffc8} & Features \\
+  \texttt{0xffffffcc} & Address width \\
+  \texttt{0xffffffd0} & SRAM address width \\
+  \texttt{0xffffffd4} & DRAM address width \\
+  \texttt{0xffffffd8} & Flash address width \\
+  \texttt{0xffffffdc} & I/O address width \\
+  \texttt{0xffffffe0} & PC width/method cache size \\
+  \texttt{0xffffffe4} & Direct-mapped cache size \\
+  \texttt{0xffffffe8} & Fully associative cache size \\
+  \texttt{0xffffffec} & Stack cache size \\
+  \texttt{0xfffffff8} & Memory spill register \\
+  \texttt{0xfffffffc} & Halt/reset \\
+  \bottomrule
 \end{tabular}
 
 \section{Notes}
