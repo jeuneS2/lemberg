@@ -157,7 +157,11 @@ begin  -- rtl
                         when "0001" =>
                             imask <= wr_data(intr_count-1 downto 0);
                         when "0010" =>
-                            ipend <= wr_data(intr_count-1 downto 0) or intrsrc;
+                            for i in 0 to intr_count-1 loop
+                                if wr_data(i) = '1' then
+                                    ipend(i) <= '0' or intrsrc(i);
+                                end if;
+                            end loop;  -- i
                         when others => null;
                     end case;
                 else
