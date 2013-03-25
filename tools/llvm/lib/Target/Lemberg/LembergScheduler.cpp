@@ -238,7 +238,7 @@ void HazardRecognizer::insertSep(MachineBasicBlock *BB) {
 
 void HazardRecognizer::insertNop(MachineBasicBlock *BB) {
 
-	MachineInstr *MI = BuildMI(BB, DebugLoc(), TII->get(Lemberg::NOP)).addImm(0);
+	MachineInstr *MI = BuildMI(BB, DebugLoc(), TII->get(Lemberg::NOP));
 	SUnit *Nop = Sched->newSUnit(MI);
 	// Force the noop to pass verification
 	Nop->isScheduled = true;

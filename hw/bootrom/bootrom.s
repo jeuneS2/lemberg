@@ -42,9 +42,9 @@ _main_start:
 	;;
 #0:	       stm.s	r12, r15, 1
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       ldga	_readint -> r0
 	;;
@@ -52,19 +52,19 @@ _main_start:
 	;;
 #0:	       jop	call	r10
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       jop	call	r10
 	;;
 #0:	       or	r0, 0 -> r11
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       or	r0, 0 -> r10
 	;;
@@ -123,7 +123,7 @@ _main_start:
 	;;
 #0:	       stmb.a	r2, r14, 0
 	;;
-	       nop	0
+	       nop
 	;;
 .BB0_5:                                 ;   in Loop: Header=BB0_2 Depth=1
 #0:	       ldm.b	r14, -3
@@ -147,11 +147,11 @@ _main_start:
 	;;
 #0:	       jop	call	r1
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       ldga	_printint -> r0
 	;;
@@ -161,9 +161,9 @@ _main_start:
 	;;
 #0:	       or	r13, 0 -> r0
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       jop	call	r10
 	;;
@@ -171,21 +171,21 @@ _main_start:
 	;;
 #0:	       or	r31, 0 -> r0
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       jop	call	r10
 	;;
 #0:	       or	r12, 0 -> r0
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       br	.BB0_9
 	;;
 #0:	       ldi	0 -> r10
 	;;
-	       nop	0
+	       nop
 	;;
 .BB0_7:
 #0:	       ldiu	0 -> r1
@@ -202,19 +202,19 @@ _main_start:
 	;;
 #0:	       jop	call	r1
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       jop	call	r10
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       or	r0, 0 -> r10
 	;;
@@ -233,11 +233,11 @@ _main_start:
 	;;
 #0:	       jop	call	r1
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       ldga	_printint -> r0
 	;;
@@ -247,9 +247,9 @@ _main_start:
 	;;
 #0:	       or	r10, 0 -> r0
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 .BB0_9:                                 ; =>This Inner Loop Header: Depth=1
 #0:	       ldi	-120 -> r0
@@ -277,11 +277,11 @@ _main_start:
 	;;
 #0:	       jop	call	r0
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 #0:	       br @	.BB0_8
 	;;
@@ -331,16 +331,16 @@ _printstr_start:
 	;;
 #0:	       or	r1, 0 -> r0
 	;;
-	       nop	0
+	       nop
 	;;
 .BB1_3:                                 ; %._crit_edge
 #0:	       jop	ret
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 	.align	4
 _printstr_end:
@@ -389,11 +389,11 @@ _readint_start:
 .BB2_3:
 #0:	       jop	ret
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 	.align	4
 _readint_end:
@@ -454,11 +454,11 @@ _printint_start:
 .BB3_4:
 #0:	       jop	ret
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
-	       nop	0
+	       nop
 	;;
 	.align	4
 _printint_end:

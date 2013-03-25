@@ -1404,4 +1404,4 @@ let isReturn=1, isTerminator=1, hasDelaySlot=1, isBarrier=1 in
 // Pseudo operation to separate bundles
 def SEP : Pseudo<(outs), (ins), ";;", []>;
 // NOP
-def NOP : Pseudo<(outs), (ins i32imm:$val), "       nop\t$val", []>;
+def NOP : Pseudo<(outs), (ins), "       nop", []>;

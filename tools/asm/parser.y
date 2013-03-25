@@ -184,13 +184,13 @@ Directive : ALIGN NUM NewLine
 		  }
 ;
 
-Bundle : NOP Constant NewLine BSep
+Bundle : NOP NewLine BSep
        {
 		   pos += 1;
 
 		   $$.type = 0;
 		   $$.size = 1;
-		   $$.raw = $2;
+		   $$.raw = NULL_EXPR;
        }
        | Operation BSep
        {

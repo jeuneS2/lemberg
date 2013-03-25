@@ -342,11 +342,6 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 						}
 					}
 				}
-				// do not move across multi-cycle nops
-				if (J->getOpcode() == Lemberg::NOP
-					&& J->getOperand(0).getImm() != 0) {
-					conflicts = true;
-				}
 				// $rb and $ro must be saved before calls
 				if (Opcode == Lemberg::CALLga || Opcode == Lemberg::CALL) {
 					if (J->getOpcode() == Lemberg::MOVExa
@@ -451,8 +446,6 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 		}
 		MachineInstr *N = next(newII);
 		if (N->getOpcode() == Lemberg::NOP) {
-			assert(N->getOperand(0).getImm() == 0 
-				   && "Cannot share cycle with multicycle NOP");
 			N->eraseFromParent();
 		}
 
@@ -487,7 +480,7 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 		if (movedSlots < maxSlots) {
 			for (unsigned i = 0; i < maxSlots-movedSlots; i++) {
 				BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::SEP));
-				BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::NOP)).addImm(0);
+				BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::NOP));
 				FilledSlots++;
 			}
 		}
@@ -520,15 +513,13 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 		}
 		for (unsigned i = minSlots; i < maxSlots; i++) {
 			BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::SEP));
-			BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::NOP)).addImm(0);
+			BuildMI(MBB, insertII, DebugLoc(), TII->get(Lemberg::NOP));
 			FilledSlots++;
 		}
 	}
 }
 
 /// runOnMachineBasicBlock - Fill in delay slots for the given basic block.
-/// Currently, we fill delay slots with NOPs. We assume there are three
-/// delay slots per delayed instruction.
 bool Filler::
 runOnMachineBasicBlock(MachineBasicBlock &MBB) 
 {

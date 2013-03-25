@@ -117,9 +117,6 @@ bool LembergPassConfig::addPreEmitPass() {
   PM->add(createLembergPinnerPass(TM, getOptLevel()));
   PM->add(createLembergSchedulerPass(TM, getOptLevel()));
   PM->add(createLembergDelaySlotFillerPass(TM, getOptLevel()));
-  if (getOptLevel() != CodeGenOpt::None) {
-	  // PM->add(createLembergNopCompressorPass(TM, getOptLevel()));
-  }
   PM->add(createLembergPostPinnerPass(TM, getOptLevel()));
   return true;
 }

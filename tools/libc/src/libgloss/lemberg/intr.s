@@ -25,7 +25,7 @@ define void @intr_mnml() nounwind naked noinline {
 		;;
 		#0: addi 8 -> r15
 		;;
-		nop 0
+		nop
 		;;
 		",""()
 	unreachable
@@ -655,7 +655,7 @@ define void @intr() nounwind naked noinline {
 		;; 
 		#0: addi 76 -> r15
 		;;
-		nop 0
+		nop
 		;;
 		",""()
 	unreachable

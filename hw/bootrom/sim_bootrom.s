@@ -3,11 +3,11 @@ bootrom:
 bootrom_start:
 #0:		callg 0
 		;;
-		nop 0
+		nop
 		;;
-		nop 0
+		nop
 		;;
-		nop 0
+		nop
 		;;
 exit:
 #0:		ldi -4 -> r0.30
@@ -16,11 +16,11 @@ exit:
 		;;
 #0:		or r31, 0 -> r0.30
 		;;
-		nop 0
+		nop
 		;;
-		nop 0
+		nop
 		;;
-		nop 0
+		nop
 		;;
 		.align 4
 bootrom_end:
