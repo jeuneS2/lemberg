@@ -949,7 +949,8 @@ begin  -- behavior
 					memop(i).op <= MEM_WB_S;
 					memop(i).cond <= bundle_reg(i).cond;
 					memop(i).flag(to_integer(unsigned(bundle_reg(i).flag))) <= '1';
-					idx := idx_ldm;
+					memop(i).shamt <= "00010";
+					idx := std_logic_vector(-signed(idx_ldm));
 					if bundle_reg(i).src1 = "11111" then
 						stallop(i).op <= STALL_FULLWAITUNIT;
 					else

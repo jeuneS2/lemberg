@@ -48,7 +48,8 @@ entity memunit is
 		inval		: out std_logic;
 		imem_write	: out imem_write_type;		
 		mem_out		: out sc_out_type;
-		mem_in		: in  sc_in_type);
+		mem_in		: in  sc_in_type;
+		stack_wb    : out std_logic);
 
 end memunit;
 
@@ -196,7 +197,9 @@ begin  -- behavior
 		mem_out.wr_data <= wrdata;
 		mem_out.byte_ena <= (others => '0');
 		mem_out.cache <= BYPASS;
-		
+
+		stack_wb <= '0';
+
 		memdata <= mem_in.rd_data;
 		
 		imem_write.wren <= '0';
@@ -280,7 +283,8 @@ begin  -- behavior
 					when others => null;
 				end case;
 			when MEM_WB_S =>
-				-- TODO: not implemented
+				stack_wb <= valid and ena_int;
+				mem_out.cache <= STACK;
 			when MEM_STM_S =>
 				mem_out.wr <= valid and ena_int;
 				mem_out.cache <= STACK;

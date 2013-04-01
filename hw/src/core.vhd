@@ -127,6 +127,8 @@ architecture behavior of core is
 	signal mem_out	   : sc_out_type;
 	signal mem_in	   : sc_in_type;
 
+	signal stack_wb    : std_logic;
+
 begin  -- behavior
 
 	fetch: entity work.fetch
@@ -269,7 +271,8 @@ begin  -- behavior
 			inval      => mem_inval,
 			imem_write => imem_write,
 			mem_out    => mem_out,
-			mem_in     => mem_in);
+			mem_in     => mem_in,
+			stack_wb   => stack_wb);
 
 	jumpunit: entity work.jumpunit
 		port map (
@@ -344,12 +347,13 @@ begin  -- behavior
 			fa_line_bits => FA_LINE_BITS,
 			stack_bits   => STACK_ADDR_WIDTH)
 		port map (
-			clk		=> clk,
-			reset	=> reset,
-			inval	=> mem_inval,
-			cpu_out => mem_out,
-			cpu_in	=> mem_in,
-			mem_out => sc_out,
-			mem_in	=> sc_in);
+			clk		 => clk,
+			reset	 => reset,
+			inval	 => mem_inval,
+			stack_wb => stack_wb,
+			cpu_out  => mem_out,
+			cpu_in	 => mem_in,
+			mem_out  => sc_out,
+			mem_in	 => sc_in);
 
 end behavior;

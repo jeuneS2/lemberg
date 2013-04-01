@@ -33,6 +33,7 @@ entity datacache is
 		clk, reset:		in std_logic;
 
 		inval:			in std_logic;
+		stack_wb:       in std_logic;
 
 		cpu_out:		in sc_out_type;
 		cpu_in:			out sc_in_type;
@@ -87,6 +88,7 @@ begin  -- rtl
 			clk		=> clk,
 			reset	=> reset,
 			inval	=> inval,
+			wb      => stack_wb,
 			cpu_in	=> stack_cpu_in,
 			cpu_out => cpu_out,
 			mem_in	=> mem_in,
@@ -103,7 +105,7 @@ begin  -- rtl
 		end if;
 	end process sync;
 
-	async: process (cpu_out, mem_in,
+	async: process (cpu_out, stack_wb, mem_in,
 					mux_reg, dmux_reg,
 					dm_mem_out, fa_mem_out, stack_mem_out,
 					dm_cpu_in, fa_cpu_in, stack_cpu_in)
@@ -151,7 +153,7 @@ begin  -- rtl
 		bp_rd := '0';
 		bp_wr := '0';
 
-		if cpu_out.rd = '1' or cpu_out.wr = '1' then
+		if cpu_out.rd = '1' or cpu_out.wr = '1' or stack_wb = '1' then
 			case cpu_out.cache is
 				when DIRECTMAP =>
 					next_mux <= DM;

@@ -31,7 +31,8 @@ port (
 	clk, reset:	    in std_logic;
 
 	inval:			in std_logic;
-
+	wb:             in std_logic;    
+    
 	cpu_out:		in sc_out_type;
 	cpu_in:			out sc_in_type;
 
@@ -70,16 +71,19 @@ architecture rtl of stackcache is
 	signal cpu_out_reg, next_cpu_out : sc_out_type;
 
 	signal rddata_reg, next_rddata : std_logic_vector(DATA_WIDTH-1 downto 0);
-
-	type STATE_TYPE is (idle, rd0, rd1, rd2, wr0, wr1);
+    
+	type STATE_TYPE is (idle, rd0, rd1, rd2, wr0, wr1, wb0, wb1, wb2, wb3);
 	signal state, next_state : STATE_TYPE;
+
+	signal mark_reg, next_mark : std_logic_vector(ADDR_WIDTH-1 downto 0);
+	signal wbaddr_reg, next_wbaddr : std_logic_vector(ADDR_WIDTH-1 downto 0);
 
 begin
 
 	splitjoin: process (ram_din, ram_dout_raw_data, ram_dout_raw_tag)
 	begin  -- process splitjoin
 		for i in 0 to BYTES_PER_WORD-1 loop
-			ram_din_raw_data(i) <= ram_din.data(BYTE_WIDTH*(i+1)-1 downto BYTE_WIDTH*i);			
+			ram_din_raw_data(i) <= ram_din.data(BYTE_WIDTH*(i+1)-1 downto BYTE_WIDTH*i);
 		end loop;  -- i	
 		ram_din_raw_tag(mem_bits-index_bits downto 1) <= ram_din.tag;
 		ram_din_raw_tag(0) <= ram_din.valid;
@@ -124,6 +128,7 @@ begin
 	end generate gen_cache_dram;
 	
 	sync: process (clk, reset)
+        variable diff : unsigned(ADDR_WIDTH downto 0);
 	begin  -- process sync
 		if reset = '0' then  -- asynchronous reset (active low)			
 
@@ -131,17 +136,24 @@ begin
 			rddata_reg <= (others => '0');
 			state <= idle;
 
+			mark_reg <= (others => '0');
+			wbaddr_reg <= (others => '0');
+            
 		elsif clk'event and clk = '1' then  -- rising clock edge
 
 			cpu_out_reg <= next_cpu_out;
 			rddata_reg <= next_rddata;
 			state <= next_state;
 
+			mark_reg <= next_mark;
+			wbaddr_reg <= next_wbaddr;
+
 		end if;
 	end process sync;
 
-	async: process (cpu_out, mem_in, ram_dout,
-					cpu_out_reg, rddata_reg, state)
+	async: process (cpu_out, wb, mem_in, ram_dout,
+					cpu_out_reg, rddata_reg, state,
+					mark_reg, wbaddr_reg)
 	begin  -- process
 
 		next_cpu_out <= cpu_out_reg;
@@ -170,6 +182,19 @@ begin
 		mem_out.wr <= '0';
 		mem_out.wr_data <= cpu_out_reg.wr_data;
 		mem_out.byte_ena <= cpu_out_reg.byte_ena;
+		mem_out.cache <= cpu_out_reg.cache;
+
+		next_wbaddr <= wbaddr_reg;
+		next_mark <= mark_reg;
+		-- pull up mark when accessing higher addresses
+		if cpu_out_reg.cache = cache_type and
+			(cpu_out_reg.wr = '1' or cpu_out_reg.rd = '1') then
+			if unsigned('0' & cpu_out_reg.address) >
+				unsigned('0' & mark_reg) + to_unsigned(2**index_bits, ADDR_WIDTH+1) then
+				next_mark <= std_logic_vector(unsigned(cpu_out_reg.address)
+												- to_unsigned(2**index_bits, ADDR_WIDTH));
+			end if;
+		end if;
 
 		case state is
 
@@ -219,10 +244,66 @@ begin
 				end if;
 				next_state <= idle;
 
+			when wb0 =>
+				cpu_in.rdy_cnt <= "11";
+
+				if unsigned(cpu_out_reg.address) > unsigned(mark_reg) then
+					next_state <= idle;
+				else
+					next_wbaddr <= mark_reg;
+					next_state <= wb1;
+				end if;
+
+			when wb1 =>
+				cpu_in.rdy_cnt <= "11";
+
+				ram_rdaddress <= wbaddr_reg(index_bits-1 downto 0);
+				ram_rden_tag <= '1';
+				ram_rden_data <= (others => '1');
+
+				if mem_in.rdy_cnt /= "11" then
+					next_state <= wb2;
+				else
+					next_state <= wb1;
+				end if;
+
+			when wb2 =>
+				cpu_in.rdy_cnt <= "11";
+
+				mem_out.address <= ram_dout.tag & wbaddr_reg(index_bits-1 downto 0);
+				mem_out.wr_data <= ram_dout.data;
+				mem_out.byte_ena <= (others => '1');
+				mem_out.cache <= cache_type;
+
+				ram_wraddress <=  wbaddr_reg(index_bits-1 downto 0);
+				ram_din.valid <= '0';				 
+				
+				if ram_dout.tag /= wbaddr_reg(mem_bits-1 downto index_bits)
+					and ram_dout.valid = '1' then
+					mem_out.wr <= '1';
+					ram_wren_tag <= '1';
+				end if;
+
+				next_wbaddr <= std_logic_vector(unsigned(wbaddr_reg) - 1);
+				if wbaddr_reg = cpu_out_reg.address then
+					next_state <= wb3;
+				else
+					next_state <= wb1;
+				end if;
+
+			when wb3 =>
+				cpu_in.rdy_cnt <= "11";
+				if mem_in.rdy_cnt = "00" then
+					next_mark <= wbaddr_reg;
+					next_state <= idle;
+				else
+					next_state <= wb3;
+				end if;				   
+
 			when others => null;
 		end case;
 		
-		if cpu_out.rd = '1' or cpu_out.wr = '1' then
+		if cpu_out.rd = '1' or cpu_out.wr = '1' or wb = '1' then
 			next_cpu_out <= cpu_out;
 		end if;
 
@@ -240,7 +321,11 @@ begin
 			ram_rden_tag <= '1';
 			ram_rden_data <= (others => '1');
 			next_state <= rd0;
-		end if;			
+		end if;
+		-- write back
+		if wb = '1' and cpu_out.cache = cache_type then
+			next_state <= wb0;
+		end if;
 		
 	end process;
 	
