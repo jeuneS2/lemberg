@@ -93,10 +93,10 @@ begin
 
 	asynrd: process (rdaddress_reg, block0, block1, block2, block3)
 	begin  -- process asynrd
-		q(wrwidth-1 downto 0)           <= block0(to_integer(unsigned(rdaddress_reg)));
-		q(2*wrwidth-1 downto wrwidth)   <= block1(to_integer(unsigned(rdaddress_reg)));
-		q(3*wrwidth-1 downto 2*wrwidth) <= block2(to_integer(unsigned(rdaddress_reg)));
-		q(4*wrwidth-1 downto 3*wrwidth) <= block3(to_integer(unsigned(rdaddress_reg)));		
+		q(wrwidth-1 downto 0)           <= block3(to_integer(unsigned(rdaddress_reg)));
+		q(2*wrwidth-1 downto wrwidth)   <= block2(to_integer(unsigned(rdaddress_reg)));
+		q(3*wrwidth-1 downto 2*wrwidth) <= block1(to_integer(unsigned(rdaddress_reg)));
+		q(4*wrwidth-1 downto 3*wrwidth) <= block0(to_integer(unsigned(rdaddress_reg)));		
 	end process asynrd;
 	
 end rtl;

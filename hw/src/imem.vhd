@@ -76,10 +76,6 @@ begin
 		wraddr1 <= write.wraddr(PC_WIDTH-3 downto 3) & write.wraddr(1 downto 0);
 	end process wr;
 	
-	rd: process(q0, q1)
-	begin
-		rddata <=  q0(31 downto 0) & q0(63 downto 32) & q0(95 downto 64) & q0(127 downto 96)
-				   & q1(31 downto 0) & q1(63 downto 32) & q1(95 downto 64) & q1(127 downto 96);
-	end process;
+	rddata <= q0 & q1;
 
 end rtl;

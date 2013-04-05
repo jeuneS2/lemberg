@@ -46,7 +46,7 @@ package op_pack is
 	constant COND_FALSE : std_logic := '0';
 
 	constant SYLLABLE_NOP : syllable_type :=
-		( "000110", (others => '1'), (others => '1'), (others => '1'),
+		( "000110", (others => '0'), (others => '0'), (others => '0'),
 		  '0', COND_FALSE, (others => '0'));
 
 	function to_syllable (
@@ -60,7 +60,7 @@ package op_pack is
 
 	-- TODO: define constants for ISA-level operation encoding
 	
-	-- use OR and read from local register as NOP to minimize power
+	-- use "if !c0 or r0, r0 -> r0" as NOP
 	constant BUNDLE_NOP : bundle_type := (others => SYLLABLE_NOP);
 
 	---------------------------------------------------------------------------

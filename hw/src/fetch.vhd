@@ -135,37 +135,28 @@ begin  -- behavior
 			pcvec(i) := pc_reg + to_unsigned((MAX_CLUSTERS+i*SYLLABLE_WIDTH+BYTE_WIDTH-1)/BYTE_WIDTH, FETCHBUF_BITS);
 		end loop;  -- i
 
-		for i in 0 to FETCHBUF_BYTES-1 loop
-			maskvec(i) := raw_next(i*BYTE_WIDTH+MAX_CLUSTERS-CLUSTERS
-                                   to i*BYTE_WIDTH+MAX_CLUSTERS-1);
-			opcntvec(i) := count_bits(maskvec(i));			
-		end loop;  -- i
-		opcnt := opcntvec(to_integer(start_pos));
+		opcnt := count_bits(raw_next(to_integer(start_pos)*BYTE_WIDTH+MAX_CLUSTERS-CLUSTERS
+									 to to_integer(start_pos)*BYTE_WIDTH+MAX_CLUSTERS-1));
 		
 		start_next <= startvec(opcnt);
 		pc_next <= pcvec(opcnt);
 		spec_tag <= std_logic_vector(pcvec(opcnt));		
 		pc_out <= std_logic_vector(pcvec(opcnt));
-
+        
 		wrap_next <= '0';		
-		raw_next <= raw_reg;
 		fetch_next <= start_pos;
 
-		if start_pos = fetch_pos or wrap_reg='1' then
-			raw_next <= raw_in;
-			fetch_next <= fetch_pos;
-			vpc0_next <= vpc0_reg+FETCHBUF_BYTES;
-			vpc1_next <= vpc1_reg+FETCHBUF_BYTES;
-			vpc0_inc_next <= vpc0_reg+FETCHBUF_BYTES+startvec(opcnt);
-			vpc1_inc_next <= vpc1_reg+FETCHBUF_BYTES+startvec(opcnt);
-			vpc0_out <= std_logic_vector(vpc0_inc+FETCHBUF_BYTES);
-			vpc1_out <= std_logic_vector(vpc1_inc+FETCHBUF_BYTES);
-		elsif fetch_pos > start_pos then
+		if fetch_pos >= start_pos or wrap_reg = '1' then
 			for i in 0 to FETCHBUF_WIDTH-1 loop
-				if i >= to_integer(fetch_pos*BYTE_WIDTH) or i < to_integer(start_pos*BYTE_WIDTH)then
+				if i >= to_integer(fetch_pos*BYTE_WIDTH) or i < to_integer(start_pos*BYTE_WIDTH) then
 					raw_next(i) <= raw_in(i);
+				else
+					raw_next(i) <= raw_reg(i);
 				end if;
 			end loop;  -- i
+			if wrap_reg = '1' then
+				fetch_next <= fetch_pos;                
+			end if;
 			vpc0_next <= vpc0_reg+FETCHBUF_BYTES;
 			vpc1_next <= vpc1_reg+FETCHBUF_BYTES;
 			vpc0_inc_next <= vpc0_reg+FETCHBUF_BYTES+startvec(opcnt);
@@ -176,6 +167,8 @@ begin  -- behavior
 			for i in 0 to FETCHBUF_WIDTH-1 loop
 				if i >= to_integer(fetch_pos*BYTE_WIDTH) and i < to_integer(start_pos*BYTE_WIDTH) then
 					raw_next(i) <= raw_in(i);
+				else
+					raw_next(i) <= raw_reg(i);
 				end if;
 			end loop;  -- i
 			vpc0_next <= vpc0_reg;

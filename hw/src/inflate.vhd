@@ -40,8 +40,6 @@ end inflate;
 
 architecture behavior of inflate is
 
-	signal raw_reg : std_logic_vector(0 to FETCH_WIDTH-1);
-
 	--pragma synthesis off
 	signal nop_cnt : integer := 0;
 	signal ena_cnt : integer := 0;
@@ -51,21 +49,26 @@ architecture behavior of inflate is
 	
 begin  -- behavior	
 		
-	raw_reg <= raw;
 	pc_out <= pc_in;
 
 	-- this needs to be adapted when changing the number of clusters
-	inflate: process (raw_reg)
+	inflate: process (raw)
 		variable syll : bundle_type;
 	begin  -- process inflate
-		bundle <= BUNDLE_NOP;
+		for i in 0 to CLUSTERS-1 loop
+			syll(i) := to_syllable(raw(MAX_CLUSTERS+i*SYLLABLE_WIDTH
+                                       to MAX_CLUSTERS+(i+1)*SYLLABLE_WIDTH-1));
+		end loop;  -- i
 
 		for i in 0 to CLUSTERS-1 loop
-			syll(i) := to_syllable(raw_reg(MAX_CLUSTERS+i*SYLLABLE_WIDTH
-										   to MAX_CLUSTERS+(i+1)*SYLLABLE_WIDTH-1));
+			bundle(i) <= syll(0);
+			-- use "if !c0 or ..." as NOP
+			bundle(i).op <= "000110";
+			bundle(i).cond <= COND_FALSE;
+			bundle(i).flag <= (others => '0');
 		end loop;  -- i
 		
-		case raw_reg(0 to MAX_CLUSTERS-1) is
+		case raw(0 to MAX_CLUSTERS-1) is
 			when "0000" => null;
 			when "0001" =>
 				bundle(0) <= syll(0);
