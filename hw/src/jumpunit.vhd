@@ -310,10 +310,11 @@ begin  -- behavior
 					end if;
 				end if;
 			when JMP_BRIND =>
-				pc_wr <= valid;
+				pc_wr_next <= valid;
 				flush <= valid;
-				pc0_out <= pc0_out_brind;
-				pc1_out <= pc1_out_brind;
+				flush_next <= valid;
+				pc0_out_next <= pc0_out_brind;
+				pc1_out_next <= pc1_out_brind;
 			when JMP_CALL =>
 				pc_wr_next <= valid;
 				fetch_next <= valid;
