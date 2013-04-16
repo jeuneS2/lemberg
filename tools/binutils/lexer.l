@@ -46,10 +46,30 @@ SYM [\._a-zA-Z0-9]+
 
 ".file"\t\".*\"\n { line_number++; /* ignore .file directive */ }
 
-".text"\n { line_number++; /* ignore .text directive */ }
-".data"\n { line_number++; /* ignore .data directive */ }
-".bss"\n { line_number++; /* ignore .bss directive */ }
-".section".*\n { line_number++; /* ignore .section directive */ }
+".text" {
+	yylval.strval = ".text";
+	return SECT;
+}
+".data" {
+	yylval.strval = ".data";
+	return SECT;
+}
+".bss" {
+	yylval.strval = ".bss";
+	return SECT;
+}
+".section"(" "|"\r"|"\t")+{SYM}+,.* {
+    /* extract section name */
+    char *name;
+    name = yytext+8;
+    while (*name == ' ' || *name == '\r' || *name == '\t') {
+      name++;
+    }
+    *strchr(name, ',') = '\0';
+	yylval.strval = malloc(strlen(name));
+	strcpy(yylval.strval, name);
+	return SECT;
+}
 
 ".globl".*\n { line_number++; /* ignore .globl directive */ }
 ".local".*\n { line_number++; /* ignore .local directive */ }
@@ -57,17 +77,28 @@ SYM [\._a-zA-Z0-9]+
 
 ".stabs".*\n { line_number++; /* ignore .stabs directive */ }
 
-".size".*\n { line_number++; /* ignore .size directive */ }
-".type".* return TYPE;
+".size" return SIZE;
+".type" return TYPE;
 
 ".align" return ALIGN;
-".funsz" return SIZE;
+".funsz" return FUNSIZE;
 ".quad" return QUAD;
 ".long" return LONG;
 ".short" return SHORT;
 ".byte" return BYTE;
 ".ascii" return ASCII;
 ".comm" return COMM;
+
+"@function" {
+	yylval.strval = malloc(strlen(yytext)+1);
+	strcpy(yylval.strval, yytext);
+	return SYMTYPE;
+}
+"@object" {
+	yylval.strval = malloc(strlen(yytext)+1);
+	strcpy(yylval.strval, yytext);
+	return SYMTYPE;
+}
 
 "nop" return NOP;
 
@@ -295,9 +326,11 @@ $f[0-9]+ {
   }
 
 {SYM}-{SYM} {
+	/* replace '-' with '@' for the difference of two symbols */
 	yylval.exprval = NULL_EXPR;
 	yylval.exprval.strval = malloc(strlen(yytext)+1);
 	strcpy(yylval.exprval.strval, yytext);
+	*strchr(yylval.exprval.strval, '-') = '@';
 	return EXPR;
   }
 {SYM}@{SYM} {
@@ -305,7 +338,6 @@ $f[0-9]+ {
 	yylval.exprval = NULL_EXPR;
 	yylval.exprval.strval = malloc(strlen(yytext)+1);
 	strcpy(yylval.exprval.strval, yytext);
-	*strchr(yylval.exprval.strval, '@') = '-';
 	return EXPR;
   }
 
@@ -344,11 +376,7 @@ $f[0-9]+ {
 <<EOF>>  { /* allow multiple input files */
     if (*++infiles)
 		if (strcmp(*infiles, "-") != 0) {
-			yyin = fopen(*infiles, "r");
-			if (yyin == NULL) {
-				fprintf(stderr, "error: %s\n", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
+			yyin = xfopen(*infiles, "r");
 		} else {
 			yyin = stdin;
 		}

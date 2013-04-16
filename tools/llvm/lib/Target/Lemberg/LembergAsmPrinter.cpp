@@ -141,8 +141,8 @@ void LembergAsmPrinter::EmitFunctionBodyStart() {
   // Emit function size size
   SmallString<128> Str;
   raw_svector_ostream OS(Str);
-  OS << "\t.funsz\t" << *CurrentFnSym << "_end@" << *CurrentFnSym << "\n";
-  OS << *CurrentFnSym << "_start:\n";
+  OS << "\t.funsz\t" << "." << *CurrentFnSym << "_end-" << *CurrentFnSym << "\n";
+  OS << "." << *CurrentFnSym << "_start:\n";
   OutStreamer.EmitRawText(OS.str());
 }
 
@@ -154,7 +154,7 @@ void LembergAsmPrinter::EmitFunctionBodyEnd() {
   // Emit label for size computation
   SmallString<128> Str;
   raw_svector_ostream OS(Str);
-  OS << *CurrentFnSym << "_end:\n";
+  OS << "." << *CurrentFnSym << "_end:\n";
   OutStreamer.EmitRawText(OS.str());
 }
 

@@ -297,7 +297,7 @@ const MCExpr
 
 	// create basic block offsets relative to function start
 	SmallString<64> ExprStr = MBB->getSymbol()->getName();
-	ExprStr += "@";
+	ExprStr += "@.";
 	ExprStr += NameStr;
 
 	const MCSymbol *RelSym = Ctx.GetOrCreateSymbol(ExprStr.str());
