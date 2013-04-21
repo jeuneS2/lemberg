@@ -248,8 +248,12 @@ SDValue LembergTargetLowering::LowerGlobalAddress(SDValue Op, SelectionDAG &DAG)
   DebugLoc DL = Op.getDebugLoc();
 
   const GlobalValue *GV = cast<GlobalAddressSDNode>(Op)->getGlobal();
-  return DAG.getNode(LembergISD::Wrapper, DL, MVT::i32,
-					 DAG.getTargetGlobalAddress(GV, DL, MVT::i32));
+  int64_t Offset = cast<GlobalAddressSDNode>(Op)->getOffset();
+
+  return DAG.getNode(ISD::ADD, DL, MVT::i32,
+					 DAG.getNode(LembergISD::Wrapper, DL, MVT::i32,
+								 DAG.getTargetGlobalAddress(GV, DL, MVT::i32)),
+					 DAG.getConstant(Offset, MVT::i32));
 }
 
 SDValue LembergTargetLowering::LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const {
