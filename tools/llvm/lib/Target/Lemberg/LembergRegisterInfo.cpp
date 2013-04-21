@@ -101,7 +101,7 @@ saveScavengerRegister(MachineBasicBlock &MBB,
 unsigned LembergRegisterInfo::
 BuildLargeFrameOffset (MachineFunction &MF,
 					   MachineBasicBlock &MBB, MachineBasicBlock::iterator &MBBI,
-					   long Offset) const {
+					   long Offset, RegScavenger *RS) const {
 
 	assert(isInt<22>(Offset) && "Offset too big for loading");
 
@@ -129,29 +129,34 @@ BuildLargeFrameOffset (MachineFunction &MF,
 	unsigned ScratchReg = 0;
 
 	if (isUInt<5>(Offset >> 2) && ((Offset & 0x03) == 0)) {
-		ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+		ScratchReg = RS ? getEmergencyRegister()
+		  : MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 		BuildMI(MBB, MBBI, DL, TII.get(Lemberg::S2ADDaia), ScratchReg)
 			.addImm(-1).addReg(0)
 			.addReg(getFrameRegister(MF))
 			.addImm(Offset >> 2);		
 	} else {
 		if (isUInt<11>(Offset)) {
-			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+			ScratchReg = RS ? getEmergencyRegister()
+			  : MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset);
 		} else if (isInt<11>(Offset)) {
-			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+			ScratchReg = RS ? getEmergencyRegister()
+			  : MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset);
 		} else if (isUInt<19>(Offset >> 2) && ((Offset & 0x03) == 0)) {
-			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GImmRegisterClass);
+			ScratchReg = RS ? getEmergencyRegister()
+			  : MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm19s2), ScratchReg)
 				.addImm(Offset);
 		} else {
 			// Does this really happen?
-			ScratchReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+			ScratchReg = RS ? getEmergencyRegister()
+			  : MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			BuildMI(MBB, MBBI, DL, TII.get(Lemberg::LOADuimm11), ScratchReg)
 				.addImm(-1).addReg(0)
 				.addImm(Offset & 0x7ff);
@@ -402,7 +407,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  int ModOffset = getModOffset(Offset, isLoad, storeIdxShift);
 		  int BaseOffset = Offset - ModOffset;
 
-		  unsigned ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseOffset);
+		  unsigned ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseOffset, RS);
 
 		  switch (Opcode) {
 		  case Lemberg::LOAD32s_match:
@@ -524,7 +529,8 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  MI.addOperand(MachineOperand::CreateImm(Offset >> 2));
 			  break;
 		  case Lemberg::STORE32s_xpseudo:
-			  CopyReg = MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
+			  CopyReg = RS ? getEmergencyRegister()
+				: MF.getRegInfo().createVirtualRegister(Lemberg::GRegisterClass);
 			  LastLargeFrame->Register = 0;
 			  BuildMI(MBB, II, DL, TII.get(isFloat ? Lemberg::MOVEfa : Lemberg::MOVExa), CopyReg)
 				  .addImm(-1).addReg(0)
@@ -560,7 +566,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  int ModOffset = getModOffset(Offset, isLoad, 2);
 		  int BaseOffset = Offset - ModOffset;
 
-		  unsigned ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseOffset);
+		  unsigned ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseOffset, RS);
 		  unsigned CopyReg;
 
 		  switch (Opcode) {
@@ -608,6 +614,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 			  LastLargeFrame->Boundary = *II;
 			  break;
 		  case Lemberg::STORE32s_xpseudo:
+			  assert(!RS && "Incompatile uses of emergency registers");
 			  CopyReg = getEmergencyRegister();
 			  BuildMI(MBB, II, DL, TII.get(isFloat ? Lemberg::MOVEfa : Lemberg::MOVExa), CopyReg)
 			   	  .addImm(-1).addReg(0)
@@ -674,7 +681,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 
 	  switch (Opcode) {
 	  case Lemberg::LOAD64s_xpseudo:
-		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseLoOffset);
+		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseLoOffset, RS);
 		  BuildMI(MBB, II, DL, TII.get(Lemberg::LOAD32spi))
 			  .addImm(-1).addReg(0)
 			  .addReg(ScratchReg, RegState::Kill)
@@ -686,7 +693,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  LastLargeFrame->Killer = prior(II, 2);
 		  LastLargeFrame->Boundary = *II;
 
-		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseHiOffset);
+		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseHiOffset, RS);
 		  BuildMI(MBB, II, DL, TII.get(Lemberg::LOAD32spi))
 			  .addImm(-1).addReg(0)
 			  .addReg(ScratchReg, RegState::Kill)
@@ -706,9 +713,10 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  LastLargeFrame->Boundary = *II;
 		  break;
 	  case Lemberg::STORE64s_xpseudo:
+		  assert(!RS && "Incompatile uses of emergency registers");
 		  CopyRegA = getEmergencyRegister();
 		  CopyRegB = getEmergencyRegister();
-		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseLoOffset);
+		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseLoOffset, RS);
 		  BuildMI(MBB, II, DL, TII.get(Lemberg::MOVEfa), CopyRegA)
 			  .addImm(-1).addReg(0)
 			  .addReg(Reg, 0, Lemberg::sub_even);
@@ -720,7 +728,7 @@ eliminateFrameIndex(MachineBasicBlock::iterator II,
 		  LastLargeFrame->Killer = prior(II, 1);
 		  LastLargeFrame->Boundary = *II;
 
-		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseHiOffset);
+		  ScratchReg = BuildLargeFrameOffset(MF, MBB, II, BaseHiOffset, RS);
 		  BuildMI(MBB, II, DL, TII.get(Lemberg::MOVEfa), CopyRegB)
 			  .addImm(-1).addReg(0)
 			  .addReg(Reg, 0, Lemberg::sub_odd);
@@ -848,6 +856,47 @@ LembergRegisterInfo::getMatchingSuperRegClass(const TargetRegisterClass *A,
 		return A;
 	}
 	return 0;
+}
+
+static const TargetRegisterClass *Clusters [LembergSubtarget::MaxClusters] =
+  { Lemberg::L0RegisterClass, Lemberg::L1RegisterClass,
+	Lemberg::L2RegisterClass, Lemberg::L3RegisterClass };
+static const TargetRegisterClass *MulClusters [LembergSubtarget::MaxClusters] =
+  { Lemberg::M0RegisterClass, Lemberg::M1RegisterClass,
+	Lemberg::M2RegisterClass, Lemberg::M3RegisterClass };
+
+int LembergRegisterInfo::getCluster(MachineInstr &MI) const {
+
+	// Only dummy operands, call target is immediate
+	if (MI.getOpcode() == Lemberg::CALLga) {
+		return -1;
+	}
+	// Only call target operand is relevant
+	if (MI.getOpcode() == Lemberg::CALL) {
+		unsigned regNo = MI.getOperand(2).getReg();
+		for (unsigned k = 0; k < LembergSubtarget::MaxClusters; k++) {
+			if (Clusters[k]->contains(regNo)) {
+				return k;
+			}
+		}
+		return -1;
+	}
+
+	// All operands are relevant
+	for (unsigned i = 0, e = MI.getNumOperands(); i < e; ++i) {
+		MachineOperand &MO = MI.getOperand(i);
+		if (!MO.isReg())
+			continue;
+		unsigned regNo = MO.getReg();
+		for (unsigned k = 0; k < LembergSubtarget::MaxClusters; k++) {
+			if (Clusters[k]->contains(regNo)
+				|| MulClusters[k]->contains(regNo)) {
+				return k;
+			}
+		}
+	}
+
+	return -1;
 }
 
 #include "LembergGenRegisterInfo.inc"

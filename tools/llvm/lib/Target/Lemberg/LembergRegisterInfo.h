@@ -73,11 +73,13 @@ namespace llvm {
 														 const TargetRegisterClass *B,
 														 unsigned SubIdx) const;
 
+	int getCluster(MachineInstr &MI) const;
+
   private:
 	 unsigned BuildLargeFrameOffset(MachineFunction &MF,
 									MachineBasicBlock &MBB,
 									MachineBasicBlock::iterator &MBBI,
-									long Offset) const;
+									long Offset, RegScavenger *RS) const;
   };
 
 } // end namespace llvm

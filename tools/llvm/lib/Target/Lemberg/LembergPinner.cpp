@@ -139,13 +139,6 @@ namespace {
 		 LembergFU::FPU_WB}
 	};
 
-	static const TargetRegisterClass *Clusters [LembergSubtarget::MaxClusters] =
-		{ Lemberg::L0RegisterClass, Lemberg::L1RegisterClass,
-		  Lemberg::L2RegisterClass, Lemberg::L3RegisterClass };
-	static const TargetRegisterClass *MulClusters [LembergSubtarget::MaxClusters] =
-		{ Lemberg::M0RegisterClass, Lemberg::M1RegisterClass,
-		  Lemberg::M2RegisterClass, Lemberg::M3RegisterClass };
-
 	struct Pinner : public MachineFunctionPass {
 	private:
 		unsigned AluSchedClasses [LembergSubtarget::MaxClusters];
@@ -185,7 +178,6 @@ namespace {
 			return "Lemberg Pinner";
 		}
 
-		int getCluster(MachineRegisterInfo *MRI, MachineInstr &MI);
 		void pinToCluster(MachineInstr &MI, int cluster);
 
 		bool runOnMachineFunction(MachineFunction &F);
@@ -275,40 +267,6 @@ bool Pinner::compatibleSchedClass(unsigned A, unsigned B) {
 	return true;
 }
 
-int Pinner::getCluster(MachineRegisterInfo *MRI, MachineInstr &MI) {
-
-	// Only dummy operands, call target is immediate
-	if (MI.getOpcode() == Lemberg::CALLga) {
-		return -1;
-	}
-	// Only call target operand is relevant
-	if (MI.getOpcode() == Lemberg::CALL) {
-		unsigned regNo = MI.getOperand(2).getReg();
-		for (unsigned k = 0; k < LembergSubtarget::MaxClusters; k++) {
-			if (Clusters[k]->contains(regNo)) {
-				return k;
-			}
-		}
-		return -1;
-	}
-
-	// All operands are relevant
-	for (unsigned i = 0, e = MI.getNumOperands(); i < e; ++i) {
-		MachineOperand &MO = MI.getOperand(i);
-		if (!MO.isReg())
-			continue;
-		unsigned regNo = MO.getReg();
-		for (unsigned k = 0; k < LembergSubtarget::MaxClusters; k++) {
-			if (Clusters[k]->contains(regNo)
-				|| MulClusters[k]->contains(regNo)) {
-				return k;
-			}
-		}
-	}
-
-	return -1;
-}
-
 void Pinner::pinToCluster(MachineInstr &MI, int cluster) {
 
 	// Ignore implicitly created no-ops and inline asm
@@ -356,13 +314,13 @@ bool Pinner::runOnMachineFunction(MachineFunction &F)
 {
 	bool Changed = false;
 
-	MachineRegisterInfo *MRI = &F.getRegInfo();
+	const LembergRegisterInfo *LRI = ((LembergTargetMachine &)TM).getRegisterInfo();
 
 	for (MachineFunction::iterator FI = F.begin(), FE = F.end(); FI != FE; ++FI) {
 		for (MachineBasicBlock::iterator BI = FI->begin(), BE = FI->end(); BI != BE; ++BI) {
 
 			MachineInstr &MI = *BI;
-			int cluster = getCluster(MRI, MI);
+			int cluster = LRI->getCluster(MI);
 
 			if (cluster < 0) {
 				NumUnpinned++;
@@ -381,7 +339,7 @@ bool PostPinner::runOnMachineFunction(MachineFunction &F)
 {
 	bool Changed = false;
 
-	MachineRegisterInfo *MRI = &F.getRegInfo();
+	const LembergRegisterInfo *LRI = ((LembergTargetMachine &)TM).getRegisterInfo();
 
 	unsigned ClusterCount = TM.getSubtarget<LembergSubtarget>().getClusters();
 	SmallVector<MachineInstr *, LembergSubtarget::MaxClusters> UnPinned;
@@ -419,7 +377,7 @@ bool PostPinner::runOnMachineFunction(MachineFunction &F)
 				continue;
 			}
 			
-			int cluster = getCluster(MRI, MI);		
+			int cluster = LRI->getCluster(MI);		
 			if (cluster < 0) {
 				UnPinned.push_back(&MI);
 			} else {

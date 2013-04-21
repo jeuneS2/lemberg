@@ -75,11 +75,9 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 	const InstrItineraryData &IID = LST->getInstrItins();
 	const InstrItinerary *IITab = IID.Itineraries;
 	const InstrStage *IIStages = IID.Stages;
-
+	const LembergRegisterInfo *LRI = ((LembergTargetMachine &)TM).getRegisterInfo();
 	const MachineBranchProbabilityInfo *MBPI = &getAnalysis<MachineBranchProbabilityInfo>();
 		
-	DebugLoc DL = II->getDebugLoc();
-
 	MachineBasicBlock::iterator insertII = next(II);
 
 	unsigned ClusterCount = TM.getSubtarget<LembergSubtarget>().getClusters();
@@ -388,6 +386,12 @@ void Filler::fillDelaySlot(MachineBasicBlock::iterator &II, MachineBasicBlock &M
 						&& !Lemberg::GRegClass.contains(condReg)) {
 						conflictsHere = true;
 					}
+				}
+
+				int clustA = LRI->getCluster(*II);
+				int clustB = LRI->getCluster(*J);
+				if (clustA >= 0 && clustB >= 0 && clustA == clustB) {
+				  conflictsHere = true;
 				}
 
 				++bundleSize;
