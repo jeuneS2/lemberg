@@ -18,6 +18,7 @@
 
 #define DEBUG_TYPE "branch-select"
 #include "Lemberg.h"
+#include "LembergTargetMachine.h"
 #include "LembergInstrInfo.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -57,8 +58,10 @@ FunctionPass *llvm::createLembergBranchSelectorPass(LembergTargetMachine &tm,
 
 bool BranchSelector::runOnMachineFunction(MachineFunction &Fn) {
 
-	const LembergInstrInfo *TII =
-		static_cast<const LembergInstrInfo*>(Fn.getTarget().getInstrInfo());
+	const LembergTargetMachine &TM = (LembergTargetMachine &)(Fn.getTarget());
+	const LembergInstrInfo *TII = TM.getInstrInfo();
+	const InstrItineraryData *IID = TM.getInstrItineraryData();
+	const InstrItinerary *IITab = IID->Itineraries;
 
 	// Give the blocks of the function a dense, in-order, numbering.
 	Fn.RenumberBlocks();
@@ -75,6 +78,14 @@ bool BranchSelector::runOnMachineFunction(MachineFunction &Fn) {
 			if (MBBI->getDesc().hasDelaySlot()) {
 				BlockSize += 3;
 			}
+			// Account for possible nops of floating-point instructions
+			unsigned SchedClass = MBBI->getDesc().getSchedClass();
+			unsigned ItinLength = (IITab[SchedClass].LastStage
+								   - IITab[SchedClass].FirstStage);
+			if (ItinLength > 2)
+			  {
+				BlockSize += ItinLength - 2;
+			  }
 		}	  
 
 		BlockSizes[MBB->getNumber()] = BlockSize;
