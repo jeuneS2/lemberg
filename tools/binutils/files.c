@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "errors.h"
 #include "files.h"
 
 FILE *xfopen(const char *path, const char *mode)
@@ -30,7 +31,7 @@ FILE *xfopen(const char *path, const char *mode)
   FILE *file = fopen(path, mode);
   if (file == NULL) 
 	{
-	  fprintf(stderr, "error: %s: %s\n", path, strerror(errno));
+	  eprintf("%s: %s", path, strerror(errno));
 	  exit(EXIT_FAILURE);
 	}
   return file;
@@ -40,7 +41,7 @@ void xfclose(FILE *file)
 {
   if (fclose(file) != 0)
 	{
-	  fprintf(stderr, "error: %s\n", strerror(errno));
+	  eprintf("%s", strerror(errno));
 	  exit(EXIT_FAILURE);
 	}
 }
@@ -50,7 +51,7 @@ int xopen(const char *path, int flags, mode_t mode)
   int fd = open(path, flags, mode);
   if (fd < 0)
 	{
-	  fprintf(stderr, "error: %s: %s\n", path, strerror(errno));
+	  eprintf("%s: %s", path, strerror(errno));
 	  exit(EXIT_FAILURE);
 	}
   return fd;
@@ -60,7 +61,7 @@ void xclose(int fd)
 {
   if (close(fd) != 0)
 	{
-	  fprintf(stderr, "error: %s\n", strerror(errno));
+	  eprintf("%s", strerror(errno));
 	  exit(EXIT_FAILURE);
 	}
 }

@@ -21,9 +21,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "elflemberg.h"
+#include "errors.h"
 #include "exprs.h"
 #include "symtab.h"
-#include "elflemberg.h"
 
 int exprlex(void);
 void exprerror(struct reloc_info *, const char *);
@@ -122,7 +123,7 @@ Expr : LoHiExpr
 
 void exprerror(struct reloc_info *r, const char *msg)
 {
-	fprintf(stderr, "error: Error in expression: %s\n", msg);
+    eprintf("Error in expression: %s", msg);
 	exit(EXIT_FAILURE);
 }
 
@@ -140,7 +141,7 @@ long long resolve_sym(const char *s)
   struct sym_info *sym = sym_get(s);
   if (sym == NULL || !sym->defined)
 	{
-	  fprintf(stderr, "error: Symbol %s must be resolvable.\n", s);
+	  eprintf("Symbol %s must be resolvable.", s);
 	  exit(EXIT_FAILURE);
 	}
   return sym->addr;

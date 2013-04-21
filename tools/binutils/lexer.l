@@ -21,6 +21,7 @@
 %{
 #include <string.h>
 
+#include "errors.h"
 #include "files.h"
 #include "optab.h"
 #include "code.h"
@@ -321,7 +322,6 @@ $f[0-9]+ {
 	yylval.exprval = NULL_EXPR;
 	yylval.exprval.strval = malloc(strlen(yytext)+1);
 	strcpy(yylval.exprval.strval, yytext);
-	*strchr(yylval.exprval.strval, '@') = '-';
 	return EXPR;
   }
 
@@ -384,6 +384,6 @@ $f[0-9]+ {
 		yyterminate();
   }
 
-. { fprintf(stderr, "error: Invalid input: `%c'", yytext[0]); }
+. { eprintf("Invalid input in line %d: `%c'", line_number, yytext[0]); }
 
 %%

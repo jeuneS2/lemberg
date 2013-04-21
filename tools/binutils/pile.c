@@ -21,9 +21,10 @@
 #include <string.h>
 #include <libelf.h>
 
+#include "buffer.h"
 #include "code.h"
 #include "elflemberg.h"
-#include "buffer.h"
+#include "errors.h"
 #include "pile.h"
 #include "symtab.h"
 
@@ -39,7 +40,7 @@ const char *pile_name(unsigned p)
 	case PILE_BSS:    return ".bss";
 	case PILE_END:    return ".end";
 	default:
-	  fprintf(stderr, "error: Unknown pile type %d\n", p);
+	  eprintf("Unknown pile type %d", p);
 	  exit(EXIT_FAILURE);
 	  break;
 	}
@@ -72,7 +73,7 @@ unsigned pile_match(const char *name)
 		}
 	}
 
-  fprintf(stderr, "error: Cannot match section name: %s\n", name);
+  eprintf("Cannot match section name: %s", name);
   exit(EXIT_FAILURE);
   return -1;
 }
@@ -83,7 +84,7 @@ struct scn_list *pile_add_scn(Elf_Scn *scn, struct elf_list *elf, unsigned p)
   
   if (p >= PILE_COUNT)
 	{
-	  fprintf(stderr, "error: Unknown pile type %d\n", p);
+	  eprintf("Unknown pile type %d", p);
 	  exit(EXIT_FAILURE);
 	}
     
@@ -199,7 +200,7 @@ Elf32_Shdr *pile_write_elf(Elf *e, unsigned p, struct buffer *shstrtab_buf)
 	  outshdr->sh_flags = SHF_WRITE | SHF_ALLOC;
 	  break;
 	default:
-	  fprintf(stderr, "error: Unknown pile type %d\n", p);
+	  eprintf("Unknown pile type %d", p);
 	  exit(EXIT_FAILURE);
 	  break;
 	}	  
@@ -312,7 +313,7 @@ Elf32_Shdr *pile_write_elf(Elf *e, unsigned p, struct buffer *shstrtab_buf)
 				  k += 16;
 				  break;
 				default:
-				  fprintf(stderr, "error: Invalid type in inflated section: %d\n", src[k]);
+				  eprintf("Invalid type in inflated section: %d", src[k]);
 				  exit(EXIT_FAILURE);
 				}
 			}
@@ -324,7 +325,7 @@ Elf32_Shdr *pile_write_elf(Elf *e, unsigned p, struct buffer *shstrtab_buf)
 
 		  if (shdr->sh_info != buf.pos)
 			{
-			  fprintf(stderr, "error: Code size does not match\n");
+			  eprintf("Code size does not match");
 			  exit(EXIT_FAILURE);
 			}
 

@@ -26,8 +26,9 @@
 	#include <errno.h>
 	#include <getopt.h>
     #include <libelf.h>
-
+    
 	#include "code.h"
+	#include "errors.h"
 	#include "exprs.h"
 	#include "files.h"
 	#include "optab.h"
@@ -35,6 +36,8 @@
 	#include "symtab.h"
     #include "elflemberg.h"
     #include "buffer.h"
+
+	const char *argv0;
 
 	extern FILE* yyin;
 	int yylex(void);
@@ -128,7 +131,11 @@ Section : SECT NewLine
 		{
 		  struct bundle comm;
 		  struct sect *old_sect;
-		  int align = $6.intval;		  
+		  int align = $6.intval;
+		  if (align < 4)
+			{
+			  align = 4;
+			}
 
 		  /* .comm implicitly switches to .bss */
 		  old_sect = curr_sect;
@@ -738,7 +745,7 @@ NewLine: NewLine '\n'
 
 void yyerror(const char *msg)
 {
-	fprintf(stderr, "error: in line %d: %s\n", line_number, msg);
+	eprintf("in line %d: %s", line_number, msg);
 	exit(EXIT_FAILURE);
 }
 
@@ -779,7 +786,7 @@ static void emit_string(const char *str)
 								}
 							/* fall through for invalid format */
 						default:
-							fprintf(stderr, "error: Invalid escaped character: `%c'", *p);
+							eprintf("Invalid escaped character: `%c'", *p);
 							exit(EXIT_FAILURE);
 						}
 				} 
@@ -891,10 +898,10 @@ int main(int argc, char **argv)
 	int opt;
 	int found_outfile = 0;
 
+	argv0 = argv[0];
+
 	curr_sect = sections_init(&sections);
 	symtab_init();
-
-	outfd = STDOUT_FILENO;
 
 	while ((opt = getopt(argc, argv, "ho:")) != -1)
 	  {
@@ -906,10 +913,7 @@ int main(int argc, char **argv)
 		  case 'o':
 			if (!found_outfile)
 			  {
-				if (strcmp(optarg, "-") != 0)
-				  {
-					outfd = xopen(optarg, O_CREAT | O_WRONLY, 0666);
-				  }						
+				outfd = xopen(optarg, O_CREAT | O_WRONLY, 0666);
 				found_outfile = 1;
 			  }
 			else
@@ -936,6 +940,11 @@ int main(int argc, char **argv)
 		yyin = stdin;
 	  }
 	infiles = &argv[optind];
+
+	if (!found_outfile)
+	  {
+		outfd = xopen("a.o", O_CREAT | O_WRONLY, 0666);							
+	  }
 
 	yyparse();
 

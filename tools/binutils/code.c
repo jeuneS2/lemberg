@@ -21,6 +21,7 @@
 
 #include "code.h"
 #include "elflemberg.h"
+#include "errors.h"
 #include "exprs.h"
 #include "optab.h"
 #include "symtab.h"
@@ -31,7 +32,7 @@ static int fits_bits(int val, unsigned int bits) {
 
 static void check_bits(int val, unsigned int bits) {
 	if (!fits_bits(val, bits)) {
-		fprintf(stderr, "error: Value does not fit field size %0x / %d\n", val, bits);
+		eprintf("Value does not fit field size %0x / %d", val, bits);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -40,7 +41,7 @@ static unsigned int force_eval(struct expr e) {
   struct reloc_info reloc = expr_evaluate(e);
   if (reloc.symbol != NULL)
 	{
-	  fprintf(stderr, "error: Relocation invalid for format\n");
+	  eprintf("Relocation invalid for format");
 	  exit(EXIT_FAILURE);
 	}
   return reloc.intval;
@@ -286,8 +287,7 @@ static unsigned long conv_format_J(struct asmop op, const char *sect, unsigned l
 
 	/* special handling to ease identification */
 	if (!(fits_bits(target, 15) && fits_bits(-target, 15))) {
-		fprintf(stderr, "error: Branch offset too large: ");
-		fprintf(stderr, "%08x / %s\n",
+		eprintf("Branch offset too large: %08x / %s",
 				target, op.fmt.J.target.strval);
 		exit(EXIT_FAILURE);
 	}
@@ -311,8 +311,7 @@ static unsigned long conv_format_Z(struct asmop op, const char *sect, unsigned l
 
 	/* special handling to ease identification */
 	if (!(fits_bits(target, 10) && fits_bits(-target, 10))) {
-		fprintf(stderr, "error: Branch offset too large: ");
-		fprintf(stderr, "%08x / %s\n",
+		eprintf("Branch offset too large: %08x / %s",
 				target, op.fmt.Z.target.strval);
 		exit(EXIT_FAILURE);
 	}
@@ -432,7 +431,7 @@ unsigned long conv_asmop(struct asmop op, const char *sect, unsigned long pos)
 	} else if (is_format_X(op.op)) {
 	  return conv_format_X(op, sect, pos);
 	} else {
-		fprintf(stderr, "error: Wrong instruction format.\n");
+	    eprintf("Wrong instruction format.");
 		exit(EXIT_FAILURE);
 	}
 	return 0;

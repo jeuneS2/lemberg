@@ -27,10 +27,13 @@
 
 #include "code.h"
 #include "elflemberg.h"
+#include "errors.h"
 #include "exprs.h"
 #include "files.h"
 #include "pile.h"
 #include "symtab.h"
+
+const char *argv0;
 
 char **infiles;
 int outfd;
@@ -154,7 +157,7 @@ static void load_elf(Elf *e)
 						{
 						  if (sym_get(name) != NULL && sym_get(name)->defined)
 							{
-							  fprintf(stderr, "warning: Redefining symbol: %s\n", name);
+							  wprintf("Redefining symbol: %s", name);
 							}
 						  else
 							{				  				  
@@ -202,38 +205,37 @@ static void load_hull()
 	{
 	  for (s = undef_syms, undef_syms = NULL; s != NULL; s = s->next)
 		{
+		  struct string_list *a;
 		  if (sym_get(s->str) == NULL)
 			{
-			  fprintf(stderr, "error: Undefined symbol missing in symbol table\n");
+			  eprintf("Undefined symbol missing in symbol table");
 			  exit(EXIT_FAILURE);
 			}
-		  if (!sym_get(s->str)->defined)
+		  for (a = archives; a != NULL && !sym_get(s->str)->defined; a = a->next)
 			{
-			  struct string_list *a;
-			  for (a = archives; a != NULL; a = a->next)
+			  int fd = xopen(a->str, O_RDONLY, 0);
+			  Elf *ar = xelf_begin(fd, ELF_C_READ, NULL);
+			  size_t arsyms_size;
+			  Elf_Arsym *arsyms = elf_getarsym(ar, &arsyms_size);
+			  for (i = 0; i < arsyms_size; i++)
 				{
-				  int fd = xopen(a->str, O_RDONLY, 0);
-				  Elf *ar = xelf_begin(fd, ELF_C_READ, NULL);
-				  size_t arsyms_size;
-				  Elf_Arsym *arsyms = elf_getarsym(ar, &arsyms_size);
-				  for (i = 0; i < arsyms_size; i++)
+				  if (arsyms[i].as_name != NULL
+					  && strcmp(arsyms[i].as_name, s->str) == 0)
 					{
-					  if (arsyms[i].as_name != NULL && strcmp(arsyms[i].as_name, s->str) == 0)
-						{
-						  Elf *e;
-						  /* TODO: add check */
-						  elf_rand(ar, arsyms[i].as_off);
-						  e = xelf_begin(fd, ELF_C_READ, ar);
-						  load_elf(e);					  
-						}
+					  Elf *e;
+					  /* TODO: add check */
+					  elf_rand(ar, arsyms[i].as_off);
+					  e = xelf_begin(fd, ELF_C_READ, ar);
+					  load_elf(e);
+					  break;
 					}
-				  xelf_end(ar);
 				}
+			  xelf_end(ar);
 			}
 		  if (!sym_get(s->str)->defined)
 			{
 			  /* symbol still not defined */
-			  fprintf(stderr, "error: Undefined symbol: %s\n", s->str);
+			  eprintf("Undefined symbol: %s", s->str);
 			  exit(EXIT_FAILURE);
 			}
 		}
@@ -308,12 +310,14 @@ static void reloc(void)
 					  unsigned d = *data & 0x0007ffff;
 					  if ((addr & 0x3) != 0)
 						{
-						  fprintf(stderr, "error: Cannot relocate symbol %s to unaligned address\n", name);
+						  eprintf("Cannot relocate symbol %s to unaligned address", name);
+						  exit(EXIT_FAILURE);
 						}
 					  d += addr >> 2;
 					  if ((d & 0xfff80000) != 0)
 						{
-						  fprintf(stderr, "error: Overflow for relocation of symbol %s\n", name);
+						  eprintf("Overflow for relocation of symbol %s", name);
+						  exit(EXIT_FAILURE);
 						}
 					  *data = (*data & 0xfff80000) | d;
 					}
@@ -332,13 +336,15 @@ static void reloc(void)
 
 					  if ((d & 0xffffc007) != 0)
 						{
-						  fprintf(stderr, "error: Overflow for relocation of symbol %s\n", name);
+						  eprintf("Overflow for relocation of symbol %s", name);
+						  exit(EXIT_FAILURE);
 						}
 					  *data = (*data & 0xffffc007) | d;
 					}
 				  else
 					{
-					  fprintf(stderr, "error: Unknown relocation type %d\n", type);
+					  eprintf("Unknown relocation type %d", type);
+					  exit(EXIT_FAILURE);
 					}
 				}
 			}
@@ -437,7 +443,8 @@ static void write_elf(void)
 		  phdr[i+1].p_flags = PF_R | PF_W;
 		  break;
 		default:
-		  fprintf(stderr, "Unknown pile type %d\n", i);
+		  eprintf("Unknown pile type %d", i);
+		  exit(EXIT_FAILURE);
 		  break;
 		}
 
@@ -460,6 +467,8 @@ int main(int argc, char **argv)
 {
 	int opt;
 	int found_outfile = 0;
+
+	argv0 = argv[0];
 
 	symtab_init();
 

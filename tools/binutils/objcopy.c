@@ -25,9 +25,12 @@
 #include <getopt.h>
 #include <libelf.h>
 
-#include "files.h"
 #include "elflemberg.h"
+#include "errors.h"
+#include "files.h"
 #include "vhdstrings.h"
+
+const char *argv0;
 
 char **infiles;
 FILE *outfile;
@@ -56,7 +59,7 @@ static void format(size_t pos, unsigned char *buf)
 	  fprintf(outfile, vhd_format, pos, buf[3], buf[2], buf[1], buf[0]);
 	  break;
 	default:
-	  fprintf(stderr, "error: Unsupported output format\n");
+	  eprintf("Unsupported output format");
 	  exit(EXIT_FAILURE);
 	}
 }
@@ -77,7 +80,7 @@ static void format_head(size_t size)
 	  fprintf(outfile, vhd_header, vhdname, vhdname, vhdname);
 	  break;
 	default:
-	  fprintf(stderr, "error: Unsupported output format\n");
+	  eprintf("Unsupported output format");
 	  exit(EXIT_FAILURE);
 	}
 }
@@ -94,7 +97,7 @@ static void format_foot(void)
 	  fprintf(outfile, "%s", vhd_footer);
 	  break;
 	default:
-	  fprintf(stderr, "error: Unsupported output format\n");
+	  eprintf("Unsupported output format");
 	  exit(EXIT_FAILURE);
 	}
 }
@@ -137,14 +140,14 @@ static void format_elf(void)
 			  || (phdr[i].p_filesz & 0x03) != 0
 			  || (phdr[i].p_memsz & 0x03) != 0)
 			{
-			  fprintf(stderr, "error: Cannot load unaligned segments\n");
+			  eprintf("Cannot load unaligned segments");
 			  exit(EXIT_FAILURE);
 			}
 
 		  /* Forward output file to virtual address */
 		  if (outpos*4 > phdr[i].p_vaddr)
 			{
-			  fprintf(stderr, "error: Cannot load overlapping segments\n");
+			  eprintf("Cannot load overlapping segments");
 			  exit(EXIT_FAILURE);
 			}
 		  for (; outpos*4 < phdr[i].p_vaddr; outpos++)
@@ -160,7 +163,7 @@ static void format_elf(void)
 			  unsigned char buf[4];
 			  if (read(fd, buf, 4) != 4)
 				{
-				  fprintf(stderr, "error: %s\n", strerror(errno));
+				  eprintf("%s", strerror(errno));
 				  exit(EXIT_FAILURE);
 				}
 			  format(outpos, buf);
@@ -190,6 +193,8 @@ int main(int argc, char **argv)
 	int found_outfile = 0;
 	int found_vhdname = 0;
 	int seen_format = 0;
+
+	argv0 = argv[0];
 
 	while ((opt = getopt(argc, argv, "hbdve:o:")) != -1)
 	  {
@@ -264,7 +269,7 @@ int main(int argc, char **argv)
 			outfile = xfopen("a.vhd", "w");
 			break;
 		  default:
-			fprintf(stderr, "error: Unsupported output format\n");
+			eprintf("Unsupported output format");
 			exit(EXIT_FAILURE);
 		  }
 	  }

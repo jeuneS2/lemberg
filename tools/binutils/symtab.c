@@ -20,8 +20,9 @@
 #include <string.h>
 #include <libelf.h>
 
-#include "elflemberg.h"
 #include "buffer.h"
+#include "elflemberg.h"
+#include "errors.h"
 #include "pile.h"
 #include "section.h"
 #include "symtab.h"
@@ -199,7 +200,7 @@ Elf_Scn *symtab_write_elf(Elf *e, struct sect * sects,
 			  
 			  size = expr_evaluate(sym->size);
 			  if (size.symbol != NULL) {
-				fprintf(stderr, "error: cannot relocate symbol size\n");;
+				eprintf("Cannot relocate symbol size");
 				exit(EXIT_FAILURE);
 			  }
 			  esym.st_size = size.intval;

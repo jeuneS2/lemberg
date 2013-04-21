@@ -23,6 +23,7 @@
 
 #include "code.h"
 #include "elflemberg.h"
+#include "errors.h"
 #include "section.h"
 #include "symtab.h"
 
@@ -104,11 +105,11 @@ void section_write_elf(Elf *e, struct sect *sect, struct buffer *shstrtab_buf)
 			  {
 				struct reloc_info size = expr_evaluate(sect->data[i].raw);
 				if (size.symbol != NULL) {
-				  fprintf(stderr, "error: cannot relocate function size\n");;
+				  eprintf("Cannot relocate function size");;
 				  exit(EXIT_FAILURE);
 				}
 				if ((size.intval > (1 << 15)) || (size.intval < 0)) {
-				  fprintf(stderr, "error: invalid size %016llx\n", size.intval);
+				  eprintf("Invalid size %016llx", size.intval);
 				  exit(EXIT_FAILURE);
 				}
 				buffer_write(&buf, size.intval, 4);
@@ -180,7 +181,7 @@ void section_write_elf(Elf *e, struct sect *sect, struct buffer *shstrtab_buf)
 			  buffer_write(&buf, conv_asmop(sect->data[i].op[3].op, sect->name, buf.pos), 4);
 			  break;
 			default:
-			  fprintf(stderr, "error: invalid type for translated section\n");
+			  eprintf("Invalid type for translated section");
 			  exit(EXIT_FAILURE);
 			}
 		}
@@ -201,17 +202,19 @@ void section_write_elf(Elf *e, struct sect *sect, struct buffer *shstrtab_buf)
 				struct reloc_info raw = expr_evaluate(sect->data[i].raw);
 				if (raw.symbol != NULL)
 				  {
-					fprintf(stderr, "error: cannot relocate in zero section\n");
+					eprintf("Cannot relocate in zero section");
+					exit(EXIT_FAILURE);
 				  }
 				if (raw.intval != 0)
 				  {
-					fprintf(stderr, "error: cannot put non-zero data in zero section\n");
+					eprintf("Cannot put non-zero data in zero section");
+					exit(EXIT_FAILURE);
 				  }
 				buffer_write(&buf, raw.intval, sect->data[i].size);
 			  }
 			  break;
 			default:
-			  fprintf(stderr, "error: invalid type for zero section\n");
+			  eprintf("Invalid type for zero section");
 			  exit(EXIT_FAILURE);
 			}
 		}
@@ -235,7 +238,7 @@ void section_write_elf(Elf *e, struct sect *sect, struct buffer *shstrtab_buf)
 			  }
 			  break;
 			default:
-			  fprintf(stderr, "error: invalid type for raw section\n");
+			  eprintf("Invalid type for raw section");
 			  exit(EXIT_FAILURE);
 			}
 		}
@@ -270,7 +273,7 @@ void section_write_elf(Elf *e, struct sect *sect, struct buffer *shstrtab_buf)
 	  shdr->sh_flags = SHF_WRITE | SHF_ALLOC;
 	  break;
 	default:
-	  fprintf(stderr, "error: unknown section type\n");
+	  eprintf("Unknown section type");
 	  exit(EXIT_FAILURE);
 	}
   
