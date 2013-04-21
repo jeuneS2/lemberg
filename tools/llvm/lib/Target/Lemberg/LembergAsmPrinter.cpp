@@ -182,7 +182,7 @@ MCSymbol *LembergAsmPrinter::GetBlockAddressSymbol(const BlockAddress *BA) const
 	// create basic block offsets relative to function start
 	const MCSymbol *BBSym = MMI->getAddrLabelSymbol(BA->getBasicBlock());
 	SmallString<64> ExprStr = BBSym->getName();
-	ExprStr += "@";
+	ExprStr += "@.";
 	ExprStr += NameStr;
 
 	MCSymbol *RelSym = OutContext.GetOrCreateSymbol(ExprStr);
