@@ -3218,6 +3218,93 @@ public:
   }
 };
 
+namespace {
+// Lemberg abstract base class
+class LembergTargetInfo : public TargetInfo {
+  static const char * const GCCRegNames[];
+
+public:
+  LembergTargetInfo(const std::string& triple) : TargetInfo(triple) {
+    DescriptionString = ("e-p32:32:32-"
+	                     "i1:8:32-i8:8:32-i16:16:32-i32:32:32-i64:32:64-"
+						 "f32:32:32-f64:32:64-"
+						 "a0:0:64-n8:16:32");
+  }
+
+  virtual void getTargetBuiltins(const Builtin::Info *&Records,
+                                 unsigned &NumRecords) const {
+    // FIXME: Implement.
+    Records = 0;
+    NumRecords = 0;
+  }
+
+  virtual void getTargetDefines(const LangOptions &Opts,
+                                MacroBuilder &Builder) const {
+	// Target identification.
+	Builder.defineMacro("__lemberg__");
+	Builder.defineMacro("__LEMBERG__");
+  }
+
+  virtual bool hasFeature(StringRef Feature) const {
+    return Feature == "lemberg";
+  }
+  
+  virtual const char *getVAListDeclaration() const {
+    return "typedef char* __builtin_va_list;";
+  }
+  virtual const char *getTargetPrefix() const {
+    return "lemberg";
+  }
+  virtual void getGCCRegNames(const char * const *&Names,
+                              unsigned &NumNames) const;
+  virtual void getGCCRegAliases(const GCCRegAlias *&Aliases,
+                                unsigned &NumAliases) const {
+	Aliases = 0;
+	NumAliases = 0;
+  }
+  virtual bool validateAsmConstraint(const char *&Name,
+                                     TargetInfo::ConstraintInfo &Info) const {
+    switch (*Name) {
+    default: return false;
+    case 'r': // Global register
+    case 'f': // Floating point register
+      Info.setAllowsRegister();
+      return true;
+    }
+  }
+  virtual const char *getClobbers() const {
+    return "";
+  }
+};
+
+const char * const LembergTargetInfo::GCCRegNames[] = {
+  "r0",   "r1",   "r2",   "r3",   "r4",   "r5",   "r6",   "r7",
+  "r8",   "r9",   "r10",  "r11",  "r12",  "r13",  "r14",  "r15", "r31",
+  "r0.16", "r0.17", "r0.18", "r0.19", "r0.20", "r0.21", "r0.22", "r0.23",
+  "r0.24", "r0.25", "r0.26", "r0.27", "r0.28", "r0.29", "r0.30",
+  "r1.16", "r1.17", "r1.18", "r1.19", "r1.20", "r1.21", "r1.22", "r1.23",
+  "r1.24", "r1.25", "r1.26", "r1.27", "r1.28", "r1.29", "r1.30",
+  "r2.16", "r2.17", "r2.18", "r2.19", "r2.20", "r2.21", "r2.22",  "r2.23",
+  "r2.24", "r2.25", "r2.26", "r2.27", "r2.28", "r2.29", "r2.30",
+  "r3.16", "r3.17", "r3.18", "r3.19", "r3.20", "r3.21", "r3.22",  "r3.23",
+  "r3.24", "r3.25", "r3.26", "r3.27", "r3.28", "r3.29", "r3.30",
+  "$f0",  "$f1",  "$f2",  "$f3",  "$f4",  "$f5",  "$f6",  "$f7",
+  "$f8",  "$f9",  "$f10", "$f11", "$f12", "$f13", "$f14", "$f15",
+  "$d0",  "$d1",  "$d2",  "$d3",  "$d4",  "$d5",  "$d6",  "$d7",
+  "$c0",  "$c1",  "$c2",  "$c3",
+  "$mul0.0", "$mul0.1", "$mul1.0", "$mul1.1",
+  "$mul2.0", "$mul2.1", "$mul3.0", "$mul3.1",
+  "$ro", "$rb", "$ba", "$iro", "$irb", "$itmp"
+};
+
+void LembergTargetInfo::getGCCRegNames(const char * const *&Names,
+                                   unsigned &NumNames) const {
+  Names = GCCRegNames;
+  NumNames = llvm::array_lengthof(GCCRegNames);
+}
+
+} // end anonymous namespace.
+
 const char * const SparcV8TargetInfo::GCCRegNames[] = {
   "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
   "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
@@ -3913,6 +4000,9 @@ static TargetInfo *AllocateTarget(const std::string &T) {
 
   case llvm::Triple::hexagon:
     return new HexagonTargetInfo(T);
+
+  case llvm::Triple::lemberg:
+    return new LembergTargetInfo(T);
 
   case llvm::Triple::arm:
   case llvm::Triple::thumb:

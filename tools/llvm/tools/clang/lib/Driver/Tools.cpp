@@ -1104,6 +1104,14 @@ void Clang::AddHexagonTargetArgs(const ArgList &Args,
   CmdArgs.push_back ("-machine-sink-split=0");
 }
 
+void Clang::AddLembergTargetArgs(const ArgList &Args,
+								 ArgStringList &CmdArgs) const {
+  if (const Arg *A = Args.getLastArg(options::OPT_march_EQ)) {
+    CmdArgs.push_back("-target-cpu");
+    CmdArgs.push_back(A->getValue(Args));
+  }
+}
+
 static bool
 shouldUseExceptionTablesForObjCExceptions(unsigned objcABIVersion,
                                           const llvm::Triple &Triple) {
@@ -1752,6 +1760,10 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
 
   case llvm::Triple::hexagon:
     AddHexagonTargetArgs(Args, CmdArgs);
+    break;
+
+  case llvm::Triple::lemberg:
+    AddLembergTargetArgs(Args, CmdArgs);
     break;
   }
 
@@ -3145,6 +3157,104 @@ void hexagon::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
 }
 // Hexagon tools end.
+
+// Lemberg tools start.
+void lemberg::Assemble::ConstructJob(Compilation &C, const JobAction &JA,
+                               const InputInfo &Output,
+                               const InputInfoList &Inputs,
+                               const ArgList &Args,
+                               const char *LinkingOutput) const {
+
+  ArgStringList CmdArgs;
+
+  const char *ASName = "as";
+  const char *Exec = Args.MakeArgString(getToolChain().GetProgramPath(ASName));
+
+  if (Output.isFilename()) {
+    CmdArgs.push_back("-o");
+    CmdArgs.push_back(Output.getFilename());
+  } else {
+    assert(Output.isNothing() && "Unexpected output");
+  }
+
+  for (InputInfoList::const_iterator
+         it = Inputs.begin(), ie = Inputs.end(); it != ie; ++it) {
+    const InputInfo &II = *it;
+    if (II.isFilename())
+      CmdArgs.push_back(II.getFilename());
+	else
+      II.getInputArg().render(Args, CmdArgs);
+  }
+
+  C.addCommand(new Command(JA, *this, Exec, CmdArgs));
+}
+
+void lemberg::Link::ConstructJob(Compilation &C, const JobAction &JA,
+                               const InputInfo &Output,
+                               const InputInfoList &Inputs,
+                               const ArgList &Args,
+                               const char *LinkingOutput) const {
+
+  ArgStringList CmdArgs;
+
+  const char *LDName = "ld";
+  const char *Exec = Args.MakeArgString(getToolChain().GetProgramPath(LDName));
+  SmallString<16> LibDir = SmallString<16>(getToolChain().GetProgramPath(LDName));
+  llvm::sys::path::remove_filename(LibDir);
+  llvm::sys::path::append(LibDir, "..", "lemberg", "lib");
+
+  SmallString<16> Crt0Path = LibDir;
+  llvm::sys::path::append(Crt0Path, "crt0.o");
+  SmallString<16> CrtEnd0Path = LibDir;
+  llvm::sys::path::append(CrtEnd0Path, "crtend0.o"); 
+
+  if (Output.isFilename()) {
+    CmdArgs.push_back("-o");
+    CmdArgs.push_back(Output.getFilename());
+  } else {
+    assert(Output.isNothing() && "Unexpected output");
+  }
+
+  if (!Args.hasArg(options::OPT_nostdlib)) {
+	CmdArgs.push_back("-L");
+	CmdArgs.push_back(Args.MakeArgString(LibDir));
+  }
+
+  Args.AddAllArgs(CmdArgs, options::OPT_L);
+
+  if (!Args.hasArg(options::OPT_nostdlib) &&
+      !Args.hasArg(options::OPT_nostartfiles)) {
+	CmdArgs.push_back(Args.MakeArgString(Crt0Path));
+  }
+
+  for (InputInfoList::const_iterator
+         it = Inputs.begin(), ie = Inputs.end(); it != ie; ++it) {
+    const InputInfo &II = *it;
+    if (II.isFilename())
+      CmdArgs.push_back(II.getFilename());
+	else
+      II.getInputArg().render(Args, CmdArgs);
+  }
+
+  if (!Args.hasArg(options::OPT_nostdlib) &&
+      !Args.hasArg(options::OPT_nodefaultlibs)) {
+    if (getToolChain().getDriver().CCCIsCXX)
+      getToolChain().AddCXXStdlibLibArgs(Args, CmdArgs);
+	CmdArgs.push_back("-lc");
+	CmdArgs.push_back("-llemberg");
+	CmdArgs.push_back("-lnosys");
+	CmdArgs.push_back("-lll");	
+  }
+
+  if (!Args.hasArg(options::OPT_nostdlib) &&
+      !Args.hasArg(options::OPT_nostartfiles)) {
+	CmdArgs.push_back(Args.MakeArgString(CrtEnd0Path));
+  }
+
+  C.addCommand(new Command(JA, *this, Args.MakeArgString(Exec), CmdArgs));
+
+}
+// Lemberg tools end.
 
 
 const char *darwin::CC1::getCC1Name(types::ID Type) const {

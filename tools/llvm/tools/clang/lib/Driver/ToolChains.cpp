@@ -1510,6 +1510,66 @@ const char *Hexagon_TC::GetForcedPicModel() const {
   return 0;
 } // End Hexagon
 
+/// Lemberg Toolchain
+
+Lemberg_TC::Lemberg_TC(const Driver &D, const llvm::Triple& Triple)
+  : ToolChain(D, Triple) {
+  getProgramPaths().push_back(getDriver().getInstalledDir());
+  if (getDriver().getInstalledDir() != getDriver().Dir.c_str())
+    getProgramPaths().push_back(getDriver().Dir);
+}
+
+Lemberg_TC::~Lemberg_TC() {
+  // Free tool implementations.
+  for (llvm::DenseMap<unsigned, Tool*>::iterator
+         it = Tools.begin(), ie = Tools.end(); it != ie; ++it)
+    delete it->second;
+}
+
+Tool &Lemberg_TC::SelectTool(const Compilation &C,
+                             const JobAction &JA,
+                             const ActionList &Inputs) const {
+  Action::ActionClass Key;
+
+  if (getDriver().ShouldUseClangCompiler(C, JA, getTriple()))
+    Key = Action::AnalyzeJobClass;
+  else
+    Key = JA.getKind();
+
+  Tool *&T = Tools[Key];
+  if (!T) {
+    switch (Key) {
+    case Action::InputClass:
+    case Action::BindArchClass:
+      assert(0 && "Invalid tool kind.");
+    case Action::AnalyzeJobClass:
+      T = new tools::Clang(*this); break;
+    case Action::AssembleJobClass:
+      T = new tools::lemberg::Assemble(*this); break;
+    case Action::LinkJobClass:
+      T = new tools::lemberg::Link(*this); break;
+    default:
+      assert(false && "Unsupported action for Lemberg target.");
+    }
+  }
+
+  return *T;
+}
+
+bool Lemberg_TC::IsUnwindTablesDefault() const {
+  // FIXME: Gross; we should probably have some separate target
+  // definition, possibly even reusing the one in clang.
+  return false;
+}
+
+const char *Lemberg_TC::GetDefaultRelocationModel() const {
+  return "static";
+}
+
+const char *Lemberg_TC::GetForcedPicModel() const {
+  return 0;
+} // End Lemberg
+
 
 /// TCEToolChain - A tool chain using the llvm bitcode tools to perform
 /// all subcommands. See http://tce.cs.tut.fi for our peculiar target.

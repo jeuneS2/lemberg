@@ -42,6 +42,7 @@ namespace tools {
     void AddSparcTargetArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
     void AddX86TargetArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
     void AddHexagonTargetArgs (const ArgList &Args, ArgStringList &CmdArgs) const;
+    void AddLembergTargetArgs(const ArgList &Args, ArgStringList &CmdArgs) const;
 
   public:
     Clang(const ToolChain &TC) : Tool("clang", "clang frontend", TC) {}
@@ -191,6 +192,39 @@ namespace hexagon {
                               const char *LinkingOutput) const;
   };
 } // end namespace hexagon.
+
+namespace lemberg {
+  // For Lemberg, we do not need to instantiate tools for PreProcess, PreCompile and Compile.
+  // We simply use "clang -cc1" for those actions.
+  class LLVM_LIBRARY_VISIBILITY Assemble : public Tool {
+  public:
+    Assemble(const ToolChain &TC) : Tool("lemberg::Assemble",
+      "lemberg-as", TC) {}
+
+    virtual bool hasIntegratedCPP() const { return false; }
+
+    virtual void ConstructJob(Compilation &C, const JobAction &JA,
+                              const InputInfo &Output,
+                              const InputInfoList &Inputs,
+                              const ArgList &TCArgs,
+                              const char *LinkingOutput) const;
+  };
+
+  class LLVM_LIBRARY_VISIBILITY Link : public Tool {
+  public:
+    Link(const ToolChain &TC) : Tool("lemberg::Link",
+      "lemberg-ld", TC) {}
+
+    virtual bool hasIntegratedCPP() const { return false; }
+    virtual bool isLinkJob() const { return true; }
+
+    virtual void ConstructJob(Compilation &C, const JobAction &JA,
+                              const InputInfo &Output,
+                              const InputInfoList &Inputs,
+                              const ArgList &TCArgs,
+                              const char *LinkingOutput) const;
+  };
+} // end namespace lemberg.
 
 
 namespace darwin {

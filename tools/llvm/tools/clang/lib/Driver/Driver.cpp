@@ -1703,6 +1703,11 @@ const ToolChain &Driver::getToolChain(const ArgList &Args,
         TC = new toolchains::TCEToolChain(*this, Target);
         break;
       }
+      // No OS on Lemberg
+      if (Target.getArchName() == "lemberg") {
+        TC = new toolchains::Lemberg_TC(*this, Target);
+        break;
+      }
 
       TC = new toolchains::Generic_GCC(*this, Target, Args);
       break;
