@@ -2,8 +2,9 @@ all: libll.a
 
 PREFIX=/usr/local/lemberg
 
-CC = llvm-clang -ccc-host-triple i386-unknown-none -U__i386__ -D__lemberg__ -O3 -emit-llvm
-AS = llvm-as
+include ${PREFIX}/etc/Makefile.rules
+
+CFLAGS=-O3 -mllvm -regalloc=greedy -mllvm -pre-RA-sched=list-hybrid -mllvm -tail-dup-size=24
 
 OBJS = divsi3.o modsi3.o udivsi3.o umodsi3.o \
 	clzsi2.o \
@@ -15,15 +16,14 @@ OBJS = divsi3.o modsi3.o udivsi3.o umodsi3.o \
 	floatsisf.o floatsidf.o floatunsidf.o \
 	fixsfsi.o fixdfsi.o fixunsdfsi.o
 
-all: libll.a libllsyms.o
+all: libll.a
 
 libll.a: ${OBJS}
-	llvm-ar r libll.a ${OBJS}
+	ar r libll.a ${OBJS}
 
-install: libll.a libllsyms.o
+install: libll.a
 	install -d ${PREFIX}/lib/
 	install -m 0644 libll.a ${PREFIX}/lib/
-	install -m 0644 libllsyms.o ${PREFIX}/lib/
 
 clean:
 	rm -f -- libll.a *.o *~

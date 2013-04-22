@@ -553,7 +553,7 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
-ac_unique_file="ioconsts.h"
+ac_unique_file="include/ioconsts.h"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 host_makefile_frag_path

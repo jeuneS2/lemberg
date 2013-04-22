@@ -1,20 +1,20 @@
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:32:32-n8:16:32-S128"
-target triple = "i386-unknown-none"
-
-define void @intr_mnml() nounwind naked noinline {
-	call void asm sideeffect "
-		; save r0 and $$itmp
+		.text
+		.globl	_intr_mnml
+		.type	_intr_mnml,@function
+_intr_mnml:
+		.funsz ._intr_mnml_end-_intr_mnml
+		; save r0 and $itmp
 		#0: wb.s r15, 2
 		;;
 		#0: addi -8 -> r15
 		;;
 		#0: stm.s r0, r15, 0
 		;;
-		#0: ldx $$itmp -> r0
+		#0: ldx $itmp -> r0
 		;;
 		#0: stm.s r0, r15, 1
 		;;
-		; restore r0, load $$itmp to restore r31
+		; restore r0, load $itmp to restore r31
 		#0: ldm.s r15, 0
 		;;
 		#0: or r31, 0 -> r0
@@ -27,14 +27,18 @@ define void @intr_mnml() nounwind naked noinline {
 		;;
 		nop
 		;;
-		",""()
-	unreachable
-}
+		.align 4
+._intr_mnml_end:
+		.size _intr_mnml, ._intr_mnml_end-_intr_mnml
 
-@intr_userfun = common global [16 x void ()*] zeroinitializer, align 4
-		
-define void @intr() nounwind naked noinline {
-	call void asm sideeffect "
+        .globl  _intr_userfun
+		.type   _intr_userfun,@object
+        .comm   _intr_userfun,64,4
+
+		.globl	_intr
+		.type	_intr,@function
+_intr:
+		.funsz ._intr_end-_intr
 .save_global:
 		#0: wb.s r15, 19
 		;; 
@@ -60,35 +64,35 @@ define void @intr() nounwind naked noinline {
 		;;
 		#0: stm.s r9, r15, 9
 		;; 
-		#0: ldx $$c1 -> r0
+		#0: ldx $c1 -> r0
 		;;
 		#0: stm.s r0, r15, 10
 		;;
-		#0: ldx $$c2 -> r0
+		#0: ldx $c2 -> r0
 		;;
 		#0: stm.s r0, r15, 11
 		;;
-		#0: ldx $$c3 -> r0
+		#0: ldx $c3 -> r0
 		;;
 		#0: stm.s r0, r15, 12
 		;;
-		#0: ldx $$ro -> r0
+		#0: ldx $ro -> r0
 		;;
 		#0: stm.s r0, r15, 13
 		;;
-		#0: ldx $$rb -> r0
+		#0: ldx $rb -> r0
 		;;
 		#0: stm.s r0, r15, 14
 		;;
-		#0: ldx $$iro -> r0
+		#0: ldx $iro -> r0
 		;;
 		#0: stm.s r0, r15, 15
 		;;
-		#0: ldx $$irb -> r0
+		#0: ldx $irb -> r0
 		;;
 		#0: stm.s r0, r15, 16
 		;;
-		#0: ldx $$itmp -> r0
+		#0: ldx $itmp -> r0
 		;;
 		#0: stm.s r0, r15, 17
 		;;
@@ -116,67 +120,67 @@ define void @intr() nounwind naked noinline {
 		;;
 		#0: addi -64 -> r15
 		;; 
-		#0: ldx $$f0 -> r0
+		#0: ldx $f0 -> r0
 		;;
 		#0: stm.s r0, r15, 0
 		;; 
-		#0: ldx $$f1 -> r0
+		#0: ldx $f1 -> r0
 		;;
 		#0: stm.s r0, r15, 1
 		;; 
-		#0: ldx $$f2 -> r0
+		#0: ldx $f2 -> r0
 		;;
 		#0: stm.s r0, r15, 2
 		;; 
-		#0: ldx $$f3 -> r0
+		#0: ldx $f3 -> r0
 		;;
 		#0: stm.s r0, r15, 3
 		;; 
-		#0: ldx $$f4 -> r0
+		#0: ldx $f4 -> r0
 		;;
 		#0: stm.s r0, r15, 4
 		;; 
-		#0: ldx $$f5 -> r0
+		#0: ldx $f5 -> r0
 		;;
 		#0: stm.s r0, r15, 5
 		;; 
-		#0: ldx $$f6 -> r0
+		#0: ldx $f6 -> r0
 		;;
 		#0: stm.s r0, r15, 6
 		;; 
-		#0: ldx $$f7 -> r0
+		#0: ldx $f7 -> r0
 		;;
 		#0: stm.s r0, r15, 7
 		;; 
-		#0: ldx $$f8 -> r0
+		#0: ldx $f8 -> r0
 		;;
 		#0: stm.s r0, r15, 8
 		;; 
-		#0: ldx $$f9 -> r0
+		#0: ldx $f9 -> r0
 		;;
 		#0: stm.s r0, r15, 9
 		;; 
-		#0: ldx $$f10 -> r0
+		#0: ldx $f10 -> r0
 		;;
 		#0: stm.s r0, r15, 10
 		;; 
-		#0: ldx $$f11 -> r0
+		#0: ldx $f11 -> r0
 		;;
 		#0: stm.s r0, r15, 11
 		;; 
-		#0: ldx $$f12 -> r0
+		#0: ldx $f12 -> r0
 		;;
 		#0: stm.s r0, r15, 12
 		;; 
-		#0: ldx $$f13 -> r0
+		#0: ldx $f13 -> r0
 		;;
 		#0: stm.s r0, r15, 13
 		;; 
-		#0: ldx $$f14 -> r0
+		#0: ldx $f14 -> r0
 		;;
 		#0: stm.s r0, r15, 14
 		;;
-		#0: ldx $$f15 -> r0
+		#0: ldx $f15 -> r0
 		;;
 		#0: stm.s r0, r15, 15
 		;;
@@ -202,11 +206,11 @@ define void @intr() nounwind naked noinline {
 		;; 
 		#0: stm.s r0.30, r15, 7
 		;;
-		#0: ldx $$mul0.0 -> r0
+		#0: ldx $mul0.0 -> r0
 		;; 
 		#0: stm.s r0, r15, 8
 		;;
-		#0: ldx $$mul0.1 -> r0
+		#0: ldx $mul0.1 -> r0
 		;; 
 		#0: stm.s r0, r15, 9
 		;;
@@ -241,9 +245,9 @@ define void @intr() nounwind naked noinline {
 		;; 
 		#1: stm.s r1.30, r15, 7
 		;;
-		#1: ldx $$mul1.0 -> r0
+		#1: ldx $mul1.0 -> r0
 		;;
-		#1: ldx $$mul1.1 -> r0
+		#1: ldx $mul1.1 -> r0
 		#0: stm.s r0, r15, 8
 		;;
 		#0: stm.s r0, r15, 9
@@ -275,9 +279,9 @@ define void @intr() nounwind naked noinline {
 		;; 
 		#2: stm.s r2.30, r15, 7
 		;;
-		#2: ldx $$mul2.0 -> r0
+		#2: ldx $mul2.0 -> r0
 		;;
-		#2: ldx $$mul2.1 -> r0
+		#2: ldx $mul2.1 -> r0
 		#0: stm.s r0, r15, 8
 		;;
 		#0: stm.s r0, r15, 9
@@ -309,22 +313,34 @@ define void @intr() nounwind naked noinline {
 		;; 
 		#3: stm.s r3.30, r15, 7
 		;;
-		#3: ldx $$mul3.0 -> r0
+		#3: ldx $mul3.0 -> r0
 		;;
-		#3: ldx $$mul3.1 -> r0
+		#3: ldx $mul3.1 -> r0
 		#0: stm.s r0, r15, 8
 		;;
 		#0: stm.s r0, r15, 9
 		;;
 
-.call_userfun:",""()
+.call_userfun:
+		#0:	ldi -244 -> r0
+		;; 
+		#0:	ldm.b r0, 0
+		;; 
+		#0: ldga _intr_userfun -> r0
+        ;;
+		#0: s2add r0, r31 -> r0
+        ;;
+		#0: ldm.b r0, 0
+        ;;
+		#0: jop call    r31
+        ;;
+        nop
+        ;;
+        nop
+        ;;
+        nop
+        ;;
 
-		%1 = load volatile i32* inttoptr (i32 -244 to i32*), align 4
-		%2 = getelementptr inbounds [16 x void ()*]* @intr_userfun, i32 0, i32 %1
-		%3 = load volatile void ()** %2, align 4
-		call void %3() nounwind
-
-	call void asm sideeffect "
 .check_load_local3:
 		#0: ldi -56 -> r0
 		;; 
@@ -344,10 +360,10 @@ define void @intr() nounwind naked noinline {
 .load_local3:
 		#0: ldm.s r15, 36
 		;;
-		#3: stx r31 -> $$mul3.1
+		#3: stx r31 -> $mul3.1
 		#0: ldm.s r15, 32
 		;;
-		#3: stx r31 -> $$mul3.0
+		#3: stx r31 -> $mul3.0
 		#0: ldm.s r15, 28
 		;;
 		#3: or r31, 0 -> r3.30
@@ -384,10 +400,10 @@ define void @intr() nounwind naked noinline {
 .load_local2:
 		#0: ldm.s r15, 36
 		;;
-		#2: stx r31 -> $$mul2.1
+		#2: stx r31 -> $mul2.1
 		#0: ldm.s r15, 32
 		;;
-		#2: stx r31 -> $$mul2.0
+		#2: stx r31 -> $mul2.0
 		#0: ldm.s r15, 28
 		;;
 		#2: or r31, 0 -> r2.30
@@ -424,10 +440,10 @@ define void @intr() nounwind naked noinline {
 .load_local1:
 		#0: ldm.s r15, 36
 		;;
-		#1: stx r31 -> $$mul1.1
+		#1: stx r31 -> $mul1.1
 		#0: ldm.s r15, 32
 		;;
-		#1: stx r31 -> $$mul1.0
+		#1: stx r31 -> $mul1.0
 		#0: ldm.s r15, 28
 		;;
 		#1: or r31, 0 -> r1.30
@@ -458,11 +474,11 @@ define void @intr() nounwind naked noinline {
 .load_local0:
 		#0: ldm.s r15, 36
 		;;
-		#0: stx r31 -> $$mul0.1
+		#0: stx r31 -> $mul0.1
 		;; 
 		#0: ldm.s r15, 32
 		;;
-		#0: stx r31 -> $$mul0.0
+		#0: stx r31 -> $mul0.0
 		;; 
 		#0: ldm.s r15, 28
 		;;
@@ -508,67 +524,67 @@ define void @intr() nounwind naked noinline {
 .load_float:
 		#0: ldm.s r15, 60
 		;;
-		#0: stx r31 -> $$f15
+		#0: stx r31 -> $f15
 		;; 
 		#0: ldm.s r15, 56
 		;;
-		#0: stx r31 -> $$f14
+		#0: stx r31 -> $f14
 		;; 
 		#0: ldm.s r15, 52
 		;;
-		#0: stx r31 -> $$f13
+		#0: stx r31 -> $f13
 		;; 
 		#0: ldm.s r15, 48
 		;;
-		#0: stx r31 -> $$f12
+		#0: stx r31 -> $f12
 		;; 
 		#0: ldm.s r15, 44
 		;;
-		#0: stx r31 -> $$f11
+		#0: stx r31 -> $f11
 		;; 
 		#0: ldm.s r15, 40
 		;;
-		#0: stx r31 -> $$f10
+		#0: stx r31 -> $f10
 		;; 
 		#0: ldm.s r15, 36
 		;;
-		#0: stx r31 -> $$f9
+		#0: stx r31 -> $f9
 		;; 
 		#0: ldm.s r15, 32
 		;;
-		#0: stx r31 -> $$f8
+		#0: stx r31 -> $f8
 		;; 
 		#0: ldm.s r15, 28
 		;;
-		#0: stx r31 -> $$f7
+		#0: stx r31 -> $f7
 		;; 
 		#0: ldm.s r15, 24
 		;;
-		#0: stx r31 -> $$f6
+		#0: stx r31 -> $f6
 		;; 
 		#0: ldm.s r15, 20
 		;;
-		#0: stx r31 -> $$f5
+		#0: stx r31 -> $f5
 		;; 
 		#0: ldm.s r15, 16
 		;;
-		#0: stx r31 -> $$f4
+		#0: stx r31 -> $f4
 		;; 
 		#0: ldm.s r15, 12
 		;;
-		#0: stx r31 -> $$f3
+		#0: stx r31 -> $f3
 		;; 
 		#0: ldm.s r15, 8
 		;;
-		#0: stx r31 -> $$f2
+		#0: stx r31 -> $f2
 		;; 
 		#0: ldm.s r15, 4
 		;;
-		#0: stx r31 -> $$f1
+		#0: stx r31 -> $f1
 		;; 
 		#0: ldm.s r15, 0
 		;;
-		#0: stx r31 -> $$f0
+		#0: stx r31 -> $f0
 		;; 
 		#0: addi 64 -> r15
 		;;
@@ -582,31 +598,31 @@ define void @intr() nounwind naked noinline {
 		;;
 		#0: ldm.s r15, 64
 		;;
-		#0: stx r31 -> $$irb
+		#0: stx r31 -> $irb
 		;; 
 		#0: ldm.s r15, 60
 		;;
-		#0: stx r31 -> $$iro
+		#0: stx r31 -> $iro
 		;; 
 		#0: ldm.s r15, 56
 		;;
-		#0: stx r31 -> $$rb
+		#0: stx r31 -> $rb
 		;; 
 		#0: ldm.s r15, 52
 		;;
-		#0: stx r31 -> $$ro
+		#0: stx r31 -> $ro
 		;; 
 		#0: ldm.s r15, 48
 		;;
-		#0: stx r31 -> $$c3
+		#0: stx r31 -> $c3
 		;; 
 		#0: ldm.s r15, 44
 		;;
-		#0: stx r31 -> $$c2
+		#0: stx r31 -> $c2
 		;; 
 		#0: ldm.s r15, 40
 		;;
-		#0: stx r31 -> $$c1
+		#0: stx r31 -> $c1
 		;; 
 		#0: ldm.s r15, 36
 		;;
@@ -657,6 +673,6 @@ define void @intr() nounwind naked noinline {
 		;;
 		nop
 		;;
-		",""()
-	unreachable
-}
+		.align 4
+._intr_end:
+		.size _intr, ._intr_end-_intr

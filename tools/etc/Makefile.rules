@@ -1,24 +1,32 @@
 PREFIX=/usr/local/lemberg
 
-LIBLLSYMS=__divdf3,__divsf3,__divdi3,__divsi3,__moddi3,__modsi3,__udivdi3,__udivsi3,__umoddi3,__umodsi3,__ashldi3,__ashrdi3,__lshrdi3,__muldi3,memset,memmove,memcpy
-LIBLLSYMS_SOFTFLOAT=__adddf3,__subdf3,__muldf3,__addsf3,__subsf3,__mulsf3,__eqdf2,__gedf2,__gtdf2,__ledf2,__ltdf2,__nedf2,__unorddf2,__eqsf2,__gesf2,__gtsf2,__lesf2,__ltsf2,__nesf2,__unordsf2,__floatsidf,__floatunsidf,__fixdfsi,__fixunsdfsi,__floatsisf,__floatunssisf,__fixsfsi,__extendsfdf2,__truncdfsf2
+CC=clang -target lemberg 
+CPPFLAGS=-I ${PREFIX}/include
 
-LLVM_LD=llvm-ld -b $@ $^ \
-	${PREFIX}/lib/libllsyms.o ${LLVM_LDFLAGS} \
-	-L ${PREFIX}/lib -lc -lm -llemberg -lnosys -lll \
-	-internalize-public-api-list=${LIBLLSYMS},main
+AS=${PREFIX}/bin/as
+LD=${PREFIX}/bin/ld
+OBJCOPY=${PREFIX}/bin/objcopy
 
 %.bc : %.c
-	llvm-clang -ccc-host-triple i386-unknown-none -U__i386__ -D__lemberg__ ${CFLAGS} -emit-llvm -c -I ${PREFIX}/include -o $@ $<
+	${CC} -c -emit-llvm ${CPPFLAGS} ${CFLAGS} -o $@ $^
 
-%.opt.bc : %.linked.bc
-	opt -disable-simplify-libcalls ${OPTFLAGS} -o $@ $<
-
-%.s : %.opt.bc
+%.s : %.bc
 	llc -march=lemberg ${LLCFLAGS} -o $@ $<
 
-%.dat : %.s
-	${PREFIX}/bin/as -d -o $@ ${PREFIX}/lib/crt0.s $^ ${PREFIX}/lib/crtend0.s
+%.s : %.c
+	${CC} -S ${CPPFLAGS} ${CFLAGS} -o $@ $^
 
-%.bin : %.s
-	${PREFIX}/bin/as -b -o $@ ${PREFIX}/lib/crt0.s $^ ${PREFIX}/lib/crtend0.s
+%.o : %.c
+	${CC} -c ${CPPFLAGS} ${CFLAGS} -o $@ $^
+
+%.o : %.s
+	${CC} ${ASFLAGS} -o $@ $^
+
+%.elf : %.o
+	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+
+%.dat : %.elf
+	${OBJCOPY} -d -o $@ $<
+
+%.bin : %.elf
+	${OBJCOPY} -b -o $@ $<

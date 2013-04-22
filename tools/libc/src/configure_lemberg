@@ -1,8 +1,9 @@
 #! /bin/sh
 
-export AR_FOR_TARGET="llvm-ar"
-export RANLIB_FOR_TARGET="llvm-ranlib"
-export AS_FOR_TARGET="llvm-as"
-export CC_FOR_TARGET="llvm-clang -ccc-host-triple i386-unknown-none -U__i386__ -D__lemberg__ -emit-llvm"
-export LD_FOR_TARGET="llvm-ld"
+export AR_FOR_TARGET="ar"
+export RANLIB_FOR_TARGET="ranlib"
+export AS_FOR_TARGET="lemberg-as"
+export CC_FOR_TARGET="clang -target lemberg"
+export CFLAGS_FOR_TARGET="-O3 -mllvm -regalloc=greedy -mllvm -pre-RA-sched=list-hybrid -mllvm -tail-dup-size=24"
+export LD_FOR_TARGET="lemberg-ld"
 ./configure --target=lemberg
