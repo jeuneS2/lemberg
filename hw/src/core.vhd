@@ -325,9 +325,10 @@ begin  -- behavior
 		port map (
 			clk	       => clk,
 			reset      => reset,
+			ena        => ena,
+			flush      => flush,
 			op         => dec_fpop,
 			fl_in      => fl_rddata,
-			ena        => ena,
 			wrdata     => fpu_wrdata,
 			rddata     => fpu_rddata);
 	

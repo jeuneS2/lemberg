@@ -34,9 +34,10 @@ entity fpu is
 	port (
 		clk     : in  std_logic;		
 		reset   : in  std_logic;
+		ena     : in  std_logic;
+		flush   : in  std_logic;
 		op      : in  fpop_arr_type;
 		fl_in   : in  std_logic_vector(FLAG_COUNT-1 downto 0);
-		ena     : in  std_logic;
 		wrdata  : in  fpu_wrdata_type;
 		rddata  : out std_logic_vector(DATA_WIDTH-1 downto 0));
 
@@ -183,6 +184,9 @@ begin  -- behavior
 				-- latch operation
 				----------------------------------------------------------------
 				op_reg <= op;
+				if flush = '1' then
+					op_reg <= (others => FPOP_NOP);                    
+				end if;
 				op_pipe(1) <= op_next;
 				op_pipe(STAGES downto 2) <= op_pipe(STAGES-1 downto 1);
 
