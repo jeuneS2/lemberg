@@ -151,7 +151,8 @@ static void load_elf(Elf *e)
 				  
 					  if (ELF32_ST_BIND(sym->st_info) == STB_LOCAL)
 						{
-						  sym_push(&elf->locals, name, sect, sym->st_value, size, type);
+						  sym_push(&elf->locals, name, sect, sym->st_value,
+								   size, type, SYM_BIND_LOCAL);
 						}
 					  else
 						{
@@ -161,10 +162,12 @@ static void load_elf(Elf *e)
 							}
 						  else
 							{				  				  
-							  sym_push(&elf->globals, name, sect, sym->st_value, size, type);
+							  sym_push(&elf->globals, name, sect, sym->st_value,
+									   size, type, SYM_BIND_GLOBAL);
 							  sym_define(name, sect, sym->st_value);
 							  sym_setsize(name, size);
 							  sym_settype(name, type);
+							  sym_setbind(name, SYM_BIND_GLOBAL);
 							}
 						}
 					}

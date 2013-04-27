@@ -44,20 +44,26 @@ struct sym_info
   unsigned long addr;
   struct expr size;
   const char *type;
+  int bind;
   struct sym_reloc_info *relocs;
   struct sym_info *next;
 };
+
+#define SYM_BIND_DEFAULT -1
+#define SYM_BIND_LOCAL    0
+#define SYM_BIND_GLOBAL   1
 
 void symtab_init(void);
 
 struct sym_info *sym_push(struct sym_info **, const char *,
 						  const char *, unsigned long,
-						  struct expr, const char *);
+						  struct expr, const char *, int);
 
 void sym_undefined(const char *);
 void sym_define(const char *, const char *, unsigned long);
 void sym_setsize(const char *, struct expr);
 void sym_settype(const char *, const char *);
+void sym_setbind(const char *, int);
 void sym_addreloc(const char *, const char *, unsigned long, int);
 
 struct sym_info *sym_get(const char *);

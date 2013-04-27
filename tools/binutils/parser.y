@@ -69,7 +69,7 @@
 	struct bundle bundle;
 }
 
-%token IF DEST BSEP ALIGN TYPE SIZE FUNSIZE QUAD LONG SHORT BYTE ASCII COMM
+%token IF DEST BSEP ALIGN TYPE GLOBL LOCAL SIZE FUNSIZE QUAD LONG SHORT BYTE ASCII COMM
 
 %token <intval>  CLUST FLAG REG EXT FREG DREG
 %token <strval>  STR SECT SYMTYPE
@@ -149,6 +149,10 @@ Section : SECT NewLine
 		  sym_define($2.strval, curr_sect->name, curr_sect->pos);
 		  sym_setsize($2.strval, $4);
 		  sym_settype($2.strval, "@object");
+		  if (sym_get($2.strval)->bind == SYM_BIND_DEFAULT)
+			{
+			  sym_setbind($2.strval, SYM_BIND_GLOBAL);
+			}
 		  
 		  comm.size += $4.intval;
 		  curr_sect->pos += $4.intval;
@@ -174,6 +178,20 @@ Directive : ALIGN NUM NewLine
 			$$.size = curr_sect->pos % 4 == 0 ? 0 : 4 - curr_sect->pos % 4;;
 			$$.raw = NULL_EXPR;
 			curr_sect->pos = ((curr_sect->pos+4-1) / 4) * 4;
+		  }
+          | LOCAL SYM NewLine
+		  {
+			sym_setbind($2.strval, SYM_BIND_LOCAL);
+			$$.type = TYPE_ALIGN;
+			$$.size = 0;
+			$$.raw = NULL_EXPR;
+		  }
+          | GLOBL SYM NewLine
+		  {
+			sym_setbind($2.strval, SYM_BIND_GLOBAL);
+			$$.type = TYPE_ALIGN;
+			$$.size = 0;
+			$$.raw = NULL_EXPR;
 		  }
           | SIZE SYM ',' Constant NewLine
 		  {

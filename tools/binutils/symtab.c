@@ -51,7 +51,7 @@ void symtab_init(void)
 
 struct sym_info *sym_push(struct sym_info **list, const char *name,
 						  const char *section, unsigned long addr,
-						  struct expr size, const char *type)
+						  struct expr size, const char *type, int bind)
 {
   struct sym_info *sym = malloc(sizeof(struct sym_info));
   sym->symbol = name;
@@ -59,6 +59,7 @@ struct sym_info *sym_push(struct sym_info **list, const char *name,
   sym->addr = addr;
   sym->size = size;
   sym->type = type;
+  sym->bind = bind;
   sym->relocs = NULL;
   sym->next = *list;
   *list = sym;
@@ -72,7 +73,7 @@ static struct sym_info *get_or_create_sym(const char *symbol)
   if (sym == NULL)
 	{
 	  pos = hash_string(symbol) % SYMTAB_SIZE;
-	  sym = sym_push(&symtab[pos], symbol, NULL, 0, NULL_EXPR, "");
+	  sym = sym_push(&symtab[pos], symbol, NULL, 0, NULL_EXPR, "", SYM_BIND_DEFAULT);
 	  sym->defined = 0;
 	}
   return sym;
@@ -101,6 +102,12 @@ void sym_settype(const char *symbol, const char *type)
 {
   struct sym_info *sym = get_or_create_sym(symbol);
   sym->type = type;
+}
+
+void sym_setbind(const char *symbol, int bind)
+{
+  struct sym_info *sym = get_or_create_sym(symbol);
+  sym->bind = bind;
 }
 
 void sym_addreloc(const char *symbol, const char *sect, unsigned long addr, int type)
@@ -191,7 +198,11 @@ Elf_Scn *symtab_write_elf(Elf *e, struct sect * sects,
             {
 			  struct reloc_info size;
 			  int type = STT_NOTYPE;
-			  int bind = sym->symbol[0] != '.' ? STB_GLOBAL : STB_LOCAL;
+			  int bind = STB_LOCAL;
+			  if (!sym->defined || sym->bind == SYM_BIND_GLOBAL)
+				{
+				  bind = STB_GLOBAL;
+				}
 
 			  esym.st_name = strtab_buf->pos;
 			  buffer_writestr(strtab_buf, sym->symbol);

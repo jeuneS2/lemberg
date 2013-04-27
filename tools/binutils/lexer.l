@@ -72,8 +72,9 @@ SYM [\._a-zA-Z0-9]+
 	return SECT;
 }
 
-".globl".*\n { line_number++; /* ignore .globl directive */ }
-".local".*\n { line_number++; /* ignore .local directive */ }
+".globl" return GLOBL;
+".local" return LOCAL;
+
 ".weak".*\n { line_number++; /* ignore .weak directive */ }
 
 ".stabs".*\n { line_number++; /* ignore .stabs directive */ }
