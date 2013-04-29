@@ -54,7 +54,10 @@ class Proc<string Name, list<SubtargetFeature> Features>
 
 def : Proc<"lemberg", [FeatureSingle,FeatureDouble,Feature4Way]>;
 
-def : Proc<"lemberg-minimal", [Feature1Way]>;
+def : Proc<"lemberg-1way", [Feature1Way]>;
+def : Proc<"lemberg-2way", [Feature2Way]>;
+def : Proc<"lemberg-3way", [Feature3Way]>;
+def : Proc<"lemberg-4way", [Feature4Way]>;
 
 def Lemberg : Target {
   let InstructionSet = LembergInstrInfo;

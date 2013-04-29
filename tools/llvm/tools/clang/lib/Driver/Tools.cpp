@@ -1106,9 +1106,36 @@ void Clang::AddHexagonTargetArgs(const ArgList &Args,
 
 void Clang::AddLembergTargetArgs(const ArgList &Args,
 								 ArgStringList &CmdArgs) const {
+  const Driver &D = getToolChain().getDriver();
+
+  const char *CPU = "lemberg";
+
   if (const Arg *A = Args.getLastArg(options::OPT_march_EQ)) {
+	CPU = A->getValue(Args);
     CmdArgs.push_back("-target-cpu");
     CmdArgs.push_back(A->getValue(Args));
+  }
+  if (const Arg *A = Args.getLastArg(options::OPT_mfpu_EQ)) {
+	StringRef FPU = A->getValue(Args);
+	// Set the target features based on the FPU.
+	if (FPU == "none") {
+	  CmdArgs.push_back("-target-feature");
+	  CmdArgs.push_back("-fpu-single");
+	  CmdArgs.push_back("-target-feature");
+	  CmdArgs.push_back("-fpu-double");
+	} else if (FPU == "single") {
+	  CmdArgs.push_back("-target-feature");
+	  CmdArgs.push_back("+fpu-single");
+	  CmdArgs.push_back("-target-feature");
+	  CmdArgs.push_back("-fpu-double");
+	} else if (FPU == "double") {
+	  CmdArgs.push_back("-target-feature");
+	  CmdArgs.push_back("+fpu-single");
+	  CmdArgs.push_back("-target-feature");
+	  CmdArgs.push_back("+fpu-double");
+	} else {
+	  D.Diag(diag::err_drv_invalid_feature) << A->getAsString(Args) << CPU;
+	}
   }
 }
 

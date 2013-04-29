@@ -3223,8 +3223,19 @@ namespace {
 class LembergTargetInfo : public TargetInfo {
   static const char * const GCCRegNames[];
 
+  unsigned Ways;
+
+  enum CPUKind {
+	CK_None,
+	CK_4way,
+	CK_3way,
+	CK_2way,
+	CK_1way,
+  } CPU;
+
 public:
-  LembergTargetInfo(const std::string& triple) : TargetInfo(triple) {
+  LembergTargetInfo(const std::string& triple)
+	: TargetInfo(triple), CPU(CK_4way) {
     DescriptionString = ("e-p32:32:32-"
 	                     "i1:8:32-i8:8:32-i16:16:32-i32:32:32-i64:32:64-"
 						 "f32:32:32-f64:32:64-"
@@ -3246,9 +3257,49 @@ public:
   }
 
   virtual bool hasFeature(StringRef Feature) const {
-    return Feature == "lemberg";
+	return llvm::StringSwitch<bool>(Feature)
+      .Case("lemberg", true)
+      .Case("4way", Ways == 4)
+      .Case("3way", Ways == 3)
+      .Case("2way", Ways == 2)
+      .Case("1way", Ways == 1)
+      .Default(false);
   }
-  
+
+  virtual bool setFeatureEnabled(llvm::StringMap<bool> &Features,
+                                 StringRef Name,
+                                 bool Enabled) const {
+    if (Name == "fpu-single" || Name == "fpu-double")
+	  {
+		Features[Name] = Enabled;
+		return true;
+	  }
+
+	return false;
+  }
+
+  virtual bool setCPU(const std::string &Name) {
+    CPU = llvm::StringSwitch<CPUKind>(Name)
+      .Case("lemberg", CK_4way)
+      .Case("lemberg-4way", CK_4way)
+      .Case("lemberg-3way", CK_3way)
+      .Case("lemberg-2way", CK_2way)
+      .Case("lemberg-1way", CK_1way)
+      .Default(CK_None);
+
+    switch (CPU) {
+    case CK_None:
+      // No processor selected!
+      return false;
+	case CK_4way:
+	case CK_3way:
+	case CK_2way:
+	case CK_1way:
+      return true;
+    }
+    llvm_unreachable("Unhandled CPU kind");
+  }
+
   virtual const char *getVAListDeclaration() const {
     return "typedef char* __builtin_va_list;";
   }
