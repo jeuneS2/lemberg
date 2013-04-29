@@ -10,9 +10,6 @@ OBJCOPY=${PREFIX}/bin/objcopy
 %.bc : %.c
 	${CC} -c -emit-llvm ${CPPFLAGS} ${CFLAGS} -o $@ $^
 
-%.s : %.bc
-	llc -march=lemberg ${LLCFLAGS} -o $@ $<
-
 %.s : %.c
 	${CC} -S ${CPPFLAGS} ${CFLAGS} -o $@ $^
 
@@ -20,7 +17,7 @@ OBJCOPY=${PREFIX}/bin/objcopy
 	${CC} -c ${CPPFLAGS} ${CFLAGS} -o $@ $^
 
 %.o : %.s
-	${CC} ${ASFLAGS} -o $@ $^
+	${CC} -c ${ASFLAGS} -o $@ $^
 
 %.elf : %.o
 	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
