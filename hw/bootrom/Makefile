@@ -1,19 +1,16 @@
 include /usr/local/lemberg/etc/Makefile.rules
 
-CFLAGS=-Os -ansi -pedantic -Wall
-OPTFLAGS=-O2 -unroll-threshold=0
-LLCFLAGS=-mcpu=lemberg-minimal -O2 -disable-machine-licm -code-model=small
+CFLAGS=-march=lemberg-1way -mcmodel=small -mfpu=none -Oz -ansi -pedantic -Wall
 
 all: bootrom.vhd sim_bootrom.vhd
 
-bootrom.linked.bc: bootrom.bc
-	llvm-ld -b $@ $<
+bootrom.vhd: bootrom.o
+	${LD} -o bootrom.elf $^
+	${OBJCOPY} -v -e bootrom -o $@ bootrom.elf
 
-bootrom.vhd: bootrom.s
-	/usr/local/lemberg/bin/as -v -e bootrom -o $@ $<
-
-sim_bootrom.vhd: sim_bootrom.s
-	/usr/local/lemberg/bin/as -v -e bootrom -o $@ $<
+sim_bootrom.vhd: sim_bootrom.o
+	${LD} -o sim_bootrom.elf $^
+	${OBJCOPY} -v -e bootrom -o $@ sim_bootrom.elf
 
 clean:
-	rm -f a.out *.bc *.vhd *.vhd.sym bootrom.s *~
+	rm -f *.bc *.ll *.o *.elf *.bin *.dat *.vhd bootrom.s *~

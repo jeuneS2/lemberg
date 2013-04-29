@@ -1,46 +1,51 @@
-	.file	"bootrom.opt.bc"
+	.file	"bootrom.c"
 	.text
 	.globl	_main
 	.type	_main,@function
-_main:                                  ; @main
-	.funsz	_main_end@_main
-_main_start:
-; BB#0:
-#0:	       wb.s	r15, 12
+_main:
+	.funsz	._main_end-_main
+._main_start:
+#0:	       wb.s	r15, 14
 	;;
-#0:	       addi	-48 -> r15
+#0:	       addi	-56 -> r15
 	;;
-#0:	       stm.s	r10, r15, 7
+#0:	       stm.s	r14, r15, 0
 	;;
-#0:	       stm.s	r11, r15, 6
+#0:	       or	r15, 0 -> r14
 	;;
-#0:	       stm.s	r12, r15, 5
+#0:	       stm.s	r10, r14, 9
 	;;
-#0:	       ldiu	0 -> r10
+#0:	       stm.s	r11, r14, 8
 	;;
-#0:	       stm.s	r13, r15, 4
+#0:	       stm.s	r12, r14, 7
 	;;
-#0:	       stm.s	r14, r15, 3
+#0:	       stm.s	r13, r14, 6
+	;;
+#0:	       stm.s	r0.23, r14, 5
 	;;
 #0:	       ldx	$rb, 0 -> r12
 	;;
-#0:	       ldim	1024 -> r10
-	;;
-#0:	       ldga	._.str -> r0
-	;;
-#0:	       ldga	_printstr -> r1
-	;;
-#0:	       stm.s	r12, r15, 2
+#0:	       stm.s	r12, r14, 4
 	;;
 #0:	       ldx	$ro, 0 -> r12
 	;;
-#0:	       add	r0, r10 -> r0
+#0:	       stm.s	r12, r14, 3
+	;;
+#0:	       ldiu	0 -> r10
+	;;
+#0:	       ldmg.d	_load_msg
+	;;
+#0:	       ldim	1024 -> r10
+	;;
+#0:	       ldga	_printstr -> r1
+	;;
+#0:	       add	r31, r10 -> r0
 	;;
 #0:	       add	r1, r10 -> r1
 	;;
 #0:	       jop	call	r1
 	;;
-#0:	       stm.s	r12, r15, 1
+	       nop
 	;;
 	       nop
 	;;
@@ -66,84 +71,81 @@ _main_start:
 	;;
 	       nop
 	;;
-#0:	       or	r0, 0 -> r10
+#0:	       or	r0, 0 -> r0.23
 	;;
-#0:	       ldi	0 -> r1
+#0:	       ldi	0 -> r3
+	;;
+#0:	       ldi	-120 -> r0
+	;;
+#0:	       ldi	-116 -> r1
 	;;
 #0:	       br	.BB0_2
 	;;
-#0:	       ldi	0 -> r14
+#0:	       ldi	0 -> r13
 	;;
-#0:	       ldi	0 -> r0
+#0:	       ldi	0 -> r2
 	;;
-.BB0_1:                                 ;   in Loop: Header=BB0_2 Depth=1
-#0:	       sr	r12, 8 -> r1
+.BB0_1:
+#0:	       sr	r12, 8 -> r3
 	;;
-#0:	       add	r0, 1 -> r0
+#0:	       add	r2, 1 -> r2
 	;;
-#0:	       or	r13, 0 -> r14
+#0:	       or	r10, 0 -> r13
 	;;
-.BB0_2:                                 ; =>This Loop Header: Depth=1
-                                        ;     Child Loop BB0_3 Depth 2
-#0:	       cmpu ge	r0, r11 -> c1
+.BB0_2:
+#0:	       cmpu ge	r2, r11 -> c1
 	;;
 #0:	if  c1 br @	.BB0_7
 	;;
-.BB0_3:                                 ; %.preheader1
-                                        ;   Parent Loop BB0_2 Depth=1
-                                        ; =>  This Inner Loop Header: Depth=2
-#0:	       ldi	-120 -> r2
+.BB0_3:
+#0:	       ldm.b	r0, 0
 	;;
-#0:	       ldm.b	r2, 0
+#0:	       bbh	mzext8 0 -> r4
 	;;
-#0:	       bbh	mzext8 0 -> r2
-	;;
-#0:	       btest	r2, 1 -> !c1
+#0:	       btest	r4, 1 -> !c1
 	;;
 #0:	if  c1 br @	.BB0_3
 	;;
-.BB0_4:                                 ;   in Loop: Header=BB0_2 Depth=1
-#0:	       ldi	-116 -> r2
+.BB0_4:
+#0:	       ldm.b	r1, 0
 	;;
-#0:	       ldm.b	r2, 0
+#0:	       add	r13, 1 -> r10
 	;;
-#0:	       add	r14, 1 -> r13
+#0:	       bbh	mzext8 r1 -> r4
 	;;
-#0:	       bbh	mzext8 r2 -> r2
+#0:	       sl	r4, 24 -> r5
 	;;
-#0:	       sl	r2, 24 -> r3
+#0:	       or	r5, r3 -> r12
 	;;
-#0:	       or	r3, r1 -> r12
-	;;
-#0:	       and	r0, 3 -> r3
+#0:	       and	r2, 3 -> r3
 	;;
 #0:	       cmp ne	r3, 3 -> c1
 	;;
 #0:	if  c1 br	.BB0_1
 	;;
-#0:	       stmb.a	r2, r14, 0
+#0:	       stmb.a	r4, r13, 0
 	;;
 	       nop
 	;;
-.BB0_5:                                 ;   in Loop: Header=BB0_2 Depth=1
-#0:	       ldm.b	r14, -3
+.BB0_5:
+#0:	       ldm.b	r13, -3
 	;;
 #0:	       cmp ne	r12, r31 -> c1
 	;;
 #0:	if !c1 br @	.BB0_1
 	;;
 .BB0_6:
-#0:	       ldiu	0 -> r10
+#0:	       ldiu	0 -> r11
 	;;
-#0:	       ldim	1024 -> r10
+#0:	       ldmg.d	_fail_msg
 	;;
-#0:	       ldga	._.str3 -> r0
+#0:	       ldim	1024 -> r11
 	;;
 #0:	       ldga	_printstr -> r1
 	;;
-#0:	       add	r0, r10 -> r0
+#0:	       add	r31, r11 -> r0
 	;;
-#0:	       add	r1, r10 -> r1
+#0:	       add	r1, r11 -> r1
 	;;
 #0:	       jop	call	r1
 	;;
@@ -155,25 +157,25 @@ _main_start:
 	;;
 #0:	       ldga	_printint -> r0
 	;;
-#0:	       add	r0, r10 -> r10
+#0:	       add	r0, r11 -> r11
 	;;
-#0:	       jop	call	r10
+#0:	       jop	call	r11
 	;;
-#0:	       or	r13, 0 -> r0
-	;;
-	       nop
+#0:	       or	r10, 0 -> r0
 	;;
 	       nop
 	;;
-#0:	       jop	call	r10
+	       nop
 	;;
-#0:	       ldm.b	r14, -3
+#0:	       jop	call	r11
+	;;
+#0:	       ldm.b	r13, -3
 	;;
 #0:	       or	r31, 0 -> r0
 	;;
 	       nop
 	;;
-#0:	       jop	call	r10
+#0:	       jop	call	r11
 	;;
 #0:	       or	r12, 0 -> r0
 	;;
@@ -190,13 +192,13 @@ _main_start:
 .BB0_7:
 #0:	       ldiu	0 -> r1
 	;;
-#0:	       ldim	1024 -> r1
+#0:	       ldmg.d	_boot_msg
 	;;
-#0:	       ldga	._.str1 -> r0
+#0:	       ldim	1024 -> r1
 	;;
 #0:	       ldga	_printstr -> r2
 	;;
-#0:	       add	r0, r1 -> r0
+#0:	       add	r31, r1 -> r0
 	;;
 #0:	       add	r2, r1 -> r1
 	;;
@@ -208,7 +210,7 @@ _main_start:
 	;;
 	       nop
 	;;
-#0:	       jop	call	r10
+#0:	       jop	call	r0.23
 	;;
 	       nop
 	;;
@@ -221,13 +223,13 @@ _main_start:
 .BB0_8:
 #0:	       ldiu	0 -> r11
 	;;
-#0:	       ldim	1024 -> r11
+#0:	       ldmg.d	_exit_msg
 	;;
-#0:	       ldga	._.str2 -> r0
+#0:	       ldim	1024 -> r11
 	;;
 #0:	       ldga	_printstr -> r1
 	;;
-#0:	       add	r0, r11 -> r0
+#0:	       add	r31, r11 -> r0
 	;;
 #0:	       add	r1, r11 -> r1
 	;;
@@ -251,18 +253,19 @@ _main_start:
 	;;
 	       nop
 	;;
-.BB0_9:                                 ; =>This Inner Loop Header: Depth=1
+.BB0_9:
 #0:	       ldi	-120 -> r0
 	;;
+.BB0_10:
 #0:	       ldm.b	r0, 0
 	;;
-#0:	       bbh	mzext8 0 -> r0
+#0:	       bbh	mzext8 0 -> r1
 	;;
-#0:	       btest	r0, 0 -> c1
+#0:	       btest	r1, 0 -> c1
 	;;
-#0:	if !c1 br @	.BB0_9
+#0:	if !c1 br @	.BB0_10
 	;;
-.BB0_10:
+.BB0_11:
 #0:	       ldiu	0 -> r3
 	;;
 #0:	       ldi	-116 -> r0
@@ -286,54 +289,54 @@ _main_start:
 #0:	       br @	.BB0_8
 	;;
 	.align	4
-_main_end:
+._main_end:
 .tmp0:
 	.size	_main, .tmp0-_main
 
 	.type	_printstr,@function
-_printstr:                              ; @printstr
-	.funsz	_printstr_end@_printstr
-_printstr_start:
-; BB#0:
+_printstr:
+	.funsz	._printstr_end-_printstr
+._printstr_start:
 #0:	       ldm.f	r0, 0
 	;;
 #0:	       bbh	mzext8 r0 -> r1
 	;;
-#0:	       brz eq @	r1, .BB1_3
+#0:	       brz eq @	r1, .BB1_4
 	;;
-.BB1_1:                                 ; =>This Inner Loop Header: Depth=1
+.BB1_1:
 #0:	       ldi	-120 -> r1
-	;;
-#0:	       ldm.b	r1, 0
-	;;
-#0:	       bbh	mzext8 0 -> r1
-	;;
-#0:	       btest	r1, 0 -> c1
-	;;
-#0:	if !c1 br @	.BB1_1
-	;;
-.BB1_2:                                 ;   in Loop: Header=BB1_1 Depth=1
-#0:	       ldm.f	r0, 0
 	;;
 #0:	       ldi	-116 -> r2
 	;;
-#0:	       bbh	mzext8 r0 -> r1
+.BB1_2:
+#0:	       ldm.b	r1, 0
 	;;
-#0:	       stmb.a	r1, r2, 0
+#0:	       bbh	mzext8 0 -> r3
+	;;
+#0:	       btest	r3, 0 -> c1
+	;;
+#0:	if !c1 br @	.BB1_2
+	;;
+.BB1_3:
+#0:	       ldm.f	r0, 0
+	;;
+#0:	       bbh	mzext8 r0 -> r3
+	;;
+#0:	       stmb.a	r3, r2, 0
 	;;
 #0:	       ldm.f	r0, 1
 	;;
-#0:	       add	r0, 1 -> r1
+#0:	       add	r0, 1 -> r3
 	;;
-#0:	       bbh	mzext8 r1 -> r2
+#0:	       bbh	mzext8 r3 -> r4
 	;;
-#0:	       brz ne	r2, .BB1_1
+#0:	       brz ne	r4, .BB1_2
 	;;
-#0:	       or	r1, 0 -> r0
+#0:	       or	r3, 0 -> r0
 	;;
 	       nop
 	;;
-.BB1_3:                                 ; %._crit_edge
+.BB1_4:
 #0:	       jop	ret
 	;;
 	       nop
@@ -343,48 +346,47 @@ _printstr_start:
 	       nop
 	;;
 	.align	4
-_printstr_end:
+._printstr_end:
 .tmp1:
 	.size	_printstr, .tmp1-_printstr
 
 	.type	_readint,@function
-_readint:                               ; @readint
-	.funsz	_readint_end@_readint
-_readint_start:
-; BB#0:
+_readint:
+	.funsz	._readint_end-_readint
+._readint_start:
 #0:	       ldi	0 -> r1
+	;;
+#0:	       ldi	-120 -> r2
+	;;
+#0:	       ldi	-116 -> r3
 	;;
 #0:	       ldi	0 -> r0
 	;;
-.BB2_1:                                 ; =>This Inner Loop Header: Depth=1
-#0:	       ldi	-120 -> r2
-	;;
+.BB2_1:
 #0:	       ldm.b	r2, 0
 	;;
-#0:	       bbh	mzext8 0 -> r2
+#0:	       bbh	mzext8 0 -> r4
 	;;
-#0:	       btest	r2, 1 -> !c1
+#0:	       btest	r4, 1 -> !c1
 	;;
 #0:	if  c1 br @	.BB2_1
 	;;
-.BB2_2:                                 ;   in Loop: Header=BB2_1 Depth=1
-#0:	       ldi	-116 -> r2
-	;;
-#0:	       ldm.b	r2, 0
+.BB2_2:
+#0:	       ldm.b	r3, 0
 	;;
 #0:	       add	r1, 1 -> r1
 	;;
 #0:	       cmp ne	r1, 4 -> c1
 	;;
-#0:	       bbh	mzext8 r2 -> r2
+#0:	       bbh	mzext8 r3 -> r4
 	;;
 #0:	       sl	r0, 8 -> r0
 	;;
 #0:	if  c1 br	.BB2_1
 	;;
-#0:	       bbh	zext8 r2 -> r2
+#0:	       bbh	zext8 r4 -> r4
 	;;
-#0:	       or	r2, r0 -> r0
+#0:	       or	r4, r0 -> r0
 	;;
 .BB2_3:
 #0:	       jop	ret
@@ -396,60 +398,56 @@ _readint_start:
 	       nop
 	;;
 	.align	4
-_readint_end:
+._readint_end:
 .tmp2:
 	.size	_readint, .tmp2-_readint
 
 	.type	_printint,@function
-_printint:                              ; @printint
-	.funsz	_printint_end@_printint
-_printint_start:
-; BB#0:
+_printint:
+	.funsz	._printint_end-_printint
+._printint_start:
 #0:	       ldi	8 -> r1
 	;;
-.BB3_1:                                 ; =>This Loop Header: Depth=1
-                                        ;     Child Loop BB3_2 Depth 2
 #0:	       ldi	-4 -> r2
 	;;
-#0:	       s2add	r2, r1 -> r2
+#0:	       ldi	48 -> r3
 	;;
-#0:	       sr	r0, r2 -> r2
+#0:	       ldi	87 -> r4
 	;;
-#0:	       and	r2, 15 -> r3
+#0:	       ldi	-120 -> r5
 	;;
-#0:	       or	r3, 0 -> r2
+#0:	       ldi	-116 -> r6
 	;;
-#0:	       addi	87 -> r2
+.BB3_1:
+#0:	       s2add	r2, r1 -> r7
 	;;
-.BB3_2:                                 ; %.preheader
-                                        ;   Parent Loop BB3_1 Depth=1
-                                        ; =>  This Inner Loop Header: Depth=2
-#0:	       ldi	-120 -> r4
+#0:	       sr	r0, r7 -> r7
 	;;
-#0:	       ldm.b	r4, 0
+#0:	       and	r7, 15 -> r8
 	;;
-#0:	       bbh	mzext8 0 -> r4
+#0:	       or	r8, r3 -> r7
 	;;
-#0:	       btest	r4, 0 -> c1
+#0:	       cmpu lt	r8, 10 -> c1
+	;;
+#0:	if !c1 add	r8, r4 -> r7 ; aaaf
+	;;
+.BB3_2:
+#0:	       ldm.b	r5, 0
+	;;
+#0:	       bbh	mzext8 0 -> r8
+	;;
+#0:	       btest	r8, 0 -> c1
 	;;
 #0:	if !c1 br @	.BB3_2
 	;;
-.BB3_3:                                 ;   in Loop: Header=BB3_1 Depth=1
-#0:	       ldi	48 -> r4
-	;;
-#0:	       or	r3, r4 -> r4
-	;;
-#0:	       cmpu lt	r3, 10 -> c1
-	;;
+.BB3_3:
 #0:	       sub	r1, 1 -> r1
-	;;
-#0:	if  c1 or	r4, 0 -> r2
 	;;
 #0:	       brz ne	r1, .BB3_1
 	;;
-#0:	       ldi	-116 -> r3
+#0:	       stmb.a	r7, r6, 0
 	;;
-#0:	       stmb.a	r2, r3, 0
+	       nop
 	;;
 .BB3_4:
 #0:	       jop	ret
@@ -461,15 +459,14 @@ _printint_start:
 	       nop
 	;;
 	.align	4
-_printint_end:
+._printint_end:
 .tmp3:
 	.size	_printint, .tmp3-_printint
 
 	.type	_reset,@function
-_reset:                                 ; @reset
-	.funsz	_reset_end@_reset
-_reset_start:
-; BB#0:
+_reset:
+	.funsz	._reset_end-_reset
+._reset_start:
 #0:	       wb.s	r15, 6
 	;;
 #0:	       addi	-24 -> r15
@@ -486,55 +483,90 @@ _reset_start:
 	;;
 #0:	       cmpu gt	r31, r1 -> c1
 	;;
-#0:	if  c1 br @	.BB4_2
+#0:	if  c1 br @	.BB4_3
 	;;
-.BB4_1:                                 ; %.lr.ph
-                                        ; =>This Inner Loop Header: Depth=1
-#0:	       ldm.b	r0, 0
-	;;
-#0:	       add	r31, 1 -> r1
-	;;
-#0:	       stm.a	r1, r15, 1
-	;;
-#0:	       ldm.b	r0, 0
-	;;
+.BB4_1:
 #0:	       ldga	32768 -> r1
+	;;
+.BB4_2:
+#0:	       ldm.b	r0, 0
+	;;
+#0:	       add	r31, 1 -> r2
+	;;
+#0:	       stm.a	r2, r15, 1
+	;;
+#0:	       ldm.b	r0, 0
 	;;
 #0:	       cmpu lt	r31, r1 -> c1
 	;;
-#0:	if  c1 br @	.BB4_1
+#0:	if  c1 br @	.BB4_2
 	;;
-.BB4_2:                                 ; %._crit_edge
+.BB4_3:
 #0:	       ldi	-4 -> r0
 	;;
 #0:	       stm.a	0, r0, 0
 	;;
-.BB4_3:                                 ; =>This Inner Loop Header: Depth=1
-#0:	       br @	.BB4_3
+.BB4_4:
+#0:	       br @	.BB4_4
 	;;
 	.align	4
-_reset_end:
+._reset_end:
 .tmp4:
 	.size	_reset, .tmp4-_reset
 
-	.type	._.str,@object          ; @.str
+	.type	._.str,@object
 	.section	.rodata.str1.1,"aMS",@progbits,1
 ._.str:
 	.ascii	 "\nLOAD\n\000"
 	.size	._.str, 7
 
-	.type	._.str1,@object         ; @.str1
+	.type	_load_msg,@object
+	.data
+	.globl	_load_msg
+	.align	4
+_load_msg:
+	.long	._.str
+	.size	_load_msg, 4
+
+	.type	._.str1,@object
+	.section	.rodata.str1.1,"aMS",@progbits,1
 ._.str1:
 	.ascii	 "BOOT\n\000"
 	.size	._.str1, 6
 
-	.type	._.str2,@object         ; @.str2
+	.type	_boot_msg,@object
+	.data
+	.globl	_boot_msg
+	.align	4
+_boot_msg:
+	.long	._.str1
+	.size	_boot_msg, 4
+
+	.type	._.str2,@object
+	.section	.rodata.str1.1,"aMS",@progbits,1
 ._.str2:
 	.ascii	 "\nEXIT \000"
 	.size	._.str2, 7
 
-	.type	._.str3,@object         ; @.str3
+	.type	_exit_msg,@object
+	.data
+	.globl	_exit_msg
+	.align	4
+_exit_msg:
+	.long	._.str2
+	.size	_exit_msg, 4
+
+	.type	._.str3,@object
+	.section	.rodata.str1.1,"aMS",@progbits,1
 ._.str3:
 	.ascii	 "FAIL @\000"
 	.size	._.str3, 7
+
+	.type	_fail_msg,@object
+	.data
+	.globl	_fail_msg
+	.align	4
+_fail_msg:
+	.long	._.str3
+	.size	_fail_msg, 4
 
