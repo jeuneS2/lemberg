@@ -4,6 +4,13 @@ LFLAGS=
 
 PREFIX=/usr/local/
 
+WAYS=1way 2way 3way 4way
+FPUS=none single double
+
+WAY=
+FPU=
+ARCHDIR=${WAY}-${FPU}
+
 all: as ld objcopy crts
 
 as: parser.o lexer.o expr.tab.o expr_lexer.o code.o pile.o section.o symtab.o buffer.o elflemberg.o errors.o files.o
@@ -60,12 +67,18 @@ install: as ld objcopy crts
 	install as ${PREFIX}/lemberg/bin/
 	install ld ${PREFIX}/lemberg/bin/
 	install objcopy ${PREFIX}/lemberg/bin/
-	install -d ${PREFIX}/lemberg/lib/
-	install -m 0644 crt0.o crtend0.o ${PREFIX}/lemberg/lib/
 	install -d ${PREFIX}/bin/
 	ln -sf ${PREFIX}/lemberg/bin/as ${PREFIX}/bin/lemberg-as
 	ln -sf ${PREFIX}/lemberg/bin/ld ${PREFIX}/bin/lemberg-ld
 	ln -sf ${PREFIX}/lemberg/bin/objcopy ${PREFIX}/bin/lemberg-objcopy
+	$(foreach w, ${WAYS}, \
+		$(foreach f, ${FPUS}, \
+			${MAKE} WAY=${w} FPU=${f} subinstall;))
+	ln -sf ${PREFIX}/lemberg/4way-double/lib ${PREFIX}/lemberg/lib
+
+subinstall: crts
+	install -d ${PREFIX}/lemberg/${ARCHDIR}/lib/
+	install -m 0644 crt0.o crtend0.o ${PREFIX}/lemberg/${ARCHDIR}/lib/
 
 clean:
 	rm -f parser.c lexer.c expr_lexer.c y.tab.h expr.tab.h expr.tab.c *.o *~

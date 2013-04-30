@@ -1,6 +1,7 @@
 PREFIX=/usr/local/lemberg
 
 CC=clang -target lemberg 
+ARCH=
 CPPFLAGS=-I ${PREFIX}/include
 
 AS=${PREFIX}/bin/as
@@ -8,19 +9,19 @@ LD=${PREFIX}/bin/ld
 OBJCOPY=${PREFIX}/bin/objcopy
 
 %.bc : %.c
-	${CC} -c -emit-llvm ${CPPFLAGS} ${CFLAGS} -o $@ $^
+	${CC} ${ARCH} -c -emit-llvm ${CPPFLAGS} ${CFLAGS} -o $@ $^
 
 %.s : %.c
-	${CC} -S ${CPPFLAGS} ${CFLAGS} -o $@ $^
+	${CC} ${ARCH} -S ${CPPFLAGS} ${CFLAGS} -o $@ $^
 
 %.o : %.c
-	${CC} -c ${CPPFLAGS} ${CFLAGS} -o $@ $^
+	${CC} ${ARCH} -c ${CPPFLAGS} ${CFLAGS} -o $@ $^
 
 %.o : %.s
-	${CC} -c ${ASFLAGS} -o $@ $^
+	${CC} ${ARCH} -c ${ASFLAGS} -o $@ $^
 
 %.elf : %.o
-	${CC} ${LDFLAGS} -o $@ $^ ${LDLIBS}
+	${CC} ${ARCH} ${LDFLAGS} -o $@ $^ ${LDLIBS}
 
 %.dat : %.elf
 	${OBJCOPY} -d -o $@ $<

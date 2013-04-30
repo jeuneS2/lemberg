@@ -9,10 +9,10 @@ LDFLAGS_FOR_TARGET = ${MULTILIB} ${NEWLIB_LDFLAGS}
 AR_FLAGS = qc
 
 .c.o:
-	$(CC) $(CFLAGS_FOR_TARGET) -O2 $(INCLUDES) -c $(CFLAGS) $<
+	$(CC) $(CFLAGS_FOR_TARGET) $(INCLUDES) -c $<
 
 .C.o:
-	$(CC) $(CFLAGS_FOR_TARGET) -O2 $(INCLUDES) -c $(CFLAGS) $<
+	$(CC) $(CFLAGS_FOR_TARGET) $(INCLUDES) -c $<
 .s.o:
 	$(AS) $(ASFLAGS_FOR_TARGET) $(INCLUDES) $(ASFLAGS) -o $*.o $<
 
@@ -20,7 +20,7 @@ AR_FLAGS = qc
 # GCC knows to run the preprocessor on .S files before it assembles them.
 #
 .S.o:
-	$(CC) $(CFLAGS_FOR_TARGET) $(INCLUDES) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS_FOR_TARGET) $(INCLUDES) -c $<
 
 #
 # this is a bogus target that'll produce an assembler from the
@@ -28,4 +28,4 @@ AR_FLAGS = qc
 # track down code generation or debug symbol bugs.
 #
 .c.s:
-	$(CC) $(CFLAGS_FOR_TARGET) -S $(INCLUDES) $(CFLAGS) $<
+	$(CC) $(CFLAGS_FOR_TARGET) -S $(INCLUDES) $<

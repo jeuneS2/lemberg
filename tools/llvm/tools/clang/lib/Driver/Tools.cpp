@@ -3224,11 +3224,26 @@ void lemberg::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
   ArgStringList CmdArgs;
 
+  std::string CPU = "lemberg";
+  if (const Arg *A = Args.getLastArg(options::OPT_march_EQ)) {
+	CPU = A->getValue(Args);
+  }
+  std::string FPU = "double";
+  if (const Arg *A = Args.getLastArg(options::OPT_mfpu_EQ)) {
+	FPU = A->getValue(Args);
+  }
+  std::string LibName = llvm::StringSwitch<std::string>(CPU)
+    .Case("lemberg-4way", "4way-"+FPU)
+    .Case("lemberg-3way", "3way-"+FPU)
+    .Case("lemberg-2way", "2way-"+FPU)
+    .Case("lemberg-1way", "1way-"+FPU)
+    .Default("");
+
   const char *LDName = "ld";
   const char *Exec = Args.MakeArgString(getToolChain().GetProgramPath(LDName));
   SmallString<16> LibDir = SmallString<16>(getToolChain().GetProgramPath(LDName));
   llvm::sys::path::remove_filename(LibDir);
-  llvm::sys::path::append(LibDir, "..", "lemberg", "lib");
+  llvm::sys::path::append(LibDir, "..", "lemberg", LibName, "lib");
 
   SmallString<16> Crt0Path = LibDir;
   llvm::sys::path::append(Crt0Path, "crt0.o");
