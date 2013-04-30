@@ -11,10 +11,7 @@ all: doc tools
 # Configuration
 configure: configure-tools
 
-configure-tools: configure-libc configure-llvm
-
-configure-libc:
-	cd tools/libc/src; ./configure_lemberg
+configure-tools: configure-llvm
 
 configure-llvm:
 	cd tools/llvm; ./configure --enable-assertions
@@ -29,7 +26,7 @@ libll:
 	${MAKE} -C tools/libll all
 
 libc:
-	${MAKE} -C tools/libc/src all
+	cd tools/libc/src; ./build.sh build
 
 llvm:
 	${MAKE} -C tools/llvm all
@@ -40,16 +37,16 @@ etc:
 # Installation
 install: install-tools
 
-install-tools: install-asm install-libll install-libc install-llvm install-etc
+install-tools: install-binutils install-libll install-libc install-llvm install-etc
 
-install-asm:
-	${MAKE} -C tools/asm install
+install-binutils:
+	${MAKE} -C tools/binutils install
 
 install-libll:
 	${MAKE} -C tools/libll install
 
 install-libc:
-	${MAKE} -C tools/libc/src install
+	cd tools/libc/src; ./build.sh install
 
 install-llvm:
 	${MAKE} -C tools/llvm install
