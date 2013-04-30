@@ -1,13 +1,11 @@
 include /usr/local/lemberg/etc/Makefile.rules
 
-CFLAGS=-O3
-OPTFLAGS=-O3
-LLCFLAGS=-O3 -code-model=small -regalloc=greedy
+ARCH=-march=lemberg-4way -mfpu=double -mcmodel=small
+CFLAGS=-O3 -mllvm -regalloc=greedy
 
 all: helloworld.bin helloworld.dat
 
-helloworld.linked.bc: helloworld.bc
-	${LLVM_LD}
+helloworld.elf: helloworld.o
 
 clean:
-	rm -f *.bc *.ll *.dat *.bin *.sym *.s *~
+	rm -f *.bc *.ll *.s *.o *.elf *.dat *.bin *~

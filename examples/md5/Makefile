@@ -1,14 +1,11 @@
 include /usr/local/lemberg/etc/Makefile.rules
 
-CFLAGS=-O3
-LLVM_LDFLAGS=
-OPTFLAGS=-O3
-LLCFLAGS=-O3 -code-model=small -regalloc=greedy
+ARCH=-march=lemberg-4way -mfpu=double -mcmodel=small
+CFLAGS=-O3 -mllvm -regalloc=greedy
 
 all: md5.bin md5.dat
 
-md5.linked.bc: md5.bc md5main.bc
-	${LLVM_LD}
+md5.elf: md5.o md5main.o
 
 clean:
-	rm -f *.bc *.ll *.dat *.bin *.sym *.s *~
+	rm -f *.bc *.ll *.s *.o *.elf *.dat *.bin *~
