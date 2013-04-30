@@ -70,11 +70,13 @@ distclean maintainer-clean realclean: clean
 
 .PHONY: install info install-info clean-info
 install:
+	$(INSTALL) -d $(DESTDIR)$(tooldir)/lib${MULTISUBDIR}/; \
 	for file in $(BSP); do \
-	  $(INSTALL_DATA) $${file} $(DESTDIR)$(tooldir)/lib${MULTISUBDIR}; \
+	  $(INSTALL_DATA) $${file} $(DESTDIR)$(tooldir)/lib${MULTISUBDIR}/; \
 	done; \
+	$(INSTALL) -d $(DESTDIR)$(tooldir)/include/; \
 	for file in ${srcdir}/include/*.h; do \
-	  $(INSTALL_DATA) $${file} $(DESTDIR)$(tooldir)/include; \
+	  $(INSTALL_DATA) $${file} $(DESTDIR)$(tooldir)/include/; \
 	done;
 
 doc:

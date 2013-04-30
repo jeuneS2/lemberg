@@ -17,10 +17,10 @@ configure-llvm:
 	cd tools/llvm; ./configure --enable-assertions
 
 # Building
-tools: asm libll libc llvm
+tools: binutils libll libc llvm
 
-asm:
-	${MAKE} -C tools/asm all
+binutils:
+	${MAKE} -C tools/binutils all
 
 libll:
 	${MAKE} -C tools/libll all
