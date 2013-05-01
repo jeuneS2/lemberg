@@ -32,6 +32,7 @@ struct sym_reloc_info
 {
   const char *sect;
   unsigned long addr;
+  long addend;
   int type;
   struct sym_reloc_info *next;
 };
@@ -64,7 +65,7 @@ void sym_define(const char *, const char *, unsigned long);
 void sym_setsize(const char *, struct expr);
 void sym_settype(const char *, const char *);
 void sym_setbind(const char *, int);
-void sym_addreloc(const char *, const char *, unsigned long, int);
+void sym_addreloc(const char *, const char *, unsigned long, int, long);
 
 struct sym_info *sym_get(const char *);
 

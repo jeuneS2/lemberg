@@ -477,7 +477,8 @@ let Defs = [R31] in {
 
   def LOAD32d_gai: F1<(outs), (ins i32imm:$addr, i32imm:$off),
                       "       ldmg.d\t$addr+$off",
-                      [(LembergLoadCached (add (LembergWrapper tglobaladdr:$addr), imm:$off))],
+                      [(LembergLoadCached (add (LembergWrapper tglobaladdr:$addr),
+										   uimm19s2:$off))],
 				      IIMem>,
 	  Requires<[SmallCode]>;
 
@@ -758,6 +759,11 @@ let Constraints = "$src1 = $dst" in {
                         "$p ldih\thi11\\{ $src2 \\} -> $dst",
 	                    [(set A:$dst, (or A:$src1, (and imm:$src2, (i32 0xffe00000))))],
                         IIAlu>;
+	def LOADsym11hi_off: F1<(outs A:$dst), (ins pred:$p, A:$src1, i32imm:$src2, i32imm:$off),
+                        "$p ldih\thi11\\{ $src2+$off \\} -> $dst",
+							[(set A:$dst, (or A:$src1, (and (add imm:$src2, imm:$off), 
+														(i32 0xffe00000))))],
+                        IIAlu>;
 }
 
 // load global address in small code model
@@ -780,6 +786,10 @@ def : Pat<(LembergWrapper tglobaladdr:$addr),
 		  (LOADsym11hi (LOADga 
 						tglobaladdr:$addr),
 		   tglobaladdr:$addr)>;
+def : Pat<(add (LembergWrapper tglobaladdr:$addr), uimm19s2:$off),
+		  (LOADsym11hi_off (LOADga_off 
+							tglobaladdr:$addr, uimm19s2:$off),
+		   tglobaladdr:$addr, uimm19s2:$off)>;
 
 // just load 22 bits for the small code model
 def : Pat<(LembergLoadCached (add (LembergWrapper tjumptable:$addr), (shl A:$off, (i32 2)))),
@@ -792,15 +802,6 @@ def : Pat<(LembergLoadCached (add (LembergWrapper tjumptable:$addr), (shl A:$off
 											tjumptable:$addr),
 							   tjumptable:$addr),
 					 A:$off))>;
-
-// pattern for stores to global addresses
-def : Pat <(LembergStore32 A:$val, (LembergWrapper tglobaladdr:$addr)),
-		   (STORE32ap A:$val, (LOADga tglobaladdr:$addr))>,
-	Requires<[SmallCode]>;
-
-def : Pat <(LembergStore32 imm5:$val, (LembergWrapper tglobaladdr:$addr)),
-		   (STORE32ap_imm imm5:$val, (LOADga tglobaladdr:$addr))>,
-	Requires<[SmallCode]>;
 
 // load 21 bits for a block address (ok for methods up to 2MB)
 def : Pat<(LembergWrapper tblockaddress:$addr),

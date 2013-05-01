@@ -42,6 +42,7 @@ do { \
 
 STRING "\""([[:print:]]|\\b|\\f|\\n|\\r|\\t|\\\\|\\[0-7]{3})*"\""
 SYM [\._a-zA-Z0-9]+
+NUM ((-?0[0-7]*)|(-?[1-9][0-9]*)|(-?0x[0-9a-fA-F]+))
 
 %%
 
@@ -311,7 +312,6 @@ $f[0-9]+ {
   }
 
 (lo11|mi10|hi11)\{\ {SYM}\ \} {
-	/* recognize bit extraction from symbols */
 	yylval.exprval = NULL_EXPR;
 	yylval.exprval.strval = malloc(strlen(yytext)+1);
 	strcpy(yylval.exprval.strval, yytext);
@@ -319,7 +319,13 @@ $f[0-9]+ {
   }
 
 (lo11|mi10|hi11)\{\ {SYM}@{SYM}\ \} {
-	/* recognize bit extraction from symbols */
+	yylval.exprval = NULL_EXPR;
+	yylval.exprval.strval = malloc(strlen(yytext)+1);
+	strcpy(yylval.exprval.strval, yytext);
+	return EXPR;
+  }
+
+(lo11|mi10|hi11)\{\ {SYM}\+{NUM}\ \} {
 	yylval.exprval = NULL_EXPR;
 	yylval.exprval.strval = malloc(strlen(yytext)+1);
 	strcpy(yylval.exprval.strval, yytext);
@@ -342,7 +348,7 @@ $f[0-9]+ {
 	return EXPR;
   }
 
-{SYM}\+((-?0[0-7]*)|(-?[1-9][0-9]*)|(-?0x[0-9a-fA-F]+)) {
+{SYM}\+{NUM} {
 	/* recognize symbol plus offset */
 	yylval.exprval = NULL_EXPR;
 	yylval.exprval.strval = malloc(strlen(yytext)+1);
@@ -357,7 +363,7 @@ $f[0-9]+ {
 	return STR;
   }
 
-((-?0[0-7]*)|(-?[1-9][0-9]*)|(-?0x[0-9a-fA-F]+)) {
+{NUM} {
 	yylval.exprval = NULL_EXPR;
 	yylval.exprval.intval = strtoll(yytext, NULL, 0);
 	return NUM;

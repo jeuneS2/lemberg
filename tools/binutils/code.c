@@ -47,6 +47,19 @@ static unsigned int force_eval(struct expr e) {
   return reloc.intval;
 }
 
+static unsigned int reloc_eval(const char *sect, unsigned long pos,
+							   struct expr e, int type)
+{
+  struct reloc_info reloc = expr_evaluate(e);
+  if (reloc.symbol != NULL)
+	{
+	  sym_addreloc(reloc.symbol, sect, pos,
+				   merge_relocs(reloc.type, type), reloc.intval);
+	  return 0;
+	}
+  return reloc.intval;
+}
+
 static int is_format_B(unsigned int opcode)
 {
 	switch (opcode) {
@@ -213,12 +226,8 @@ static unsigned long conv_format_C(struct asmop op, const char *sect, unsigned l
 
 static unsigned long conv_format_I(struct asmop op, const char *sect, unsigned long pos)
 {
-    unsigned int val;
-
-	struct reloc_info reloc = expr_evaluate(op.fmt.I.val);
-	sym_addreloc(reloc.symbol, sect, pos, merge_relocs(reloc.type, R_LEMBERG_XX11));
-	val = reloc.intval;
-
+	unsigned int val = reloc_eval(sect, pos, op.fmt.I.val, R_LEMBERG_XX11);
+	
 	check_bits(op.op, 6);
 	check_bits(op.fmt.I.dest, 5);
 	check_bits(val, 11);
@@ -235,11 +244,7 @@ static unsigned long conv_format_I(struct asmop op, const char *sect, unsigned l
 
 static unsigned long conv_format_L(struct asmop op, const char *sect, unsigned long pos)
 {
-    unsigned int offset;
-
-	struct reloc_info reloc = expr_evaluate(op.fmt.L.offset);
-	sym_addreloc(reloc.symbol, sect, pos, merge_relocs(reloc.type, R_LEMBERG_XX11));
-	offset = reloc.intval;
+	unsigned int offset = reloc_eval(sect, pos, op.fmt.L.offset, R_LEMBERG_XX11);
 
 	check_bits(op.op, 6);
 	check_bits(op.fmt.L.addr, 5);
@@ -331,10 +336,7 @@ static unsigned long conv_format_Z(struct asmop op, const char *sect, unsigned l
 
 static unsigned long conv_format_G(struct asmop op, const char *sect, unsigned long pos)
 {
-    unsigned int address;
-	struct reloc_info reloc = expr_evaluate(op.fmt.G.address);
-	sym_addreloc(reloc.symbol, sect, pos, merge_relocs(reloc.type, R_LEMBERG_19S2));
-	address = reloc.intval;
+	unsigned int address = reloc_eval(sect, pos, op.fmt.G.address, R_LEMBERG_19S2);
 
 	check_bits(op.op, 6);
 	check_bits(address >> 2, 19);
@@ -349,10 +351,7 @@ static unsigned long conv_format_H(struct asmop op, const char *sect, unsigned l
 	unsigned int dest = (((op.fmt.H.dest & (1 << 4)) >> 2)
 						| (op.fmt.H.dest & 0x03));
 
-    unsigned int address;
-	struct reloc_info reloc = expr_evaluate(op.fmt.H.address);
-	sym_addreloc(reloc.symbol, sect, pos, merge_relocs(reloc.type, R_LEMBERG_19S2));
-	address = reloc.intval;
+	unsigned int address = reloc_eval(sect, pos, op.fmt.H.address, R_LEMBERG_19S2);
 
 	check_bits(op.op, 6);
 	check_bits(address >> 2, 19);

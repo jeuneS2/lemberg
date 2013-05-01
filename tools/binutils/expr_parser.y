@@ -97,17 +97,17 @@ BaseExpr : NUM
 LoHiExpr : LO11 BaseExpr '}'
 		 { $$.symbol = $2.symbol;
 		   $$.type = R_LEMBERG_LO11;
-		   $$.intval = $2.intval & 0x7ff;		   
+		   $$.intval = $2.intval;
 		 }
          | MI10 BaseExpr '}'
 		 { $$.symbol = $2.symbol;
 		   $$.type = R_LEMBERG_MI10;
-		   $$.intval = ($2.intval >> 11) & 0x3ff;
+		   $$.intval = $2.intval;
 		 }
          | HI11 BaseExpr '}'
 		 { $$.symbol = $2.symbol;
 		   $$.type = R_LEMBERG_HI11;
-		   $$.intval = ($2.intval >> 21) & 0x7ff;
+		   $$.intval = $2.intval;
 		 }
          | BaseExpr
 		 { $$ = $1;

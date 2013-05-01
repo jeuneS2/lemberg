@@ -263,22 +263,22 @@ static void reloc(void)
 	  while ((relscn = elf_nextscn(e->elf, relscn)) != NULL)
 		{
 		  Elf32_Shdr *relshdr = xelf32_getshdr(relscn);
-		  if (relshdr->sh_type == SHT_REL)
+		  if (relshdr->sh_type == SHT_RELA)
 			{
 			  unsigned i;
 			  Elf_Scn *symscn;
 			  Elf32_Shdr *symshdr;
 			  Elf_Data *symdata, *reldata;
-			  Elf32_Rel *relocs;
+			  Elf32_Rela *relocs;
 			  
 			  symscn = xelf_getscn(e->elf, relshdr->sh_link);
 			  symshdr = xelf32_getshdr(symscn);
 			  symdata = xelf_getdata(symscn);
 
 			  reldata = xelf_getdata(relscn);
-			  relocs = (Elf32_Rel *)reldata->d_buf;
+			  relocs = (Elf32_Rela *)reldata->d_buf;
 
-			  for (i = 0; i < reldata->d_size/sizeof(Elf32_Rel); i++)
+			  for (i = 0; i < reldata->d_size/sizeof(Elf32_Rela); i++)
 				{
 				  unsigned symidx = ELF32_R_SYM(relocs[i].r_info);
 				  Elf32_Sym *sym = ((Elf32_Sym *)symdata->d_buf)+symidx;
@@ -301,47 +301,42 @@ static void reloc(void)
 					  if (strcmp(s->symbol, name) == 0)
 						{
 						  addr = s->addr;
+						  break;
 						}
 					}
+				  addr += relocs[i].r_addend;
 
 				  if (type == R_LEMBERG_FULL)
 					{
-					  *data += addr;
+					  *data = addr;
 					}
 				  else if (type == R_LEMBERG_19S2)
 					{
-					  unsigned d = *data & 0x0007ffff;
+					  unsigned d = 0;
+
 					  if ((addr & 0x3) != 0)
 						{
 						  eprintf("Cannot relocate symbol %s to unaligned address", name);
 						  exit(EXIT_FAILURE);
 						}
-					  d += addr >> 2;
-					  if ((d & 0xfff80000) != 0)
-						{
-						  eprintf("Overflow for relocation of symbol %s", name);
-						  exit(EXIT_FAILURE);
-						}
+
+					  d = (addr >> 2) & 0x0007ffff;
+					  
 					  *data = (*data & 0xfff80000) | d;
 					}
 				  else if (type == R_LEMBERG_LO11
 						   || type == R_LEMBERG_MI10
 						   || type == R_LEMBERG_HI11)
 					{
-					  unsigned d = *data & 0x00003ff8;
+					  unsigned d = 0;
 
 					  if (type == R_LEMBERG_LO11)
-						d += (addr & 0x7ff) << 3;
+						d = (addr & 0x7ff) << 3;
 					  else if (type == R_LEMBERG_MI10)
-						d += ((addr >> 11) & 0x3ff) << 3;
+						d = ((addr >> 11) & 0x3ff) << 3;
 					  else if (type == R_LEMBERG_HI11)
-						d += ((addr >> 21) & 0x7ff) << 3;
+						d = ((addr >> 21) & 0x7ff) << 3;
 
-					  if ((d & 0xffffc007) != 0)
-						{
-						  eprintf("Overflow for relocation of symbol %s", name);
-						  exit(EXIT_FAILURE);
-						}
 					  *data = (*data & 0xffffc007) | d;
 					}
 				  else

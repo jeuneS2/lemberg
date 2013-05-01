@@ -110,18 +110,17 @@ void sym_setbind(const char *symbol, int bind)
   sym->bind = bind;
 }
 
-void sym_addreloc(const char *symbol, const char *sect, unsigned long addr, int type)
+void sym_addreloc(const char *symbol, const char *sect,
+				  unsigned long addr, int type, long addend)
 {
-  if (symbol != NULL)
-	{
-	  struct sym_info *sym = get_or_create_sym(symbol);
-	  struct sym_reloc_info *old = sym->relocs;
-	  sym->relocs = malloc(sizeof(struct sym_reloc_info));
-	  sym->relocs->sect = sect;
-	  sym->relocs->addr = addr;
-	  sym->relocs->type = type;
-	  sym->relocs->next = old;
-	}
+  struct sym_info *sym = get_or_create_sym(symbol);
+  struct sym_reloc_info *old = sym->relocs;
+  sym->relocs = malloc(sizeof(struct sym_reloc_info));
+  sym->relocs->sect = sect;
+  sym->relocs->addr = addr;
+  sym->relocs->addend = addend;
+  sym->relocs->type = type;
+  sym->relocs->next = old;
 }
 
 struct sym_info *sym_get(const char *symbol)
@@ -232,9 +231,10 @@ Elf_Scn *symtab_write_elf(Elf *e, struct sect * sects,
 			  if (sym->relocs != NULL) {
 				struct sym_reloc_info *r;
 				for (r = sym->relocs; r != NULL; r = r->next) {
-				  Elf32_Rel rel;
+				  Elf32_Rela rel;
 				  rel.r_offset = r->addr;
 				  rel.r_info = ELF32_R_INFO(buf.pos/sizeof(esym), r->type);
+				  rel.r_addend = r->addend;
 				  for (s = sects, k = 0; s != NULL; s = s->next, k++)
 					{
 					  if (strcmp(s->name, r->sect) == 0)
@@ -277,17 +277,17 @@ Elf_Scn *symtab_write_elf(Elf *e, struct sect * sects,
 		  relshdr = xelf32_getshdr(relscn);
 		  relshdr->sh_name = shstrtab_buf->pos;
 		  relname = malloc(strlen(s->name)+6);
-		  strcpy(relname, ".rel");
+		  strcpy(relname, ".rela");
 		  strcat(relname, s->name);
 		  buffer_writestr(shstrtab_buf, relname);
 
-		  relshdr->sh_type = SHT_REL;
+		  relshdr->sh_type = SHT_RELA;
 		  shdr->sh_flags = 0;
 
 		  reldata = xelf_newdata(relscn);
 		  reldata->d_align = 4;
 		  reldata->d_off = 0;
-		  reldata->d_type = ELF_T_REL;
+		  reldata->d_type = ELF_T_RELA;
 		  reldata->d_version = EV_CURRENT;
 		  reldata->d_buf = relbuf[k].data;
 		  reldata->d_size = relbuf[k].pos;

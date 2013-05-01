@@ -233,8 +233,21 @@ void section_write_elf(Elf *e, struct sect *sect, struct buffer *shstrtab_buf)
 			case TYPE_RAW:
 			  {
 				struct reloc_info raw = expr_evaluate(sect->data[i].raw);
-				sym_addreloc(raw.symbol, sect->name, buf.pos, R_LEMBERG_FULL);
-				buffer_write(&buf, raw.intval, sect->data[i].size);
+				if (raw.symbol != NULL)
+				  {
+					if (sect->data[i].size != 4)
+					  {
+						eprintf("Invalid size for relocated data: %d", sect->data[i].size);
+						exit(EXIT_FAILURE);
+					  }
+					sym_addreloc(raw.symbol, sect->name, buf.pos,
+								 R_LEMBERG_FULL, raw.intval);
+					buffer_write(&buf, 0, sect->data[i].size);
+				  }
+				else
+				  {
+					buffer_write(&buf, raw.intval, sect->data[i].size);
+				  }
 			  }
 			  break;
 			default:
