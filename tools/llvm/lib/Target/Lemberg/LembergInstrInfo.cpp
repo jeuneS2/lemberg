@@ -235,6 +235,7 @@ void LembergInstrInfo::reMaterialize(MachineBasicBlock &MBB,
 
   // Make sure registers end up in the right register class
   if (MI->getOpcode() == Lemberg::LOADga
+	  || MI->getOpcode() == Lemberg::LOADga_off
 	  || MI->getOpcode() == Lemberg::LOADuimm19s2) {
 	  assert((TRI.isVirtualRegister(DestReg) || Lemberg::AImmRegClass.contains(DestReg))
 			 && "Cannot rematerialize this instruction to arbitrary physical register");
