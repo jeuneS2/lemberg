@@ -74,9 +74,21 @@ struct sect *section_create(struct sect **sects, const char *name, int type)
   s->type = type;
   s->pos = 0;
   s->size = 0;
+  s->align = 4;
   s->data = malloc(sizeof(struct bundle));
   s->next = NULL;
   return s;
+}
+
+unsigned section_align(struct sect *sect, unsigned align)
+{
+  unsigned a = sect->pos % align == 0 ? 0 : align - sect->pos % align; 
+  sect->pos += a;
+  if (sect->align < align)
+	{
+	  sect->align = align;
+	}
+  return a;
 }
 
 void section_write_elf(Elf *e, struct sect *sect, struct buffer *shstrtab_buf)
@@ -257,14 +269,6 @@ void section_write_elf(Elf *e, struct sect *sect, struct buffer *shstrtab_buf)
 		}
 	}
 
-  if (sect->type != SECT_XLATE)
-	{
-	  while ((buf.pos & 0x03) != 0)
-		{
-		  buffer_write(&buf, 0, 1);
-		}
-	}
-
   scn = xelf_newscn(e);
 
   shdr = xelf32_getshdr(scn);
@@ -291,7 +295,7 @@ void section_write_elf(Elf *e, struct sect *sect, struct buffer *shstrtab_buf)
 	}
   
   data = xelf_newdata(scn);
-  data->d_align = 4;
+  data->d_align = sect->align;
   data->d_off = 0;
   data->d_type = ELF_T_BYTE;
   data->d_version = EV_CURRENT;

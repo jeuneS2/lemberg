@@ -32,6 +32,7 @@ struct sect {
   int type;
   unsigned long pos;
   unsigned long size;
+  unsigned align;
   struct bundle *data;
   struct sect *next;
 };
@@ -39,6 +40,8 @@ struct sect {
 struct sect *sections_init(struct sect **);
 struct sect *section_create(struct sect **, const char *, int);
 struct sect *section_get(struct sect *, const char *);
+
+unsigned section_align(struct sect *, unsigned);
 
 void section_write_elf(Elf *, struct sect *, struct buffer *);
 

@@ -115,14 +115,21 @@ unsigned long pile_position(unsigned p, unsigned long pos)
   struct scn_list *sect;
   for (sect = pile[p]; sect != NULL; sect = sect->next)
 	{
+	  Elf32_Shdr *shdr = xelf32_getshdr(sect->scn);
+	  pos = ((pos+shdr->sh_addralign-1) / shdr->sh_addralign) * shdr->sh_addralign;
+	}
+  for (sect = pile[p]; sect != NULL; sect = sect->next)
+	{
 	  struct sym_info *s;
 	  
 	  Elf32_Ehdr *ehdr = xelf32_getehdr(sect->elf->elf);
 	  Elf32_Shdr *shdr = xelf32_getshdr(sect->scn);
 	  const char *scnname = elf_strptr(sect->elf->elf, ehdr->e_shstrndx, shdr->sh_name);
-	  
+
+	  pos = ((pos+shdr->sh_addralign-1) / shdr->sh_addralign) * shdr->sh_addralign;
+
 	  shdr->sh_addr += pos;
-	  
+
 	  for (s = sect->elf->globals; s != NULL; s = s->next)
 		{
 		  if (strcmp(s->section, scnname) == 0)
@@ -139,9 +146,8 @@ unsigned long pile_position(unsigned p, unsigned long pos)
 			  s->addr += pos;
 			}
 		}		  
-	  
+
 	  pos += shdr->sh_flags & SHF_OS_NONCONFORMING ? shdr->sh_info : shdr->sh_size;
-	  pos = ((pos+4-1) / 4) * 4;
 	}
   return pos;
 }

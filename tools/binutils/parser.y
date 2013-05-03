@@ -132,19 +132,15 @@ Section : SECT NewLine
 		  struct bundle comm;
 		  struct sect *old_sect;
 		  int align = $6.intval;
-		  if (align < 4)
-			{
-			  align = 4;
-			}
+		  if (align < 4) align = 4;
 
 		  /* .comm implicitly switches to .bss */
 		  old_sect = curr_sect;
 		  curr_sect = section_get(sections, ".bss");
 
 		  comm.type = TYPE_ZERO;
-		  comm.size = curr_sect->pos % align == 0 ? 0 : align - curr_sect->pos % align;
+		  comm.size = section_align(curr_sect, align);
 		  comm.raw = NULL_EXPR;
-		  curr_sect->pos = ((curr_sect->pos+align-1) / align) * align;			  
 
 		  sym_define($2.strval, curr_sect->name, curr_sect->pos);
 		  sym_setsize($2.strval, $4);
@@ -167,17 +163,15 @@ Directive : ALIGN NUM NewLine
           {
 			  int align = $2.intval;
 			  $$.type = TYPE_ALIGN;
-			  $$.size = curr_sect->pos % align == 0 ? 0 : align - curr_sect->pos % align;
+			  $$.size = section_align(curr_sect, align);
 			  $$.raw = NULL_EXPR;
-			  curr_sect->pos = ((curr_sect->pos+align-1) / align) * align;
 		  }
           | TYPE SYM ',' SYMTYPE NewLine
 		  {
 			sym_settype($2.strval, $4);
 			$$.type = TYPE_ALIGN;
-			$$.size = curr_sect->pos % 4 == 0 ? 0 : 4 - curr_sect->pos % 4;;
+			$$.size = section_align(curr_sect, 4);
 			$$.raw = NULL_EXPR;
-			curr_sect->pos = ((curr_sect->pos+4-1) / 4) * 4;
 		  }
           | LOCAL SYM NewLine
 		  {
@@ -204,9 +198,8 @@ Directive : ALIGN NUM NewLine
 		  {
 			struct bundle b;
 			b.type = TYPE_ALIGN;
-			b.size = curr_sect->pos % 4 == 0 ? 0 : 4 - curr_sect->pos % 4;
+			b.size = section_align(curr_sect, 4);
 			b.raw = NULL_EXPR;
-			curr_sect->pos = ((curr_sect->pos+4-1) / 4) * 4;
 			emit_bundle(b);
 
 			$$.type = TYPE_SIZE;
