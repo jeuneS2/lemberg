@@ -81,4 +81,4 @@ subinstall: crts
 	install -m 0644 crt0.o crtend0.o ${PREFIX}/lemberg/${ARCHDIR}/lib/
 
 clean:
-	rm -f parser.c lexer.c expr_lexer.c y.tab.h expr.tab.h expr.tab.c *.o *~
+	rm -f as ld objcopy parser.c lexer.c expr_lexer.c y.tab.h expr.tab.h expr.tab.c *.o *~
