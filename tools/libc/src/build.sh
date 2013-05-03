@@ -13,8 +13,7 @@ function build() {
 		for f in $FPUS; do
 			export CFLAGS_FOR_TARGET="$CFLAGS -march=lemberg-$w -mfpu=$f"
 			./configure --target=lemberg --prefix=$PREFIX || exit 1
-			make $MAKEFLAGS TARGET_SUBDIR=$w-$f \
-				tooldir="$PREFIX/lemberg/$w-$f" all || exit 1
+			make $MAKEFLAGS TARGET_SUBDIR=$w-$f all || exit 1
 		done
 	done
 }
@@ -30,6 +29,14 @@ function install() {
 	ln -sf $PREFIX/lemberg/4way-double/include $PREFIX/lemberg/include || exit 1
 }
 
+function clean() {
+	for w in $WAYS; do
+		for f in $FPUS; do
+			make $MAKEFLAGS TARGET_SUBDIR=$w-$f clean || exit 1
+		done
+	done
+}
+
 export AR_FOR_TARGET="ar"
 export RANLIB_FOR_TARGET="ranlib"
 export AS_FOR_TARGET="lemberg-as"
@@ -39,5 +46,6 @@ export LD_FOR_TARGET="lemberg-ld"
 case $1 in
 	build) build ;;
 	install) install ;;
+	clean) clean;;
 	*) echo "Usage: $0 (build|install)"
 esac
