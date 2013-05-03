@@ -4,7 +4,7 @@ package config is
 	constant CLOCK_FREQ : integer := @CLOCK_FREQ@;
 
 	-- PLL configuration
-	constant PLL_INFREQ : integer := integer(1000000.0 / @PLL_INFREQ@);
+	constant PLL_INFREQ : real := @PLL_INFREQ@;
 	constant PLL_MUL : integer := @PLL_MUL@;
 	constant PLL_DIV : integer := @PLL_DIV@;
     

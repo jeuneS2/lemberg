@@ -24,6 +24,10 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 entity pll is
+	generic (
+        infreq : real;
+        mul_by : natural;
+        div_by : natural);
 	port (
 		inclk0  : in std_logic  := '0';
 		c0		: out std_logic;

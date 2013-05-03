@@ -20,6 +20,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+use work.config.all;
 use work.core_pack.all;
 use work.mem_pack.all;
 use work.io_pack.all;
@@ -117,6 +118,10 @@ begin  -- behavior
 			io_in     => io_pin_in);
 		
 	pll: entity work.pll
+        generic map (
+            infreq => PLL_INFREQ,
+            mul_by => PLL_MUL,
+            div_by => PLL_DIV)
 		port map (
 			inclk0 => clk_pin,
 			c0	   => clk,

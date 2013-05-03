@@ -35,6 +35,7 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+use work.config.all;
 use work.mem_pack.all;
 use work.pin_pack.all;
 
@@ -115,6 +116,10 @@ begin
 end process;
 
 pll: entity work.ssram_pll
+    generic map (
+        infreq => PLL_INFREQ,
+        mul_by => PLL_MUL,
+        div_by => PLL_DIV)
 	port map (
 		inclk0 => clk_pin,
 		c0	   => ram_out.clk);
