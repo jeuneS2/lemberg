@@ -64,7 +64,10 @@ static inline dst_t dstFromRep(dst_rep_t x) {
 
 // End helper routines.  Conversion implementation follows.
 
-dst_t __truncdfsf2(src_t a) {
+ARM_EABI_FNALIAS(d2f, truncdfsf2)
+
+COMPILER_RT_ABI dst_t
+__truncdfsf2(src_t a) {
     
     // Various constants whose values follow from the type parameters.
     // Any reasonable optimizer will fold and propagate all of these.

@@ -1,4 +1,4 @@
-//===-- lib/addsf3.c - Single-precision addition and subtraction --*- C -*-===//
+//===-- lib/addsf3.c - Single-precision addition ------------------*- C -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -7,13 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file implements single-precision soft-float addition and subtraction
-// with the IEEE-754 default rounding (to nearest, ties to even).
+// This file implements single-precision soft-float addition with the IEEE-754
+// default rounding (to nearest, ties to even).
 //
 //===----------------------------------------------------------------------===//
 
 #define SINGLE_PRECISION
 #include "fp_lib.h"
+
+ARM_EABI_FNALIAS(fadd, addsf3)
 
 fp_t __addsf3(fp_t a, fp_t b) {
 
@@ -82,7 +84,7 @@ fp_t __addsf3(fp_t a, fp_t b) {
     
     // Shift the significand of b by the difference in exponents, with a sticky
     // bottom bit to get rounding correct.
-    const int align = aExponent - bExponent;
+    const unsigned int align = aExponent - bExponent;
     if (align) {
         if (align < typeWidth) {
             const bool sticky = bSignificand << (typeWidth - align);
@@ -147,18 +149,3 @@ fp_t __addsf3(fp_t a, fp_t b) {
     if (roundGuardSticky == 0x4) result += result & 1;
     return fromRep(result);
 }
-
-// Subtraction; flip the sign bit of b and add.
-fp_t __subsf3(fp_t a, fp_t b) {
-    return __addsf3(a, fromRep(toRep(b) ^ signBit));
-}
-
-
-
-
-
-
-
-
-
-

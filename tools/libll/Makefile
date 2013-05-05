@@ -11,27 +11,33 @@ FPUS=none single double
 
 # All the files we have to compile
 FILES = divsi3 modsi3 udivsi3 umodsi3 \
-	clzsi2 \
-	muldi3 divdi3 moddi3 udivdi3 umoddi3 udivmoddi4 \
+	divmodsi4 udivmodsi4 \
+	muldi3 divdi3 moddi3 udivdi3 umoddi3 \
+	divmoddi4 udivmoddi4 \
 	ashldi3 ashrdi3 lshrdi3 \
-	addsf3 mulsf3 divsf3 comparesf2 \
-	adddf3 muldf3 divdf3 comparedf2 \
+	addsf3 subsf3 negsf2 mulsf3 divsf3 comparesf2 \
+	adddf3 subdf3 negdf2 muldf3 divdf3 comparedf2 \
 	truncdfsf2 extendsfdf2 \
-	floatsisf floatsidf floatunsidf \
-	fixsfsi fixdfsi fixunsdfsi
+	floatsisf floatsidf floatdisf floatdidf \
+	floatunsisf floatunsidf floatundisf floatundidf \
+	fixsfsi fixsfdi fixdfsi fixdfdi \
+	fixunssfsi fixunssfdi fixunsdfsi fixunsdfdi
 
 # All the function symbols we want to provide
 FUNS = divsi3 modsi3 udivsi3 umodsi3 \
-	clzsi2 \
-	muldi3 divdi3 moddi3 udivdi3 umoddi3 udivmoddi4 \
+	divmodsi4 udivmodsi4 \
+	muldi3 divdi3 moddi3 udivdi3 umoddi3 \
+	divmoddi4 udivmoddi4 \
 	ashldi3 ashrdi3 lshrdi3 \
-	addsf3 subsf3 mulsf3 divsf3 \
+	addsf3 subsf3 negsf2 mulsf3 divsf3 \
 	gesf2 gtsf2 lesf2 ltsf2 eqsf2 nesf2 unordsf2 \
-	adddf3 subdf3 muldf3 divdf3 \
+	adddf3 subdf3 negdf2 muldf3 divdf3 \
 	gedf2 gtdf2 ledf2 ltdf2 eqdf2 nedf2 unorddf2 \
 	truncdfsf2 extendsfdf2 \
-	floatsisf floatsidf floatunsidf \
-	fixsfsi fixdfsi fixunsdfsi
+	floatsisf floatsidf floatdisf floatdidf \
+	floatunsisf floatunsidf floatundisf floatundidf \
+	fixsfsi fixsfdi fixdfsi fixdfdi \
+	fixunssfsi fixunssfdi fixunsdfsi fixunsdfdi
 
 # File names for symbols
 BCS  = $(foreach f, ${FILES}, ${f}.bc)

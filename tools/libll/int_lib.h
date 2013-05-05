@@ -16,98 +16,31 @@
 #ifndef INT_LIB_H
 #define INT_LIB_H
 
-/* Assumption:  signed integral is 2's complement */
-/* Assumption:  right shift of signed negative is arithmetic shift */
+/* Assumption: Signed integral is 2's complement. */
+/* Assumption: Right shift of signed negative is arithmetic shift. */
+/* Assumption: Endianness is little or big (not mixed). */
 
-#define CHAR_BIT 8
-#define UINT32_C(c) c ## U
-#define UINT64_C(c) c ## ULL
+/* ABI macro definitions */
 
-typedef int int32_t;
-typedef unsigned int uint32_t;
-typedef long long int64_t;
-typedef unsigned long long uint64_t;
-
-typedef int bool;
-
-#include "endianness.h"
-
-/* If compiling for kernel use, call panic() instead of abort(). */
-#ifdef KERNEL_USE
-extern void panic (const char *, ...);
-#define compilerrt_abort() \
-  panic("%s:%d: abort in %s", __FILE__, __LINE__, __FUNCTION__)
+#if __ARM_EABI__
+# define ARM_EABI_FNALIAS(aeabi_name, name)         \
+  void __aeabi_##aeabi_name() __attribute__((alias("__" #name)));
+# define COMPILER_RT_ABI __attribute__((pcs("aapcs")))
 #else
-#define compilerrt_abort() abort()
+# define ARM_EABI_FNALIAS(aeabi_name, name)
+# define COMPILER_RT_ABI
 #endif
 
-#if !defined(INFINITY) && defined(HUGE_VAL)
-#define INFINITY HUGE_VAL
-#endif /* INFINITY */
+/* Include the standard compiler builtin headers we use functionality from. */
+#include <limits.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <float.h>
 
-typedef      int si_int;
-typedef unsigned su_int;
+/* Include the commonly used internal type definitions. */
+#include "int_types.h"
 
-typedef          long long di_int;
-typedef unsigned long long du_int;
-
-typedef union
-{
-    di_int all;
-    struct
-    {
-#if _YUGA_LITTLE_ENDIAN
-        su_int low;
-        si_int high;
-#else
-        si_int high;
-        su_int low;
-#endif /* _YUGA_LITTLE_ENDIAN */
-    }s;
-} dwords;
-
-typedef union
-{
-    du_int all;
-    struct
-    {
-#if _YUGA_LITTLE_ENDIAN
-        su_int low;
-        su_int high;
-#else
-        su_int high;
-        su_int low;
-#endif /* _YUGA_LITTLE_ENDIAN */
-    }s;
-} udwords;
-
-typedef union
-{
-    su_int u;
-    float f;
-} float_bits;
-
-typedef union
-{
-    udwords u;
-    double  f;
-} double_bits;
-
-typedef struct
-{
-#if _YUGA_LITTLE_ENDIAN
-    udwords low;
-    udwords high;
-#else
-    udwords high;
-    udwords low;
-#endif /* _YUGA_LITTLE_ENDIAN */
-} uqwords;
-
-typedef union
-{
-    uqwords     u;
-    long double f;
-} long_double_bits;
+/* Include internal utility function declarations. */
+#include "int_util.h"
 
 #endif /* INT_LIB_H */

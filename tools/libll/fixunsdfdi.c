@@ -1,4 +1,4 @@
-/* ===-- fixunsdfsi.c - Implement __fixunsdfsi -----------------------------===
+/* ===-- fixunsdfdi.c - Implement __fixunsdfdi -----------------------------===
  *
  *                     The LLVM Compiler Infrastructure
  *
@@ -7,38 +7,41 @@
  *
  * ===----------------------------------------------------------------------===
  *
- * This file implements __fixunsdfsi for the compiler_rt library.
+ * This file implements __fixunsdfdi for the compiler_rt library.
  *
  * ===----------------------------------------------------------------------===
  */
 
 #include "int_lib.h"
 
-/* Returns: convert a to a unsigned int, rounding toward zero.
+/* Returns: convert a to a unsigned long long, rounding toward zero.
  *          Negative values all become zero.
  */
 
 /* Assumption: double is a IEEE 64 bit floating point type 
- *             su_int is a 32 bit integral type
- *             value in double is representable in su_int or is negative 
+ *             du_int is a 64 bit integral type
+ *             value in double is representable in du_int or is negative 
  *                 (no range checking performed)
  */
 
 /* seee eeee eeee mmmm mmmm mmmm mmmm mmmm | mmmm mmmm mmmm mmmm mmmm mmmm mmmm mmmm */
 
-ARM_EABI_FNALIAS(d2uiz, fixunsdfsi)
+ARM_EABI_FNALIAS(d2ulz, fixunsdfdi)
 
-COMPILER_RT_ABI su_int
-__fixunsdfsi(double a)
+COMPILER_RT_ABI du_int
+__fixunsdfdi(double a)
 {
     double_bits fb;
     fb.f = a;
     int e = ((fb.u.s.high & 0x7FF00000) >> 20) - 1023;
     if (e < 0 || (fb.u.s.high & 0x80000000))
         return 0;
-    return (
-                0x80000000u                      |
-                ((fb.u.s.high & 0x000FFFFF) << 11) |
-                (fb.u.s.low >> 21)
-           ) >> (31 - e);
+    udwords r;
+    r.s.high = (fb.u.s.high & 0x000FFFFF) | 0x00100000;
+    r.s.low = fb.u.s.low;
+    if (e > 52)
+        r.all <<= (e - 52);
+    else
+        r.all >>= (52 - e);
+    return r.all;
 }

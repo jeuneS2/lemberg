@@ -14,12 +14,11 @@
 
 #include "int_lib.h"
 
-si_int
-__divsi3(si_int a, si_int b);
+su_int COMPILER_RT_ABI __divsi3(si_int a, si_int b);
 
 /* Returns: a % b */
 
-si_int
+COMPILER_RT_ABI si_int
 __modsi3(si_int a, si_int b)
 {
     return a - __divsi3(a, b) * b;

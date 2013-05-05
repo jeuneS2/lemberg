@@ -1,4 +1,4 @@
-/* ===-- umoddi3.c - Implement __umoddi3 -----------------------------------===
+/*===-- divmoddi4.c - Implement __divmoddi4 --------------------------------===
  *
  *                    The LLVM Compiler Infrastructure
  *
@@ -7,21 +7,21 @@
  *
  * ===----------------------------------------------------------------------===
  *
- * This file implements __umoddi3 for the compiler_rt library.
+ * This file implements __divmoddi4 for the compiler_rt library.
  *
  * ===----------------------------------------------------------------------===
  */
 
 #include "int_lib.h"
 
-du_int COMPILER_RT_ABI __udivmoddi4(du_int a, du_int b, du_int* rem);
+extern COMPILER_RT_ABI di_int __divdi3(di_int a, di_int b);
 
-/* Returns: a % b */
+/* Returns: a / b, *rem = a % b  */
 
-COMPILER_RT_ABI du_int
-__umoddi3(du_int a, du_int b)
+COMPILER_RT_ABI di_int
+__divmoddi4(di_int a, di_int b, di_int* rem)
 {
-    du_int r;
-    __udivmoddi4(a, b, &r);
-    return r;
+  di_int d = __divdi3(a,b);
+  *rem = a - (d*b);
+  return d;
 }

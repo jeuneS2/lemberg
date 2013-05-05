@@ -15,7 +15,10 @@
 #define SINGLE_PRECISION
 #include "fp_lib.h"
 
-fp_t __mulsf3(fp_t a, fp_t b) {
+ARM_EABI_FNALIAS(fmul, mulsf3)
+
+COMPILER_RT_ABI fp_t
+__mulsf3(fp_t a, fp_t b) {
     
     const unsigned int aExponent = toRep(a) >> significandBits & maxExponent;
     const unsigned int bExponent = toRep(b) >> significandBits & maxExponent;
@@ -89,7 +92,7 @@ fp_t __mulsf3(fp_t a, fp_t b) {
     if (productExponent <= 0) {
         // Result is denormal before rounding, the exponent is zero and we
         // need to shift the significand.
-        wideRightShiftWithSticky(&productHi, &productLo, 1 - productExponent);
+        wideRightShiftWithSticky(&productHi, &productLo, 1U - (unsigned)productExponent);
     }
     
     else {

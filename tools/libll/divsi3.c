@@ -14,11 +14,13 @@
 
 #include "int_lib.h"
 
-su_int __udivsi3(su_int n, su_int d);
+su_int COMPILER_RT_ABI __udivsi3(su_int n, su_int d);
 
 /* Returns: a / b */
 
-si_int
+ARM_EABI_FNALIAS(idiv, divsi3)
+
+COMPILER_RT_ABI si_int
 __divsi3(si_int a, si_int b)
 {
     const int bits_in_word_m1 = (int)(sizeof(si_int) * CHAR_BIT) - 1;
@@ -27,5 +29,11 @@ __divsi3(si_int a, si_int b)
     a = (a ^ s_a) - s_a;                         /* negate if s_a == -1 */
     b = (b ^ s_b) - s_b;                         /* negate if s_b == -1 */
     s_a ^= s_b;                                  /* sign of quotient */
-    return (__udivsi3(a, b) ^ s_a) - s_a;        /* negate if s_a == -1 */
+    /*
+     * On CPUs without unsigned hardware division support,
+     *  this calls __udivsi3 (notice the cast to su_int).
+     * On CPUs with unsigned hardware division support,
+     *  this uses the unsigned division instruction.
+     */
+    return ((su_int)a/(su_int)b ^ s_a) - s_a;    /* negate if s_a == -1 */
 }
