@@ -382,7 +382,7 @@ SDValue LembergTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   Type *Ty = LD->getMemoryVT().getTypeForEVT(*DAG.getContext());
   unsigned ABIAlignment = getTargetData()->getABITypeAlignment(Ty);
   // Need to split unaligned loads
-  if (LD->getAlignment() < ABIAlignment) {
+  if (LD->getAlignment() < 4 && LD->getAlignment() < ABIAlignment) {
 	  EVT LDType = LD->getMemoryVT();
 
 	  assert((LDType == MVT::f32 || LDType == MVT::i32 || LDType == MVT::i16)
@@ -559,7 +559,7 @@ SDValue LembergTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   Type *Ty = ST->getMemoryVT().getTypeForEVT(*DAG.getContext());
   unsigned ABIAlignment = getTargetData()->getABITypeAlignment(Ty);
   // Need to split unaligned stores
-  if (ST->getAlignment() < ABIAlignment) {
+  if (ST->getAlignment() < 4 && ST->getAlignment() < ABIAlignment) {
 	  EVT STType = ST->getMemoryVT();
 
 	  assert((STType == MVT::i32 || STType == MVT::i16)
