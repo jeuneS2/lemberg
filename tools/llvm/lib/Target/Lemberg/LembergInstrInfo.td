@@ -730,9 +730,9 @@ def : Pat<(i32 imm32m10z:$imm),
 
 // load 32 bits constants with low two bits cleared
 def : Pat<(i32 imm32s2:$imm),
-		  (LOADimm11hi (LOADuimm19s2
-						(low21 imm32s2:$imm)),
-		   (high11 imm32s2:$imm))>;
+		  (COPY_TO_REGCLASS (LOADimm11hi (LOADuimm19s2
+										  (low21 imm32s2:$imm)),
+							 (high11 imm32s2:$imm)), A)>;
 
 // load full 32 bits constants
 def : Pat<(i32 imm:$imm),
@@ -783,20 +783,29 @@ let isReMaterializable = 1, isAsCheapAsAMove = 1, isMoveImm = 1 in {
 
 // load the full 32 bits
 def : Pat<(LembergWrapper tglobaladdr:$addr),
-		  (LOADsym11hi (LOADga 
-						tglobaladdr:$addr),
-		   tglobaladdr:$addr)>;
+		  (COPY_TO_REGCLASS (LOADsym11hi (LOADga 
+										  tglobaladdr:$addr),
+							 tglobaladdr:$addr), A)>;
 def : Pat<(add (LembergWrapper tglobaladdr:$addr), uimm19s2:$off),
-		  (LOADsym11hi_off (LOADga_off 
-							tglobaladdr:$addr, uimm19s2:$off),
-		   tglobaladdr:$addr, uimm19s2:$off)>;
+		  (COPY_TO_REGCLASS (LOADsym11hi_off (LOADga_off 
+											  tglobaladdr:$addr, uimm19s2:$off),
+							 tglobaladdr:$addr, uimm19s2:$off), A)>;
 
-// just load 22 bits for the small code model
+// loads from 32-bit constant address
+def : Pat<(LembergLoadCached (LembergWrapper tglobaladdr:$addr)),
+          (LOAD32cp (LOADsym11hi (LOADga 
+								  tglobaladdr:$addr),
+					 tglobaladdr:$addr))>;
+def : Pat<(LembergLoadCached (add (LembergWrapper tglobaladdr:$addr), uimm19s2:$off)),
+          (LOAD32cp (LOADsym11hi_off (LOADga_off 
+									  tglobaladdr:$addr, uimm19s2:$off),
+					 tglobaladdr:$addr, uimm19s2:$off))>;
+
+// loads from jump table
 def : Pat<(LembergLoadCached (add (LembergWrapper tjumptable:$addr), (shl A:$off, (i32 2)))),
           (LOAD32cp (S2ADDaaa (LOADga tjumptable:$addr), A:$off))>,
 	Requires<[SmallCode]>;
 
-// load the full 32 bits
 def : Pat<(LembergLoadCached (add (LembergWrapper tjumptable:$addr), (shl A:$off, (i32 2)))),
           (LOAD32cp (S2ADDaaa (LOADsym11hi (LOADga 
 											tjumptable:$addr),
