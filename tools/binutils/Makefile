@@ -22,8 +22,8 @@ ld: linker.o expr.tab.o expr_lexer.o code.o pile.o symtab.o buffer.o elflemberg.
 objcopy: objcopy.o buffer.o elflemberg.o errors.o files.o
 	gcc -o $@ $^ -lelf
 
-expr.tab.c: YFLAGS += -pexpr -bexpr
-expr.tab.c: expr_parser.y exprs.h
+expr.tab.c expr.tab.h: YFLAGS += -pexpr -bexpr
+expr.tab.c expr.tab.h: expr_parser.y exprs.h
 	$(YACC) $(YFLAGS) expr_parser.y
 expr.tab.o: expr.tab.c exprs.h symtab.h section.h buffer.h elflemberg.h
 
