@@ -6,7 +6,7 @@ FPGACABLE="UsbBlaster"
 
 # RAW=RAW
 
-all: doc tools
+all: doc tools libs
 
 # Configuration
 configure: configure-tools
@@ -16,17 +16,11 @@ configure-tools: configure-llvm
 configure-llvm:
 	cd tools/llvm; ./configure --enable-assertions
 
-# Building
-tools: binutils libll libc llvm
+# Build tools
+tools: binutils llvm etc
 
 binutils:
 	${MAKE} -C tools/binutils all
-
-libll:
-	${MAKE} -C tools/libll all
-
-libc:
-	cd tools/libc/src; ./build.sh build
 
 llvm:
 	${MAKE} -C tools/llvm all
@@ -34,25 +28,36 @@ llvm:
 etc:
 	${MAKE} -C tools/etc all
 
-# Installation
-install: install-tools
+# Build libraries
+libs: libll libc
 
-install-tools: install-binutils install-libll install-libc install-llvm install-etc
+libll:
+	${MAKE} -C tools/libll all
+
+libc:
+	cd tools/libc/src; ./build.sh build
+
+# Installation
+install: install-tools install-libs
+
+install-tools: install-binutils install-llvm install-etc
 
 install-binutils:
 	${MAKE} -C tools/binutils install
-
-install-libll:
-	${MAKE} -C tools/libll install
-
-install-libc:
-	cd tools/libc/src; ./build.sh install
 
 install-llvm:
 	${MAKE} -C tools/llvm install
 
 install-etc:
 	${MAKE} -C tools/etc install
+
+install-libs: install-libll install-libc
+
+install-libll:
+	${MAKE} -C tools/libll install
+
+install-libc:
+	cd tools/libc/src; ./build.sh install
 
 # Hardware
 hwconfig:
