@@ -33,6 +33,7 @@ autoconf/autom4te.cache
 #==============================================================================#
 # External projects that are tracked independently.
 projects/*
+!projects/LLVMBuild.txt
 !projects/sample
 !projects/CMakeLists.txt
 !projects/Makefile
