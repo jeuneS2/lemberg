@@ -24,7 +24,7 @@ use work.config.all;
 package core_pack is
 
 	-- version number
-	constant VERSION : std_logic_vector(31 downto 0) := X"20130322";
+	constant VERSION : std_logic_vector(31 downto 0) := X"20130507";
 
 	-- width of a word
 	constant DATA_WIDTH_BITS  : integer := 5;

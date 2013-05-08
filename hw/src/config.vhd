@@ -29,8 +29,8 @@ package config is
 	-- data cache properties
 	constant DM_ADDR_WIDTH	  : integer := 10;
 	constant FA_ADDR_WIDTH	  : integer := 8;
-	constant FA_LINE_BITS	  : integer := 2;
+	constant FA_LINE_BITS	  : integer := 3;
 	constant FA_FAST_LINES	  : integer := 2;
-	constant STACK_ADDR_WIDTH : integer := 12;
+	constant STACK_ADDR_WIDTH : integer := 10;
 
 end config;
